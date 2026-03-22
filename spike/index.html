@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SDK Spike</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    #status, #track, #fft, #log { margin: 12px 0; padding: 8px; background: #222; border-radius: 4px; }
+    h2 { color: #1db954; }
+  </style>
+</head>
+<body>
+  <h2>Spotify Web Playback SDK Spike</h2>
+  <!-- client_id: dcf057d865ea421cbeebea7a0f190435 -->
+
+  <div><strong>Status:</strong> <span id="status">Waiting for SDK...</span></div>
+  <div><strong>Track:</strong> <span id="track">—</span></div>
+  <div><strong>FFT sum (non-zero = audio tapped):</strong> <span id="fft">—</span></div>
+  <pre id="log"></pre>
+
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  <script>
+    // PASTE a short-lived access token here (from developer.spotify.com/console, streaming scope)
+    const TOKEN = 'PASTE_TOKEN_HERE';
+
+    const log = (...args) => {
+      document.getElementById('log').textContent += args.join(' ') + '\n';
+      console.log(...args);
+    };
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      log('SDK ready');
+
+      const player = new Spotify.Player({
+        name: 'Party Display Spike',
+        getOAuthToken: cb => cb(TOKEN),
+        volume: 0.5,
+      });
+
+      player.addListener('ready', ({ device_id }) => {
+        document.getElementById('status').textContent = `✅ Connected — device_id: ${device_id}`;
+        log('ready', device_id);
+        // Device should now appear in Spotify Connect on the same account
+        tryTapAudio();
+      });
+
+      player.addListener('not_ready', ({ device_id }) => {
+        document.getElementById('status').textContent = `⚠️ Not ready: ${device_id}`;
+        log('not_ready', device_id);
+      });
+
+      player.addListener('player_state_changed', state => {
+        if (!state) return;
+        const { current_track } = state.track_window;
+        document.getElementById('track').textContent =
+          `${current_track.name} — ${current_track.artists.map(a => a.name).join(', ')}`;
+        log('state_changed:', current_track.name);
+      });
+
+      player.addListener('initialization_error', ({ message }) => log('init_error:', message));
+      player.addListener('authentication_error', ({ message }) => log('auth_error:', message));
+      player.addListener('account_error', ({ message }) => log('account_error: (Premium required)', message));
+
+      player.connect().then(ok => log('connect result:', ok));
+    };
+
+    function tryTapAudio() {
+      // Attempt 1: find an audio element the SDK created and tap it via createMediaElementSource
+      const audioEls = Array.from(document.querySelectorAll('audio'));
+      log('audio elements found:', audioEls.length);
+
+      if (audioEls.length > 0) {
+        try {
+          const ctx = new AudioContext();
+          const src = ctx.createMediaElementSource(audioEls[0]);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          src.connect(analyser);
+          analyser.connect(ctx.destination);
+          log('✅ AudioContext approach 1 (MediaElementSource) succeeded');
+          runFFT(analyser);
+          return;
+        } catch (e) {
+          log('approach 1 failed:', e.message);
+        }
+      }
+
+      // Attempt 2: capture via getUserMedia / AudioWorklet (fallback, unlikely to work here)
+      log('⚠️ No audio element found — FFT tapping not confirmed. Document in notes.md.');
+      document.getElementById('fft').textContent = 'Could not tap — see notes.md';
+    }
+
+    function runFFT(analyser) {
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        const sum = data.reduce((a, b) => a + b, 0);
+        document.getElementById('fft').textContent = `${sum} ${sum > 0 ? '✅ non-zero' : '(zero — play a track to test)'}`;
+        requestAnimationFrame(tick);
+      };
+      tick();
+    }
+  </script>
+</body>
+</html>
