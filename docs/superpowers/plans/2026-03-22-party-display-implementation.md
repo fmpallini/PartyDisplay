@@ -1990,6 +1990,8 @@ git commit -m "feat: vertical slice complete — Spotify Connect + slideshow + n
 
 The following are explicitly **not** part of this plan but are in scope for V1:
 
+> **FFT IPC pipeline is incomplete (intentional):** `startFftLoop` in `spotify-player.ts` dispatches a local DOM `CustomEvent` — it does NOT send via `FFT_DATA` IPC. To complete the pipeline when implementing spectrum/psychedelic modes, you must: (1) add `sendFftData: (b) => ipcRenderer.send(IPC.FFT_DATA, b)` to the preload, (2) declare it on `window.ipc` in `renderer.d.ts`, (3) add an `ipcMain.on(IPC.FFT_DATA, ...)` relay in `index.ts`, and (4) replace the `dispatchEvent` call in `startFftLoop` with `window.ipc.sendFftData(bands)`.
+
 - `spectrum` and `psychedelic` display modes (FFT pipeline exists; Canvas/WebGL rendering deferred)
 - Album art in `now-playing` overlay
 - Display mode switcher UI in Control Panel
