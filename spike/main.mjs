@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -51,11 +51,9 @@ ipcMain.handle('start-login', async () => {
   authUrl.searchParams.set('code_challenge', challenge);
   authUrl.searchParams.set('scope', SCOPES);
 
-  // Load auth page inside Electron window — intercept the redirect internally.
-  // This avoids OS-level protocol registration for the spike.
+  // Load auth page inside Electron — intercept redirect internally
   win.loadURL(authUrl.toString());
 
-  // Fired when Spotify redirects to party-display://callback
   win.webContents.on('will-navigate', (event, url) => {
     if (url.startsWith('party-display://')) {
       event.preventDefault();
@@ -70,30 +68,37 @@ async function handleCallback(url) {
   const code = parsed.searchParams.get('code');
   const error = parsed.searchParams.get('error');
 
+  let result;
+
   if (error || !code) {
-    win?.webContents.send('auth-result', { error: error || 'No code received' });
-    return;
+    result = { error: error || 'No code received' };
+  } else {
+    try {
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: REDIRECT_URI,
+        client_id: CLIENT_ID,
+        code_verifier: pkceVerifier,
+      });
+
+      const res = await fetch(TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+
+      const json = await res.json();
+      if (!json.access_token) throw new Error(JSON.stringify(json));
+      result = { token: json.access_token };
+    } catch (e) {
+      result = { error: e.message };
+    }
   }
 
-  try {
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: REDIRECT_URI,
-      client_id: CLIENT_ID,
-      code_verifier: pkceVerifier,
-    });
-
-    const res = await fetch(TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    });
-
-    const json = await res.json();
-    if (!json.access_token) throw new Error(JSON.stringify(json));
-    win?.webContents.send('auth-result', { token: json.access_token });
-  } catch (e) {
-    win?.webContents.send('auth-result', { error: e.message });
-  }
+  // Wait for the reloaded page to finish loading before sending the token,
+  // otherwise the IPC message arrives before the listener is registered.
+  win.webContents.once('did-finish-load', () => {
+    win.webContents.send('auth-result', result);
+  });
 }

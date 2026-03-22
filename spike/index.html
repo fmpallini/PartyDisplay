@@ -5,18 +5,20 @@
   <title>SDK Spike</title>
   <style>
     body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
-    #status, #track, #fft, #log { margin: 12px 0; padding: 8px; background: #222; border-radius: 4px; }
     h2 { color: #1db954; }
-    button { background: #1db954; color: #000; border: none; border-radius: 20px; padding: 10px 24px; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 12px; }
+    button { background: #1db954; color: #000; border: none; border-radius: 20px; padding: 10px 24px; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 16px; }
+    div { margin: 8px 0; }
+    label { color: #aaa; }
+    span { color: #fff; }
+    pre { background: #222; padding: 10px; border-radius: 4px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
   </style>
 </head>
 <body>
   <h2>Spotify Web Playback SDK Spike</h2>
   <button id="loginBtn">Log in with Spotify</button>
-
-  <div><strong>Status:</strong> <span id="status">Waiting for login...</span></div>
-  <div><strong>Track:</strong> <span id="track">—</span></div>
-  <div><strong>FFT sum (non-zero = audio tapped):</strong> <span id="fft">—</span></div>
+  <div><label>Status: </label><span id="status">Waiting for login...</span></div>
+  <div><label>Track: </label><span id="track">—</span></div>
+  <div><label>FFT sum (non-zero = audio tapped): </label><span id="fft">—</span></div>
   <pre id="log"></pre>
 
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
@@ -24,13 +26,49 @@
     const { ipcRenderer } = require('electron');
 
     const log = (...args) => {
-      document.getElementById('log').textContent += args.join(' ') + '\n';
+      const pre = document.getElementById('log');
+      pre.textContent += args.join(' ') + '\n';
+      pre.scrollTop = pre.scrollHeight;
       console.log(...args);
     };
 
+    // ── Environment diagnostics (run immediately on load) ──────────────────
+    async function runDiagnostics() {
+      log('── Environment diagnostics ──');
+      log('User-Agent:', navigator.userAgent);
+      log('MediaSource supported:', typeof MediaSource !== 'undefined');
+      log('navigator.requestMediaKeySystemAccess:', typeof navigator.requestMediaKeySystemAccess);
+
+      // Test Widevine EME
+      if (navigator.requestMediaKeySystemAccess) {
+        try {
+          await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [{
+            initDataTypes: ['cenc'],
+            videoCapabilities: [{ contentType: 'video/mp4;codecs="avc1.42E01E"' }],
+            audioCapabilities: [{ contentType: 'audio/mp4;codecs="mp4a.40.2"' }],
+          }]);
+          log('✅ Widevine EME: AVAILABLE');
+        } catch (e) {
+          log('❌ Widevine EME: NOT AVAILABLE —', e.name, e.message);
+        }
+      } else {
+        log('❌ requestMediaKeySystemAccess not present — EME unsupported in this context');
+      }
+
+      // Test MSE codec support
+      const codecs = ['audio/mp4;codecs="mp4a.40.2"', 'audio/webm;codecs="opus"', 'audio/ogg;codecs="vorbis"'];
+      for (const codec of codecs) {
+        log(`  MediaSource.isTypeSupported(${codec}):`, MediaSource?.isTypeSupported?.(codec));
+      }
+
+      log('── End diagnostics ──');
+    }
+
+    runDiagnostics();
+
     document.getElementById('loginBtn').addEventListener('click', () => {
-      document.getElementById('status').textContent = 'Opening Spotify login...';
       ipcRenderer.invoke('start-login');
+      document.getElementById('status').textContent = 'Opening Spotify login...';
     });
 
     ipcRenderer.on('auth-result', (_, result) => {
@@ -44,15 +82,14 @@
     });
 
     function initPlayer(token) {
-      if (window.Spotify) {
+      window.onSpotifyWebPlaybackSDKReady = () => {
+        log('SDK ready');
         startPlayer(token);
-      } else {
-        window.onSpotifyWebPlaybackSDKReady = () => startPlayer(token);
-      }
+      };
+      if (window.Spotify) startPlayer(token);
     }
 
     function startPlayer(token) {
-      log('SDK ready');
       const player = new Spotify.Player({
         name: 'Party Display Spike',
         getOAuthToken: cb => cb(token),
@@ -61,26 +98,27 @@
 
       player.addListener('ready', ({ device_id }) => {
         document.getElementById('status').textContent = `✅ Connected — device_id: ${device_id}`;
-        log('ready', device_id);
+        log('ready — device_id:', device_id);
         tryTapAudio();
       });
 
       player.addListener('not_ready', ({ device_id }) => {
         document.getElementById('status').textContent = `⚠️ Not ready: ${device_id}`;
-        log('not_ready', device_id);
+        log('not_ready:', device_id);
       });
 
       player.addListener('player_state_changed', state => {
         if (!state) return;
-        const { current_track } = state.track_window;
+        const t = state.track_window.current_track;
         document.getElementById('track').textContent =
-          `${current_track.name} — ${current_track.artists.map(a => a.name).join(', ')}`;
-        log('state_changed:', current_track.name);
+          `${t.name} — ${t.artists.map(a => a.name).join(', ')}`;
+        log('state_changed:', t.name);
       });
 
-      player.addListener('initialization_error', ({ message }) => log('init_error:', message));
-      player.addListener('authentication_error', ({ message }) => log('auth_error:', message));
-      player.addListener('account_error', ({ message }) => log('account_error: (Premium required)', message));
+      player.addListener('initialization_error', e => log('init_error:', JSON.stringify(e)));
+      player.addListener('authentication_error', e => log('auth_error:', JSON.stringify(e)));
+      player.addListener('account_error', e => log('account_error (Premium required):', JSON.stringify(e)));
+      player.addListener('playback_error', e => log('playback_error:', JSON.stringify(e)));
 
       player.connect().then(ok => log('connect result:', ok));
     }
@@ -97,16 +135,16 @@
           analyser.fftSize = 256;
           src.connect(analyser);
           analyser.connect(ctx.destination);
-          log('✅ AudioContext approach 1 (MediaElementSource) succeeded');
+          log('✅ AudioContext tap succeeded');
           runFFT(analyser);
           return;
         } catch (e) {
-          log('approach 1 failed:', e.message);
+          log('AudioContext tap failed:', e.message);
         }
       }
 
-      log('⚠️ No audio element found — FFT tapping not confirmed. Document in notes.md.');
-      document.getElementById('fft').textContent = 'Could not tap — see notes.md';
+      log('⚠️ No audio element found — play a track first, then FFT tap will be re-attempted');
+      document.getElementById('fft').textContent = 'Play a track to test FFT tap';
     }
 
     function runFFT(analyser) {
@@ -115,7 +153,7 @@
         analyser.getByteFrequencyData(data);
         const sum = data.reduce((a, b) => a + b, 0);
         document.getElementById('fft').textContent =
-          `${sum} ${sum > 0 ? '✅ non-zero' : '(zero — play a track to test)'}`;
+          `${sum} ${sum > 0 ? '✅ non-zero — audio is flowing' : '(zero — play a track to test)'}`;
         requestAnimationFrame(tick);
       };
       tick();

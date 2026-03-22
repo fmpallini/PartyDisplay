@@ -1,9 +1,16 @@
 {
-  "name": "party-display-spike",
-  "version": "0.0.1",
+  "name": "spike",
+  "version": "1.0.0",
+  "description": "",
   "main": "main.mjs",
+  "scripts": {
+    "start": "electron main.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "type": "module",
   "devDependencies": {
-    "electron": "^41.0.3"
+    "electron": "github:castlabs/electron-releases#v40.7.0+wvcus"
   }
 }
