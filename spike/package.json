@@ -1,0 +1,9 @@
+{
+  "name": "party-display-spike",
+  "version": "0.0.1",
+  "main": "main.mjs",
+  "type": "module",
+  "devDependencies": {
+    "electron": "^41.0.3"
+  }
+}
