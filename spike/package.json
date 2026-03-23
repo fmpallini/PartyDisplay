@@ -1,16 +1,8 @@
 {
   "name": "spike",
   "version": "1.0.0",
-  "description": "",
-  "main": "main.mjs",
-  "scripts": {
-    "start": "electron main.mjs"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
-  "devDependencies": {
-    "electron": "github:castlabs/electron-releases#v40.7.0+wvcus"
+  "scripts": {
+    "start": "node server.mjs"
   }
 }
