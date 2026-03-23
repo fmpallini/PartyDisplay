@@ -1,0 +1,25 @@
+{
+  "productName": "party-display-spike",
+  "version": "0.0.1",
+  "identifier": "com.partydisplay.spike",
+  "build": {
+    "frontendDist": ".."
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Party Display Spike — Tauri",
+        "width": 1000,
+        "height": 750
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}
