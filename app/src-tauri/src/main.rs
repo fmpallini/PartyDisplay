@@ -4,6 +4,7 @@ mod auth;
 mod audio;
 
 use std::sync::Mutex;
+use tauri::Manager;
 
 pub struct AppState {
     pub device_id: Mutex<Option<String>>,
@@ -23,6 +24,15 @@ fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(),
 fn main() {
     tauri::Builder::default()
         .manage(AppState { device_id: Mutex::new(None) })
+        // single-instance MUST be registered before deep-link so it can intercept
+        // the second process launch (which carries the party-display://callback URL)
+        // and forward it to the running instance instead of opening a new window.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Focus the control window when a second instance is blocked
+            if let Some(w) = app.get_webview_window("control") {
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
