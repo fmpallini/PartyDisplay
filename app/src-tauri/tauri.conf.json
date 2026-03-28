@@ -1,0 +1,42 @@
+{
+  "productName": "Party Display",
+  "version": "0.1.0",
+  "identifier": "com.partydisplay.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "control",
+        "title": "Party Display — Control",
+        "width": 900,
+        "height": 650,
+        "resizable": true
+      },
+      {
+        "label": "display",
+        "title": "Party Display — Display",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["party-display"]
+      }
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}
