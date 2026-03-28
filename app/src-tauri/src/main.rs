@@ -2,8 +2,10 @@
 
 mod auth;
 mod audio;
+mod slideshow;
+mod window_manager;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 pub struct AppState {
@@ -87,8 +89,10 @@ fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(),
 }
 
 fn main() {
+    let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
         .manage(AppState { device_id: Mutex::new(None) })
+        .manage(Arc::clone(&slideshow_state))
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
         // and forward it to the running instance instead of opening a new window.
@@ -112,6 +116,7 @@ fn main() {
         }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             ping,
             start_oauth_callback_server,
@@ -120,6 +125,13 @@ fn main() {
             auth::load_tokens,
             auth::clear_tokens,
             audio::start_audio_capture,
+            slideshow::watch_folder,
+            slideshow::get_photos,
+            window_manager::get_monitors,
+            window_manager::load_display_state,
+            window_manager::open_display_window,
+            window_manager::close_display_window,
+            window_manager::toggle_display_fullscreen,
         ])
         .setup(|app| {
             #[cfg(desktop)]
@@ -134,6 +146,21 @@ fn main() {
                 control.on_window_event(move |event| {
                     if matches!(event, tauri::WindowEvent::Destroyed) {
                         app_handle.exit(0);
+                    }
+                });
+            }
+            // Auto-save display window state on every resize/move/fullscreen change
+            if let Some(display) = app.get_webview_window("display") {
+                let app_handle2 = app.handle().clone();
+                display.on_window_event(move |event| {
+                    match event {
+                        tauri::WindowEvent::Resized(_)
+                        | tauri::WindowEvent::Moved(_) => {
+                            if let Some(w) = app_handle2.get_webview_window("display") {
+                                window_manager::snapshot_window_state(&app_handle2, &w);
+                            }
+                        }
+                        _ => {}
                     }
                 });
             }

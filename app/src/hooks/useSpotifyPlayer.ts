@@ -9,16 +9,17 @@ export interface TrackInfo {
 }
 
 export interface PlayerState {
-  ready:     boolean
-  deviceId:  string | null
-  track:     TrackInfo | null
-  paused:    boolean
-  error:     string | null
+  ready:      boolean
+  deviceId:   string | null
+  track:      TrackInfo | null
+  paused:     boolean
+  positionMs: number
+  error:      string | null
 }
 
 export function useSpotifyPlayer(accessToken: string | null) {
   const [state, setState] = useState<PlayerState>({
-    ready: false, deviceId: null, track: null, paused: true, error: null,
+    ready: false, deviceId: null, track: null, paused: true, positionMs: 0, error: null,
   })
   const playerRef = useRef<SpotifyPlayer | null>(null)
 
@@ -47,7 +48,8 @@ export function useSpotifyPlayer(accessToken: string | null) {
         const t = playbackState.track_window.current_track
         setState(s => ({
           ...s,
-          paused: playbackState.paused,
+          paused:     playbackState.paused,
+          positionMs: playbackState.position,
           track: {
             id:       t.id,
             name:     t.name,
@@ -64,6 +66,7 @@ export function useSpotifyPlayer(accessToken: string | null) {
 
       player.connect()
       playerRef.current = player
+      ;(window as any).__spotifyPlayer = player
     }
 
     if (window.Spotify) {
