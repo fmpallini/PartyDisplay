@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth;
+mod audio;
 
 #[tauri::command]
 fn ping() -> &'static str {
@@ -16,11 +17,9 @@ fn main() {
             auth::store_tokens,
             auth::load_tokens,
             auth::clear_tokens,
+            audio::start_audio_capture,
         ])
         .setup(|app| {
-            // Register the URI scheme in the Windows registry so the OS knows
-            // to route party-display:// URLs back to this app. The installer
-            // handles this in production; in dev mode we must do it explicitly.
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
