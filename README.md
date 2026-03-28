@@ -137,3 +137,9 @@ vcup2/
 - [x] Spike 2 — Browser (validated SDK + found FFT limitation)
 - [x] Spike 3 — Tauri v2 (validated full stack) ✅
 - [ ] Phase 2 — Full app implementation
+
+---
+
+## License
+
+GNU AGPL v3 — see [LICENSE](LICENSE).
