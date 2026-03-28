@@ -1,15 +1,20 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
 import NowPlaying from '../../components/NowPlaying'
 import SpectrumCanvas from '../../components/SpectrumCanvas'
 import { FolderPicker } from '../../components/FolderPicker'
 import { DisplayWindowControls } from '../../components/DisplayWindowControls'
+import { PlayerControls } from '../../components/PlayerControls'
+import { SlideshowConfigPanel, DEFAULT_SLIDESHOW_CONFIG } from '../../components/SlideshowConfigPanel'
+import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useBeatScheduler } from '../../hooks/useBeatScheduler'
+import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto } from '../../hooks/useDisplaySync'
 
 export default function ControlPanel() {
@@ -18,32 +23,82 @@ export default function ControlPanel() {
   const bins    = useFftData()
   const library = usePhotoLibrary()
 
-  const [capturing, setCapturing]       = useState(false)
-  const [captureError, setCaptureError] = useState<string | null>(null)
-  const photoIndexRef = useRef(0)
+  const [captureError, setCaptureError]     = useState<string | null>(null)
+  const [config, setConfig]                 = useState<SlideshowConfig>(DEFAULT_SLIDESHOW_CONFIG)
+  const [slideshowPaused, setSlideshowPaused] = useState(false)
 
-  async function startCapture() {
-    try {
-      await invoke('start_audio_capture')
-      setCapturing(true)
-    } catch (e) {
-      setCaptureError(String(e))
+  // ── Photo navigation ──────────────────────────────────────────────────────
+  // indexRef = index of the CURRENTLY displayed photo
+  const indexRef = useRef(-1)
+
+  const showAt = useCallback((idx: number) => {
+    if (library.photos.length === 0) return
+    const i = ((idx % library.photos.length) + library.photos.length) % library.photos.length
+    indexRef.current = i
+    advancePhoto(library.photos[i]).catch(console.error)
+  }, [library.photos])
+
+  const doNext = useCallback(() => showAt(indexRef.current + 1), [showAt])
+  const doPrev = useCallback(() => showAt(indexRef.current - 1), [showAt])
+  const togglePause = useCallback(() => setSlideshowPaused(p => !p), [])
+
+  // ── Track-change → emit to display window ────────────────────────────────
+  const prevTrackIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const id = player.track?.id ?? null
+    if (id && id !== prevTrackIdRef.current) {
+      prevTrackIdRef.current = id
+      emit('track-changed', {
+        name:     player.track!.name,
+        artists:  player.track!.artists,
+        albumArt: player.track!.albumArt,
+      }).catch(console.error)
     }
-  }
+  }, [player.track?.id])
 
+  // ── Volume change → emit to display window ────────────────────────────────
+  const prevVolumeRef = useRef(player.volume)
+  useEffect(() => {
+    if (Math.abs(player.volume - prevVolumeRef.current) > 0.005) {
+      prevVolumeRef.current = player.volume
+      emit('volume-changed', { volume: player.volume }).catch(console.error)
+    }
+  }, [player.volume])
+
+  // ── Fixed interval mode ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (config.mode !== 'fixed' || library.photos.length === 0 || slideshowPaused) return
+    const id = setInterval(doNext, config.fixedSec * 1000)
+    return () => clearInterval(id)
+  }, [config.mode, config.fixedSec, library.photos, slideshowPaused, doNext])
+
+  // ── Beat sync mode ────────────────────────────────────────────────────────
   useBeatScheduler({
-    trackId:     player.track?.id ?? null,
-    positionMs:  player.positionMs,
-    accessToken: accessToken,
-    beatsPerAdvance: 4,
-    onBeat: () => {
-      if (library.photos.length === 0) return
-      const idx  = photoIndexRef.current % library.photos.length
-      const photo = library.photos[idx]
-      photoIndexRef.current = idx + 1
-      advancePhoto(photo).catch(console.error)
-    },
+    trackId:       config.mode === 'beat' && !slideshowPaused ? (player.track?.id ?? null) : null,
+    positionMs:    player.positionMs,
+    accessToken:   accessToken,
+    minIntervalMs: config.beatMinSec * 1000,
+    onBeat:        doNext,
   })
+
+  // ── Auto-start WASAPI capture when player is ready ───────────────────────
+  useEffect(() => {
+    if (!player.ready) return
+    invoke('start_audio_capture').catch(e => setCaptureError(String(e)))
+  }, [player.ready])
+
+  // ── Hotkeys (this window) ─────────────────────────────────────────────────
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause })
+
+  // ── Hotkey relay from display window ──────────────────────────────────────
+  useEffect(() => {
+    const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
+      if (payload.action === 'next')  doNext()
+      if (payload.action === 'prev')  doPrev()
+      if (payload.action === 'pause') togglePause()
+    })
+    return () => { unlisten.then(fn => fn()) }
+  }, [doNext, doPrev, togglePause])
 
   return (
     <div style={{ fontFamily: 'monospace', padding: 24, background: '#111', color: '#eee', minHeight: '100vh' }}>
@@ -67,28 +122,55 @@ export default function ControlPanel() {
 
       <NowPlaying track={player.track} paused={player.paused} />
 
-      {player.ready && !capturing && (
-        <button
-          onClick={startCapture}
-          style={{ background: '#1db954', border: 'none', padding: '8px 20px', borderRadius: 4,
-                   cursor: 'pointer', fontWeight: 'bold', marginTop: 8 }}
-        >
-          Start WASAPI Capture
-        </button>
+      {player.track && (
+        <PlayerControls
+          track={player.track}
+          paused={player.paused}
+          positionMs={player.positionMs}
+          togglePlay={player.togglePlay}
+          nextTrack={player.nextTrack}
+          prevTrack={player.prevTrack}
+          seek={player.seek}
+        />
       )}
-      {capturing    && <p style={{ color: '#1db954', marginTop: 8 }}>✅ Capturing — play a track</p>}
-      {captureError && <p style={{ color: '#e74c3c' }}>❌ {captureError}</p>}
+
+      {/* Volume slider */}
+      {player.ready && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          <span style={{ fontSize: 16 }}>
+            {player.volume === 0 ? '🔇' : player.volume < 0.4 ? '🔉' : '🔊'}
+          </span>
+          <input
+            type="range" min={0} max={1} step={0.02}
+            value={player.volume}
+            onChange={e => player.setVolume(Number(e.target.value))}
+            style={{ width: 120, accentColor: '#1db954', cursor: 'pointer' }}
+          />
+          <span style={{ color: '#666', fontSize: 12, minWidth: 32 }}>
+            {Math.round(player.volume * 100)}%
+          </span>
+        </div>
+      )}
+
+      {captureError && <p style={{ color: '#e74c3c' }}>❌ Capture: {captureError}</p>}
 
       <SpectrumCanvas bins={bins} />
       <p style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
         FFT: {bins.reduce((a, b) => a + Math.max(0, b + 100), 0).toFixed(0)} energy units
       </p>
 
-      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <FolderPicker
           folder={library.folder}
           photoCount={library.photos.length}
           onPick={library.setFolder}
+        />
+        <SlideshowConfigPanel
+          config={config}
+          onChange={setConfig}
+          hasPhotos={library.photos.length > 0}
+          paused={slideshowPaused}
+          onTogglePause={togglePause}
         />
         <DisplayWindowControls />
       </div>

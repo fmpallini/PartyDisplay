@@ -166,3 +166,11 @@ pub fn toggle_display_fullscreen(app: AppHandle) -> Result<(), String> {
     win.set_fullscreen(!is_fs).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn exit_display_fullscreen(app: AppHandle) -> Result<(), String> {
+    let win = app.get_webview_window("display")
+        .ok_or_else(|| "Display window not found".to_string())?;
+    win.set_fullscreen(false).map_err(|e| e.to_string())?;
+    Ok(())
+}

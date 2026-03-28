@@ -132,6 +132,7 @@ fn main() {
             window_manager::open_display_window,
             window_manager::close_display_window,
             window_manager::toggle_display_fullscreen,
+            window_manager::exit_display_fullscreen,
         ])
         .setup(|app| {
             #[cfg(desktop)]

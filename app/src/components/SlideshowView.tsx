@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { useDisplaySync } from '../hooks/useDisplaySync'
 
 interface Props {
@@ -12,10 +13,10 @@ export function SlideshowView({ photos }: Props) {
   // Show the first available photo immediately — don't wait for the first beat event
   const displayPhoto = currentPhoto ?? (photos.length > 0 ? photos[0] : null)
 
-  // Convert absolute filesystem path to asset:// URL
+  // convertFileSrc handles platform differences:
+  // Windows WebView2 uses https://asset.localhost/, others use asset://localhost/
   function toAssetUrl(path: string): string {
-    const normalized = path.replace(/\\/g, '/')
-    return `asset://localhost/${normalized}`
+    return convertFileSrc(path)
   }
 
   if (!displayPhoto) {
