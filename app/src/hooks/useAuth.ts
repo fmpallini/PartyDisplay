@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { onOpenUrl } from '@tauri-apps/plugin-deep-link'
+import { listen } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-shell'
 import type { TokenPayload } from '../lib/ipc'
 import {
@@ -26,7 +26,6 @@ export function useAuth() {
     error: null,
   })
 
-  // Store verifier in a ref so the deep-link callback can access it
   const verifierRef = useRef<string | null>(null)
 
   // ── Persist + update state ────────────────────────────────────────────────
@@ -55,7 +54,6 @@ export function useAuth() {
           setState({ authenticated: true, accessToken: stored.access_token, loading: false, error: null })
           return
         }
-        // Token expired — refresh
         const refreshed = await refreshAccessToken(stored.refresh_token)
         await persistTokens({ ...refreshed, refresh_token: refreshed.refresh_token ?? stored.refresh_token })
       } catch (e) {
@@ -65,30 +63,17 @@ export function useAuth() {
     bootstrap()
   }, [])
 
-  // ── Deep-link listener: fires when Spotify redirects to party-display:// ─
+  // ── OAuth callback listener (loopback server emits 'oauth-code') ─────────
 
   useEffect(() => {
-    const unlisten = onOpenUrl((urls) => {
-      const url = urls[0]
-      if (!url) return
-      const parsed = new URL(url)
-      const code   = parsed.searchParams.get('code')
-      const error  = parsed.searchParams.get('error')
-
-      if (error) {
-        setState(s => ({ ...s, loading: false, error: `Spotify auth error: ${error}` }))
-        return
-      }
-      if (!code || !verifierRef.current) return
-
+    const unlisten = listen<string>('oauth-code', ({ payload: code }) => {
+      if (!verifierRef.current) return
       const verifier = verifierRef.current
       verifierRef.current = null
-
       exchangeCode(code, verifier)
         .then(persistTokens)
         .catch(e => setState(s => ({ ...s, loading: false, error: String(e) })))
     })
-
     return () => { unlisten.then(fn => fn()) }
   }, [])
 
@@ -112,7 +97,6 @@ export function useAuth() {
       const stored = await invoke<TokenPayload | null>('load_tokens')
       if (!stored) return
       const msUntilExpiry = stored.expires_at - Date.now()
-      // expires_at already has 60s buffer subtracted (see expiresAt() in spotify-auth.ts)
       const delay = Math.max(0, msUntilExpiry)
       const id = setTimeout(doRefresh, delay)
       return id
@@ -131,6 +115,7 @@ export function useAuth() {
     try {
       const { verifier, challenge } = await generatePkce()
       verifierRef.current = verifier
+      await invoke('start_oauth_callback_server')
       await open(buildAuthUrl(challenge))
     } catch (e) {
       setState(s => ({ ...s, loading: false, error: String(e) }))

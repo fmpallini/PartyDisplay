@@ -15,6 +15,71 @@ fn ping() -> &'static str {
     "pong"
 }
 
+/// Starts a one-shot HTTP server on 127.0.0.1:7357 that receives the OAuth
+/// callback from the browser, emits the code as a Tauri event, and responds
+/// with a self-closing HTML page.
+#[tauri::command]
+fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use tauri::Emitter;
+
+    std::thread::spawn(move || {
+        let listener = match TcpListener::bind("127.0.0.1:7357") {
+            Ok(l) => l,
+            Err(e) => { eprintln!("OAuth server bind error: {e}"); return; }
+        };
+        let Ok((mut stream, _)) = listener.accept() else { return };
+
+        let mut buf = [0u8; 4096];
+        let n = stream.read(&mut buf).unwrap_or(0);
+        let request = String::from_utf8_lossy(&buf[..n]);
+
+        let mut code: Option<String> = None;
+        let mut err_param: Option<String> = None;
+
+        if let Some(first_line) = request.lines().next() {
+            if let Some(query) = first_line.split('?').nth(1).and_then(|s| s.split(' ').next()) {
+                for pair in query.split('&') {
+                    let mut kv = pair.splitn(2, '=');
+                    match (kv.next(), kv.next()) {
+                        (Some("code"),  Some(v)) => code      = Some(v.to_string()),
+                        (Some("error"), Some(v)) => err_param = Some(v.to_string()),
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        let body = if code.is_some() {
+            r#"<!doctype html><html><head><title>Party Display</title></head>
+<body style="font-family:monospace;background:#111;color:#1db954;display:flex;align-items:center;
+justify-content:center;height:100vh;margin:0;flex-direction:column">
+<h2 style="margin:0 0 8px">&#x2705; Connected to Spotify!</h2>
+<p style="color:#aaa;margin:0">You can close this tab.</p>
+<script>try{window.close()}catch(e){}</script>
+</body></html>"#.to_string()
+        } else {
+            format!(r#"<!doctype html><html><head><title>Party Display</title></head>
+<body style="font-family:monospace;background:#111;color:#e74c3c;display:flex;align-items:center;
+justify-content:center;height:100vh;margin:0;flex-direction:column">
+<h2>&#x274C; Auth error: {}</h2><p style="color:#aaa">You can close this tab.</p>
+</body></html>"#, err_param.as_deref().unwrap_or("unknown"))
+        };
+
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(), body
+        );
+        let _ = stream.write_all(response.as_bytes());
+
+        if let Some(c) = code {
+            let _ = app.emit("oauth-code", c);
+        }
+    });
+    Ok(())
+}
+
 #[tauri::command]
 fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(), String> {
     *state.device_id.lock().unwrap() = Some(device_id);
@@ -49,6 +114,7 @@ fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             ping,
+            start_oauth_callback_server,
             set_device_id,
             auth::store_tokens,
             auth::load_tokens,
@@ -60,6 +126,16 @@ fn main() {
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 app.deep_link().register("party-display")?;
+            }
+            // Exit the whole process when the control window is closed.
+            // Without this the hidden display window keeps the process alive.
+            let app_handle = app.handle().clone();
+            if let Some(control) = app.get_webview_window("control") {
+                control.on_window_event(move |event| {
+                    if matches!(event, tauri::WindowEvent::Destroyed) {
+                        app_handle.exit(0);
+                    }
+                });
             }
             Ok(())
         })
