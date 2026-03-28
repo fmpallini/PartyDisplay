@@ -1,5 +1,162 @@
 <!DOCTYPE html>
-<html><body style="background:#111;color:#eee;font-family:monospace;padding:20px">
-  <h2 style="color:#1db954">Party Display Spike — Tauri</h2>
-  <p>Scaffold OK</p>
-</body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Party Display Spike — Tauri</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; margin: 0; }
+    h2 { color: #1db954; margin: 0 0 16px; }
+    button {
+      background: #1db954; color: #000; border: none; border-radius: 20px;
+      padding: 10px 24px; font-weight: bold; cursor: pointer; font-size: 14px;
+      margin-right: 8px;
+    }
+    button:disabled { background: #444; color: #888; cursor: default; }
+    .row { margin: 6px 0; }
+    label { color: #aaa; }
+    input[type=text] {
+      width: 100%; padding: 8px; background: #222; color: #eee;
+      border: 1px solid #444; border-radius: 4px; font-family: monospace; font-size: 13px;
+    }
+    canvas { display: block; width: 100%; height: 140px; background: #000; border-radius: 4px; margin: 12px 0; }
+    pre {
+      background: #1a1a1a; padding: 10px; border-radius: 4px;
+      white-space: pre-wrap; max-height: 180px; overflow-y: auto; font-size: 12px;
+    }
+    #tokenForm { margin-bottom: 14px; }
+    #tokenForm p { color: #aaa; margin: 0 0 6px; }
+    a { color: #1db954; }
+    code { background: #2a2a2a; padding: 1px 4px; border-radius: 3px; }
+    .section { margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <h2>Party Display Spike — Tauri</h2>
+
+  <div id="tokenForm">
+    <p>
+      Get a token at
+      <a href="https://developer.spotify.com/documentation/web-playback-sdk/tutorials/getting-started"
+         target="_blank">Spotify SDK docs</a>
+      → <strong>Get token</strong> → scope: <code>streaming</code>
+    </p>
+    <input id="tokenInput" type="text" placeholder="Paste Spotify access token" />
+    <button id="startBtn" style="margin-top:8px">Start Player</button>
+  </div>
+
+  <div class="row"><label>Status: </label><span id="status">Paste a token above.</span></div>
+  <div class="row"><label>Track:  </label><span id="track">—</span></div>
+
+  <div class="section">
+    <button id="captureBtn" disabled>Start WASAPI Capture</button>
+    <span id="captureStatus" style="color:#aaa;font-size:13px">Start the player first</span>
+  </div>
+
+  <canvas id="spectrum"></canvas>
+  <div class="row"><label>FFT: </label><span id="fftLabel">—</span></div>
+
+  <pre id="log"></pre>
+
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const log = (...a) => {
+      $('log').textContent += a.join(' ') + '\n';
+      $('log').scrollTop = $('log').scrollHeight;
+      console.log(...a);
+    };
+
+    // ── Spotify player ──────────────────────────────────────────────────────
+
+    $('startBtn').addEventListener('click', () => {
+      const token = $('tokenInput').value.trim();
+      if (!token) { alert('Paste a token first.'); return; }
+      $('tokenForm').style.display = 'none';
+      log('Initialising Spotify player...');
+      initPlayer(token);
+    });
+
+    function initPlayer(token) {
+      window.onSpotifyWebPlaybackSDKReady = () => { log('SDK ready'); startPlayer(token); };
+      if (window.Spotify) startPlayer(token);
+    }
+
+    function startPlayer(token) {
+      const player = new Spotify.Player({
+        name: 'Party Display Spike (Tauri)',
+        getOAuthToken: cb => cb(token),
+        volume: 0.5,
+      });
+
+      player.addListener('ready', ({ device_id }) => {
+        $('status').textContent = `✅ Connected — device_id: ${device_id}`;
+        log('ready — device_id:', device_id);
+        $('captureBtn').disabled = false;
+        $('captureStatus').textContent = 'Click to start WASAPI loopback';
+      });
+
+      player.addListener('not_ready', ({ device_id }) => log('not_ready:', device_id));
+      player.addListener('player_state_changed', state => {
+        if (!state) return;
+        const t = state.track_window.current_track;
+        $('track').textContent = `${t.name} — ${t.artists.map(a => a.name).join(', ')}`;
+        log('state:', t.name, state.paused ? '(paused)' : '(playing)', '| pos:', state.position);
+      });
+      player.addListener('initialization_error', e => log('init_error:', JSON.stringify(e)));
+      player.addListener('authentication_error',  e => log('auth_error:', JSON.stringify(e)));
+      player.addListener('account_error',         e => log('account_error:', JSON.stringify(e)));
+      player.addListener('playback_error',        e => log('playback_error:', JSON.stringify(e)));
+
+      player.connect().then(ok => log('connect result:', ok));
+    }
+
+    // ── WASAPI capture ──────────────────────────────────────────────────────
+
+    $('captureBtn').addEventListener('click', async () => {
+      $('captureBtn').disabled = true;
+      $('captureStatus').textContent = 'Starting...';
+      try {
+        await window.__TAURI__.core.invoke('start_audio_capture');
+        $('captureStatus').textContent = '✅ Capturing — play a track';
+        log('WASAPI loopback started');
+      } catch (e) {
+        $('captureStatus').textContent = '❌ ' + e;
+        $('captureBtn').disabled = false;
+        log('Capture error:', e);
+      }
+    });
+
+    // ── Spectrum visualiser ─────────────────────────────────────────────────
+
+    const canvas = $('spectrum');
+    const ctx2d  = canvas.getContext('2d');
+
+    new ResizeObserver(entries => {
+      for (const e of entries) {
+        canvas.width  = e.contentRect.width;
+        canvas.height = e.contentRect.height;
+      }
+    }).observe(canvas);
+
+    window.__TAURI__.event.listen('fft-data', ({ payload: bins }) => {
+      const sum = bins.reduce((a, b) => a + Math.max(0, b + 100), 0);
+      $('fftLabel').textContent = sum > 0
+        ? `${sum.toFixed(0)} ✅ non-zero — WASAPI tap works!`
+        : `${sum.toFixed(0)} (zero — play a track)`;
+
+      const w = canvas.width, h = canvas.height;
+      ctx2d.clearRect(0, 0, w, h);
+      const bw = w / bins.length;
+      bins.forEach((db, i) => {
+        const level = Math.max(0, Math.min(1, (db + 100) / 100));
+        const barH  = level * h;
+        ctx2d.fillStyle = `hsl(${120 - level * 120}, 100%, 45%)`;
+        ctx2d.fillRect(i * bw, h - barH, bw - 1, barH);
+      });
+    });
+  </script>
+</body>
+</html>
