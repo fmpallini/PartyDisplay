@@ -27,8 +27,20 @@ fn main() {
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
         // and forward it to the running instance instead of opening a new window.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            // Focus the control window when a second instance is blocked
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // The OS launches a second process with the party-display://callback URL
+            // as a command-line arg. single-instance blocks that process and delivers
+            // the args here. We must re-emit the deep-link event ourselves because
+            // tauri-plugin-deep-link only processes args at its own startup — it never
+            // sees the second process's args unless we forward them.
+            use tauri::Emitter;
+            let urls: Vec<String> = args.iter()
+                .filter(|a| a.starts_with("party-display://"))
+                .cloned()
+                .collect();
+            if !urls.is_empty() {
+                let _ = app.emit("deep-link://new-url", urls);
+            }
             if let Some(w) = app.get_webview_window("control") {
                 let _ = w.set_focus();
             }
