@@ -92,6 +92,38 @@ export function useAuth() {
     return () => { unlisten.then(fn => fn()) }
   }, [])
 
+  // ── Auto-refresh timer ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!state.authenticated) return
+
+    async function doRefresh() {
+      try {
+        const stored = await invoke<TokenPayload | null>('load_tokens')
+        if (!stored) return
+        const refreshed = await refreshAccessToken(stored.refresh_token)
+        await persistTokens({ ...refreshed, refresh_token: refreshed.refresh_token ?? stored.refresh_token })
+      } catch (e) {
+        console.error('Auto-refresh failed:', e)
+      }
+    }
+
+    async function scheduleRefresh() {
+      const stored = await invoke<TokenPayload | null>('load_tokens')
+      if (!stored) return
+      const msUntilExpiry = stored.expires_at - Date.now()
+      // expires_at already has 60s buffer subtracted (see expiresAt() in spotify-auth.ts)
+      const delay = Math.max(0, msUntilExpiry)
+      const id = setTimeout(doRefresh, delay)
+      return id
+    }
+
+    let timerId: ReturnType<typeof setTimeout> | undefined
+    scheduleRefresh().then(id => { timerId = id })
+
+    return () => { if (timerId !== undefined) clearTimeout(timerId) }
+  }, [state.authenticated])
+
   // ── login / logout ────────────────────────────────────────────────────────
 
   const login = useCallback(async () => {
