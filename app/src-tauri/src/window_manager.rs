@@ -131,12 +131,21 @@ pub fn open_display_window(
         } else {
             let w = if saved.width  > 100 { saved.width  } else { 1280 };
             let h = if saved.height > 100 { saved.height } else { 720  };
-            // Keep saved position only if it actually falls on this monitor
-            let on_this = saved.x >= mon_pos.x
-                && saved.x < mon_pos.x + mon_size.width  as i32
-                && saved.y >= mon_pos.y
-                && saved.y < mon_pos.y + mon_size.height as i32;
-            let (x, y) = if on_this { (saved.x, saved.y) } else { (mon_pos.x + 80, mon_pos.y + 80) };
+            // Accept saved position only if the entire window fits within any available monitor.
+            // This handles: saved monitor removed, resolution shrunk, multi-monitor layout changed.
+            let fits_any = monitors.iter().any(|m| {
+                let mp = m.position();
+                let ms = m.size();
+                saved.x >= mp.x
+                    && saved.y >= mp.y
+                    && saved.x + w as i32 <= mp.x + ms.width  as i32
+                    && saved.y + h as i32 <= mp.y + ms.height as i32
+            });
+            let (x, y) = if fits_any {
+                (saved.x, saved.y)
+            } else {
+                (mon_pos.x + 80, mon_pos.y + 80)
+            };
             win.set_fullscreen(false).map_err(|e| e.to_string())?;
             win.set_size(PhysicalSize::new(w, h)).map_err(|e| e.to_string())?;
             win.set_position(PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
