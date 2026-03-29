@@ -27,6 +27,7 @@ export interface DisplaySettings {
   spectrumVisible:      boolean
   spectrumStyle:        SpectrumStyle
   spectrumTheme:        SpectrumTheme
+  spectrumHeightPct:    number
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -40,6 +41,7 @@ export function readDisplaySettings(): DisplaySettings {
     spectrumVisible:      localStorage.getItem('pd_spectrum_visible') === 'true',
     spectrumStyle:        (localStorage.getItem('pd_spectrum_style') as SpectrumStyle) ?? 'bars',
     spectrumTheme:        (localStorage.getItem('pd_spectrum_theme') as SpectrumTheme) ?? 'energy',
+    spectrumHeightPct:    Number(localStorage.getItem('pd_spectrum_height_pct') ?? '10'),
   }
 }
 
@@ -100,6 +102,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
     localStorage.setItem('pd_spectrum_visible',        String(settings.spectrumVisible))
     localStorage.setItem('pd_spectrum_style',          settings.spectrumStyle)
     localStorage.setItem('pd_spectrum_theme',          settings.spectrumTheme)
+    localStorage.setItem('pd_spectrum_height_pct',     String(settings.spectrumHeightPct))
     emit('display-settings-changed', settings).catch(console.error)
   }, [settings])
 
@@ -222,6 +225,17 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+      </label>
+
+      <label style={labelStyle}>
+        Height
+        <input
+          type="number" min={5} max={50} step={1}
+          value={settings.spectrumHeightPct}
+          onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, Number(e.target.value))) })}
+          style={numInput}
+        />
+        % of screen
       </label>
     </div>
   )

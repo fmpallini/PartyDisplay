@@ -8,6 +8,7 @@ interface Props {
   height?:      number
   renderStyle?: SpectrumStyle
   theme?:       SpectrumTheme
+  overlay?:     boolean   // transparent background; used when displayed over the photo
 }
 
 // Returns a CSS color string for a bar given its 0–1 level and bin index (for rainbow)
@@ -91,6 +92,7 @@ export default function SpectrumCanvas({
   height      = 140,
   renderStyle = 'bars',
   theme       = 'energy',
+  overlay     = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -110,7 +112,7 @@ export default function SpectrumCanvas({
       ref={canvasRef}
       width={1920}
       height={height}
-      style={{ display: 'block', width: '100%', height, background: '#000', borderRadius: 4 }}
+      style={{ display: 'block', width: '100%', height, background: overlay ? 'transparent' : '#000', borderRadius: overlay ? 0 : 4 }}
     />
   )
 }

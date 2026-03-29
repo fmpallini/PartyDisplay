@@ -16,6 +16,14 @@ export default function DisplayWindow() {
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const bins = useFftData()
 
+  // Track viewport height so the spectrum % is always accurate (e.g. on fullscreen toggle)
+  const [winHeight, setWinHeight] = useState(window.innerHeight)
+  useEffect(() => {
+    const handler = () => setWinHeight(window.innerHeight)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
   function handleDoubleClick() {
     invoke('toggle_display_fullscreen').catch(console.error)
   }
@@ -43,37 +51,40 @@ export default function DisplayWindow() {
     onToggleSpectrum:  () => emit('display-hotkey', { action: 'spectrum' }).catch(console.error),
   })
 
+  const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
+
   return (
-    <div style={{ width: '100vw', height: '100vh' }} onDoubleClick={handleDoubleClick}>
+    // position: relative so absolutely-positioned overlays anchor to this div
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }} onDoubleClick={handleDoubleClick}>
+
+      {/* Photo fills the entire screen — spectrum overlays on top, never displaces this */}
       <SlideshowView
         photos={photos}
         transitionEffect={displaySettings.transitionEffect}
         transitionDurationMs={displaySettings.transitionDurationMs}
         imageFit={displaySettings.imageFit}
       />
-      <SongToast
-        displayMs={displaySettings.toastDurationMs}
-        zoom={displaySettings.songZoom}
-      />
-      <VolumeToast
-        displayMs={displaySettings.toastDurationMs}
-        zoom={displaySettings.volumeZoom}
-      />
+
+      <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
+      <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
+
       {displaySettings.spectrumVisible && (
         <div style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           width: '100%',
+          height: spectrumHeightPx,
           zIndex: 10,
-          background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.7))',
-          paddingTop: 24,
+          // Subtle fade so the spectrum blends into the photo naturally
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 100%)',
         }}>
           <SpectrumCanvas
             bins={bins}
-            height={120}
+            height={spectrumHeightPx}
             renderStyle={displaySettings.spectrumStyle}
             theme={displaySettings.spectrumTheme}
+            overlay
           />
         </div>
       )}
