@@ -17,6 +17,8 @@ export type TransitionEffect =
 
 export type ImageFit = 'cover' | 'contain'
 
+export type TrackPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
 export interface DisplaySettings {
   toastDurationMs:      number
   songZoom:             number
@@ -30,6 +32,13 @@ export interface DisplaySettings {
   spectrumHeightPct:    number
   batteryVisible:       boolean
   batterySize:          number
+  trackOverlayVisible:  boolean
+  trackFont:            string
+  trackFontSize:        number
+  trackPosition:        TrackPosition
+  trackColor:           string
+  trackBgColor:         string
+  trackBgOpacity:       number
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -46,6 +55,13 @@ export function readDisplaySettings(): DisplaySettings {
     spectrumHeightPct:    Number(localStorage.getItem('pd_spectrum_height_pct') ?? '10'),
     batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
     batterySize:          Number(localStorage.getItem('pd_battery_size') ?? '36'),
+    trackOverlayVisible:  localStorage.getItem('pd_track_overlay_visible') === 'true',
+    trackFont:            localStorage.getItem('pd_track_font') ?? 'system-ui',
+    trackFontSize:        Number(localStorage.getItem('pd_track_font_size') ?? '14'),
+    trackPosition:        (localStorage.getItem('pd_track_position') as TrackPosition) ?? 'bottom-left',
+    trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
+    trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
+    trackBgOpacity:       Number(localStorage.getItem('pd_track_bg_opacity') ?? '0.5'),
   }
 }
 
@@ -120,6 +136,13 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
     localStorage.setItem('pd_spectrum_height_pct',     String(settings.spectrumHeightPct))
     localStorage.setItem('pd_battery_visible',         String(settings.batteryVisible))
     localStorage.setItem('pd_battery_size',            String(settings.batterySize))
+    localStorage.setItem('pd_track_overlay_visible',   String(settings.trackOverlayVisible))
+    localStorage.setItem('pd_track_font',              settings.trackFont)
+    localStorage.setItem('pd_track_font_size',         String(settings.trackFontSize))
+    localStorage.setItem('pd_track_position',          settings.trackPosition)
+    localStorage.setItem('pd_track_color',             settings.trackColor)
+    localStorage.setItem('pd_track_bg_color',          settings.trackBgColor)
+    localStorage.setItem('pd_track_bg_opacity',        String(settings.trackBgOpacity))
     emit('display-settings-changed', settings).catch(console.error)
   }, [settings])
 
@@ -258,6 +281,80 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
             style={numInput}
           /> px
         </label>
+      </div>
+
+      {/* ── Track overlay ─────────────────────────────────────────────── */}
+      <p style={subHead}>Track overlay <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(T to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.trackOverlayVisible}
+          onChange={e => set({ trackOverlayVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show on display
+      </label>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+        <div>
+          <span style={fieldLabel}>Font</span>
+          <select value={settings.trackFont} onChange={e => set({ trackFont: e.target.value })} style={selectInput}>
+            <option value="system-ui">System UI</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+            <option value="Impact, sans-serif">Impact</option>
+            <option value="'Courier New', monospace">Courier</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Font size</span>
+          <label style={inlineRow}>
+            <input type="number" min={10} max={96} step={2}
+              value={settings.trackFontSize}
+              onChange={e => set({ trackFontSize: Math.min(96, Math.max(10, Number(e.target.value))) })}
+              style={numInput}
+            /> px
+          </label>
+        </div>
+        <div>
+          <span style={fieldLabel}>Position</span>
+          <select value={settings.trackPosition} onChange={e => set({ trackPosition: e.target.value as TrackPosition })} style={selectInput}>
+            <option value="top-left">Top left</option>
+            <option value="top-right">Top right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="bottom-right">Bottom right</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>BG opacity</span>
+          <label style={inlineRow}>
+            <input type="number" min={0} max={1} step={0.05}
+              value={settings.trackBgOpacity}
+              onChange={e => set({ trackBgOpacity: Math.min(1, Math.max(0, Number(e.target.value))) })}
+              style={numInput}
+            />
+          </label>
+        </div>
+        <div>
+          <span style={fieldLabel}>Text color</span>
+          <label style={inlineRow}>
+            <input type="color" value={settings.trackColor}
+              onChange={e => set({ trackColor: e.target.value })}
+              style={{ width: 36, height: 28, padding: 2, background: '#242424', border: '1px solid #333', borderRadius: 4, cursor: 'pointer' }}
+            />
+            <span style={{ color: '#666', fontSize: 11 }}>{settings.trackColor}</span>
+          </label>
+        </div>
+        <div>
+          <span style={fieldLabel}>BG color</span>
+          <label style={inlineRow}>
+            <input type="color" value={settings.trackBgColor}
+              onChange={e => set({ trackBgColor: e.target.value })}
+              style={{ width: 36, height: 28, padding: 2, background: '#242424', border: '1px solid #333', borderRadius: 4, cursor: 'pointer' }}
+            />
+            <span style={{ color: '#666', fontSize: 11 }}>{settings.trackBgColor}</span>
+          </label>
+        </div>
       </div>
 
     </div>

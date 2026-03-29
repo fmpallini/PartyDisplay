@@ -9,6 +9,7 @@ import { DisplayWindowControls } from '../../components/DisplayWindowControls'
 import { PlayerControls } from '../../components/PlayerControls'
 import { SlideshowConfigPanel, DEFAULT_SLIDESHOW_CONFIG } from '../../components/SlideshowConfigPanel'
 import { DisplaySettingsPanel, readDisplaySettings } from '../../components/DisplaySettingsPanel'
+import { HelpPanel } from '../../components/HelpPanel'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
@@ -93,6 +94,7 @@ export default function ControlPanel() {
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [settingsOpen, setSettingsOpen]       = useState(false)
+  const [helpOpen, setHelpOpen]               = useState(false)
 
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
@@ -174,7 +176,11 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, spectrumVisible: !s.spectrumVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum })
+  const toggleTrackOverlay = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, trackOverlayVisible: !s.trackOverlayVisible }))
+  }, [])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -182,9 +188,10 @@ export default function ControlPanel() {
       if (payload.action === 'prev')     doPrev()
       if (payload.action === 'pause')    togglePause()
       if (payload.action === 'spectrum') toggleSpectrum()
+      if (payload.action === 'track')    toggleTrackOverlay()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)
@@ -206,7 +213,16 @@ export default function ControlPanel() {
         <span style={{ color: '#1db954', fontWeight: 700, fontSize: 14, letterSpacing: -0.2 }}>
           Party Display
         </span>
-        <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setHelpOpen(true)}
+            style={{ background: 'none', border: '1px solid #2a2a2a', color: '#555', cursor: 'pointer',
+                     borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center',
+                     justifyContent: 'center', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
+            title="Help"
+          >?</button>
+          <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
+        </div>
       </div>
 
       {/* ── Scrollable body ───────────────────────────────────────────── */}
@@ -320,13 +336,15 @@ export default function ControlPanel() {
           )}
           {!settingsOpen && (
             <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
-              Toasts · Transitions · Spectrum · Battery
+              Toasts · Transitions · Spectrum · Battery · Track
             </p>
           )}
         </Card>
 
         </div>{/* end inner flex column */}
       </div>{/* end scroll container */}
+
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }
