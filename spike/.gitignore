@@ -1,5 +1,23 @@
+# ── Node ─────────────────────────────────────────────────────────────────────
 node_modules/
+npm-debug.log*
+*.log
+
+# ── Build output ──────────────────────────────────────────────────────────────
+dist/
+
+# ── Certs (dev HTTPS) ─────────────────────────────────────────────────────────
 localhost.pem
 localhost-key.pem
 localhost+1.pem
 localhost+1-key.pem
+
+# ── Environment variables ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
