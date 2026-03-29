@@ -62,32 +62,44 @@ const TRANSITION_EFFECTS: { value: TransitionEffect; label: string }[] = [
 ]
 
 const SPECTRUM_THEMES: { value: SpectrumTheme; label: string }[] = [
-  { value: 'energy',  label: 'Energy (green→red)'  },
-  { value: 'cyan',    label: 'Cyan'                },
-  { value: 'fire',    label: 'Fire'                },
-  { value: 'white',   label: 'White'               },
-  { value: 'rainbow', label: 'Rainbow'             },
-  { value: 'purple',  label: 'Purple'              },
+  { value: 'energy',  label: 'Energy (green→red)' },
+  { value: 'cyan',    label: 'Cyan'               },
+  { value: 'fire',    label: 'Fire'               },
+  { value: 'white',   label: 'White'              },
+  { value: 'rainbow', label: 'Rainbow'            },
+  { value: 'purple',  label: 'Purple'             },
 ]
 
-const labelStyle: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 8, color: '#ccc', fontSize: 14,
+// ── Shared style primitives ───────────────────────────────────────────────────
+
+const fieldLabel: React.CSSProperties = {
+  fontSize: 11, color: '#777', marginBottom: 3, display: 'block',
 }
 
 const numInput: React.CSSProperties = {
-  width: 56, background: '#222', border: '1px solid #444', color: '#eee',
-  borderRadius: 4, padding: '3px 6px', fontFamily: 'monospace', fontSize: 13,
+  width: 52, background: '#242424', border: '1px solid #333', color: '#e8e8e8',
+  borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12,
 }
 
 const selectInput: React.CSSProperties = {
-  background: '#222', border: '1px solid #444', color: '#eee',
-  borderRadius: 4, padding: '3px 6px', fontFamily: 'monospace', fontSize: 13,
-  cursor: 'pointer',
+  width: '100%', background: '#242424', border: '1px solid #333', color: '#e8e8e8',
+  borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer',
 }
 
-const sectionHeader: React.CSSProperties = {
-  margin: 0, color: '#888', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1,
+const inlineRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 4, color: '#ccc', fontSize: 12,
 }
+
+const subHead: React.CSSProperties = {
+  fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2,
+  color: '#555', margin: '6px 0 4px',
+}
+
+const checkRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#ccc', fontSize: 13,
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
   settings: DisplaySettings
@@ -95,7 +107,6 @@ interface Props {
 }
 
 export function DisplaySettingsPanel({ settings, onChange }: Props) {
-  // Sync to localStorage and notify display window whenever settings change
   useEffect(() => {
     localStorage.setItem('pd_toast_duration_ms',      String(settings.toastDurationMs))
     localStorage.setItem('pd_song_toast_zoom',         String(settings.songZoom))
@@ -117,156 +128,138 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p style={sectionHeader}>Display</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-      {/* Toast duration */}
-      <label style={labelStyle}>
-        Toast duration
-        <input
-          type="number" min={1} max={60}
-          value={Math.round(settings.toastDurationMs / 1000)}
-          onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, Number(e.target.value))) * 1000 })}
-          style={numInput}
-        />
-        s
-      </label>
+      {/* ── 2-column grid for the 6 main controls ─────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
 
-      {/* Song toast zoom */}
-      <label style={labelStyle}>
-        Song toast size
-        <input
-          type="number" min={0.5} max={3} step={0.1}
-          value={settings.songZoom}
-          onChange={e => set({ songZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
-          style={numInput}
-        />
-        ×
-      </label>
+        <div>
+          <span style={fieldLabel}>Toast duration</span>
+          <label style={inlineRow}>
+            <input type="number" min={1} max={60}
+              value={Math.round(settings.toastDurationMs / 1000)}
+              onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, Number(e.target.value))) * 1000 })}
+              style={numInput}
+            /> s
+          </label>
+        </div>
 
-      {/* Volume toast zoom */}
-      <label style={labelStyle}>
-        Volume toast size
-        <input
-          type="number" min={0.5} max={3} step={0.1}
-          value={settings.volumeZoom}
-          onChange={e => set({ volumeZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
-          style={numInput}
-        />
-        ×
-      </label>
+        <div>
+          <span style={fieldLabel}>Image fit</span>
+          <select value={settings.imageFit} onChange={e => set({ imageFit: e.target.value as ImageFit })} style={selectInput}>
+            <option value="cover">Fill (crop)</option>
+            <option value="contain">Fit (letterbox)</option>
+          </select>
+        </div>
 
-      {/* Transition effect */}
-      <label style={labelStyle}>
-        Transition
-        <select
-          value={settings.transitionEffect}
-          onChange={e => set({ transitionEffect: e.target.value as TransitionEffect })}
-          style={selectInput}
-        >
-          {TRANSITION_EFFECTS.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-      </label>
+        <div>
+          <span style={fieldLabel}>Song toast size</span>
+          <label style={inlineRow}>
+            <input type="number" min={0.5} max={3} step={0.1}
+              value={settings.songZoom}
+              onChange={e => set({ songZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
+              style={numInput}
+            /> ×
+          </label>
+        </div>
 
-      {/* Transition duration */}
-      <label style={labelStyle}>
-        Transition duration
-        <input
-          type="number" min={0.1} max={5} step={0.1}
-          value={settings.transitionDurationMs / 1000}
-          onChange={e => set({ transitionDurationMs: Math.min(5000, Math.max(100, Math.round(Number(e.target.value) * 1000))) })}
-          style={numInput}
-        />
-        s
-      </label>
+        <div>
+          <span style={fieldLabel}>Volume toast size</span>
+          <label style={inlineRow}>
+            <input type="number" min={0.5} max={3} step={0.1}
+              value={settings.volumeZoom}
+              onChange={e => set({ volumeZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
+              style={numInput}
+            /> ×
+          </label>
+        </div>
 
-      {/* Image fit */}
-      <label style={labelStyle}>
-        Image fit
-        <select
-          value={settings.imageFit}
-          onChange={e => set({ imageFit: e.target.value as ImageFit })}
-          style={selectInput}
-        >
-          <option value="cover">Fill screen (crop)</option>
-          <option value="contain">Fit to screen (letterbox)</option>
-        </select>
-      </label>
+        <div>
+          <span style={fieldLabel}>Transition</span>
+          <select value={settings.transitionEffect}
+            onChange={e => set({ transitionEffect: e.target.value as TransitionEffect })}
+            style={selectInput}
+          >
+            {TRANSITION_EFFECTS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
 
-      {/* ── Spectrum ─────────────────────────────────────────────────── */}
-      <p style={{ ...sectionHeader, marginTop: 8 }}>Spectrum  <span style={{ color: '#555', fontSize: 11 }}>(S to toggle)</span></p>
+        <div>
+          <span style={fieldLabel}>Transition duration</span>
+          <label style={inlineRow}>
+            <input type="number" min={0.1} max={5} step={0.1}
+              value={settings.transitionDurationMs / 1000}
+              onChange={e => set({ transitionDurationMs: Math.min(5000, Math.max(100, Math.round(Number(e.target.value) * 1000))) })}
+              style={numInput}
+            /> s
+          </label>
+        </div>
 
-      <label style={labelStyle}>
-        <input
-          type="checkbox"
-          checked={settings.spectrumVisible}
+      </div>
+
+      {/* ── Spectrum ──────────────────────────────────────────────────── */}
+      <p style={subHead}>Spectrum <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(S to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.spectrumVisible}
           onChange={e => set({ spectrumVisible: e.target.checked })}
           style={{ accentColor: '#1db954', cursor: 'pointer' }}
         />
-        Show spectrum on display
+        Show on display
       </label>
 
-      <label style={labelStyle}>
-        Style
-        <select
-          value={settings.spectrumStyle}
-          onChange={e => set({ spectrumStyle: e.target.value as SpectrumStyle })}
-          style={selectInput}
-        >
-          <option value="bars">Bars</option>
-          <option value="lines">Lines</option>
-        </select>
-      </label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+        <div>
+          <span style={fieldLabel}>Style</span>
+          <select value={settings.spectrumStyle} onChange={e => set({ spectrumStyle: e.target.value as SpectrumStyle })} style={selectInput}>
+            <option value="bars">Bars</option>
+            <option value="lines">Lines</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Theme</span>
+          <select value={settings.spectrumTheme} onChange={e => set({ spectrumTheme: e.target.value as SpectrumTheme })} style={selectInput}>
+            {SPECTRUM_THEMES.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Height</span>
+          <label style={inlineRow}>
+            <input type="number" min={5} max={50} step={1}
+              value={settings.spectrumHeightPct}
+              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, Number(e.target.value))) })}
+              style={numInput}
+            /> % of screen
+          </label>
+        </div>
+      </div>
 
-      <label style={labelStyle}>
-        Theme
-        <select
-          value={settings.spectrumTheme}
-          onChange={e => set({ spectrumTheme: e.target.value as SpectrumTheme })}
-          style={selectInput}
-        >
-          {SPECTRUM_THEMES.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-      </label>
+      {/* ── Battery ───────────────────────────────────────────────────── */}
+      <p style={subHead}>Battery</p>
 
-      <label style={labelStyle}>
-        Height
-        <input
-          type="number" min={5} max={50} step={1}
-          value={settings.spectrumHeightPct}
-          onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, Number(e.target.value))) })}
-          style={numInput}
-        />
-        % of screen
-      </label>
-
-      {/* ── Battery widget ────────────────────────────────────────────── */}
-      <p style={{ ...sectionHeader, marginTop: 8 }}>Battery</p>
-
-      <label style={labelStyle}>
-        <input
-          type="checkbox"
-          checked={settings.batteryVisible}
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.batteryVisible}
           onChange={e => set({ batteryVisible: e.target.checked })}
           style={{ accentColor: '#1db954', cursor: 'pointer' }}
         />
-        Show battery icon on display
+        Show on display
       </label>
 
-      <label style={labelStyle}>
-        Icon size
-        <input
-          type="number" min={16} max={80} step={2}
-          value={settings.batterySize}
-          onChange={e => set({ batterySize: Math.min(80, Math.max(16, Number(e.target.value))) })}
-          style={numInput}
-        />
-        px
-      </label>
+      <div>
+        <span style={fieldLabel}>Icon size</span>
+        <label style={inlineRow}>
+          <input type="number" min={16} max={80} step={2}
+            value={settings.batterySize}
+            onChange={e => set({ batterySize: Math.min(80, Math.max(16, Number(e.target.value))) })}
+            style={numInput}
+          /> px
+        </label>
+      </div>
+
     </div>
   )
 }

@@ -1,10 +1,5 @@
 import { useDisplayWindow } from '../hooks/useDisplayWindow'
 
-const btn: React.CSSProperties = {
-  border: 'none', padding: '8px 18px', borderRadius: 4,
-  cursor: 'pointer', fontWeight: 'bold', fontFamily: 'monospace',
-}
-
 export function DisplayWindowControls() {
   const {
     monitors, isOpen,
@@ -14,16 +9,15 @@ export function DisplayWindowControls() {
   } = useDisplayWindow()
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-        {/* Monitor picker — only shown when >1 monitor */}
+      {/* Monitor + fullscreen row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {monitors.length > 1 && (
           <select
             value={selectedMonitor ?? ''}
             onChange={e => setSelectedMonitor(e.target.value)}
-            style={{ background: '#222', color: '#eee', border: '1px solid #444',
-                     padding: '6px 10px', borderRadius: 4, fontFamily: 'monospace' }}
+            style={selectStyle}
           >
             {monitors.map(m => (
               <option key={m.name} value={m.name}>
@@ -32,54 +26,57 @@ export function DisplayWindowControls() {
             ))}
           </select>
         )}
-
-        {/* Fullscreen toggle */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+        <label style={checkLabel}>
           <input
             type="checkbox"
             checked={fullscreen}
             onChange={e => setFullscreen(e.target.checked)}
+            style={{ accentColor: '#1db954', cursor: 'pointer' }}
           />
           Fullscreen
         </label>
+      </div>
 
-        {/* Open / Close */}
+      {/* Open / Close / Re-apply row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {!isOpen ? (
-          <button
-            onClick={() => openWindow()}
-            style={{ ...btn, background: '#1db954', color: '#000' }}
-          >
+          <button onClick={() => openWindow()} style={{ ...btnBase, background: '#1db954', color: '#000', fontWeight: 700 }}>
             Open Display
           </button>
         ) : (
-          <button
-            onClick={closeWindow}
-            style={{ ...btn, background: '#444', color: '#eee' }}
-          >
-            Close Display
-          </button>
-        )}
-
-        {/* Re-open on different monitor / toggle fullscreen while open */}
-        {isOpen && (
-          <button
-            onClick={() => openWindow()}
-            style={{ ...btn, background: '#333', color: '#aaa', fontSize: 12 }}
-          >
-            Re-apply
-          </button>
+          <>
+            <button onClick={closeWindow} style={{ ...btnBase, background: '#2a2a2a', color: '#aaa', border: '1px solid #333' }}>
+              Close Display
+            </button>
+            <button onClick={() => openWindow()} style={{ ...btnBase, background: 'transparent', color: '#666', border: '1px solid #2a2a2a', fontSize: 11 }}>
+              Re-apply
+            </button>
+          </>
         )}
       </div>
 
-      {monitors.length === 0 && (
-        <p style={{ color: '#666', fontSize: 12, margin: 0 }}>Detecting monitors…</p>
-      )}
-      {monitors.length === 1 && (
-        <p style={{ color: '#666', fontSize: 12, margin: 0 }}>
-          1 monitor detected — double-click display window to toggle fullscreen
-        </p>
-      )}
-      {error && <p style={{ color: '#e74c3c', fontSize: 12, margin: 0 }}>❌ {error}</p>}
+      {/* Status hints */}
+      {monitors.length === 0 && <p style={hint}>Detecting monitors…</p>}
+      {monitors.length === 1 && <p style={hint}>1 monitor — double-click display window to toggle fullscreen</p>}
+      {error && <p style={{ ...hint, color: '#e74c3c' }}>{error}</p>}
     </div>
   )
+}
+
+const selectStyle: React.CSSProperties = {
+  background: '#242424', color: '#e8e8e8', border: '1px solid #333',
+  padding: '5px 8px', borderRadius: 5, fontFamily: 'inherit', fontSize: 12, cursor: 'pointer',
+}
+
+const checkLabel: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#ccc', fontSize: 13,
+}
+
+const btnBase: React.CSSProperties = {
+  border: 'none', padding: '6px 14px', borderRadius: 5,
+  cursor: 'pointer', fontFamily: 'inherit', fontSize: 12,
+}
+
+const hint: React.CSSProperties = {
+  margin: 0, fontSize: 11, color: '#555',
 }

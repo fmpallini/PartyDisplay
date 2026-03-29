@@ -18,25 +18,81 @@ import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto } from '../../hooks/useDisplaySync'
 
+// ── Layout helpers ────────────────────────────────────────────────────────────
+
+function Card({ label, right, noPad, children }: {
+  label:     string
+  right?:    React.ReactNode
+  noPad?:    boolean
+  children:  React.ReactNode
+}) {
+  return (
+    <section style={cardShell}>
+      <div style={cardHeader}>
+        <span style={cardLabel}>{label}</span>
+        {right}
+      </div>
+      <div style={{ padding: noPad ? 0 : '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {children}
+      </div>
+    </section>
+  )
+}
+
+function ErrBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ background: '#e74c3c18', border: '1px solid #e74c3c33', borderRadius: 6, padding: '6px 10px', color: '#e74c3c', fontSize: 11 }}>
+      {children}
+    </div>
+  )
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const cardShell: React.CSSProperties = {
+  background: '#181818', borderRadius: 8, border: '1px solid #242424', overflow: 'hidden',
+}
+const cardHeader: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  padding: '7px 14px', borderBottom: '1px solid #1e1e1e',
+}
+const cardLabel: React.CSSProperties = {
+  fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, color: '#555',
+}
+const chevronBtn: React.CSSProperties = {
+  background: 'none', border: 'none', color: '#555', cursor: 'pointer',
+  fontSize: 11, padding: '0 2px', lineHeight: 1,
+}
+const pauseBtn = (paused: boolean): React.CSSProperties => ({
+  background: paused ? '#e74c3c18' : '#1db95418',
+  border: `1px solid ${paused ? '#e74c3c44' : '#1db95444'}`,
+  color: paused ? '#e74c3c' : '#1db954',
+  borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+  fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+})
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function readSlideshowConfig(): SlideshowConfig {
   return {
     fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec') ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
-    order:      (localStorage.getItem('pd_order') as SlideshowConfig['order'])
-                  ?? DEFAULT_SLIDESHOW_CONFIG.order,
+    order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
     subfolders: localStorage.getItem('pd_subfolder') === 'true',
   }
 }
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function ControlPanel() {
   const { authenticated, loading, accessToken, error: authError, login, logout } = useAuth()
   const player  = useSpotifyPlayer(authenticated ? accessToken : null)
   const bins    = useFftData()
-  const [captureError, setCaptureError]     = useState<string | null>(null)
-  const [config, setConfigState]            = useState<SlideshowConfig>(readSlideshowConfig)
+  const [captureError, setCaptureError]       = useState<string | null>(null)
+  const [config, setConfigState]              = useState<SlideshowConfig>(readSlideshowConfig)
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
-
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
+  const [settingsOpen, setSettingsOpen]       = useState(false)
 
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
@@ -46,7 +102,6 @@ export default function ControlPanel() {
   }
 
   // ── Photo navigation ──────────────────────────────────────────────────────
-  // indexRef = index of the CURRENTLY displayed photo
   const indexRef = useRef(-1)
 
   const showAt = useCallback((idx: number) => {
@@ -63,47 +118,37 @@ export default function ControlPanel() {
     }
   }, [library.photos, library.folder, config.order])
 
-  const doNext = useCallback(() => showAt(indexRef.current + 1), [showAt])
-  const doPrev = useCallback(() => showAt(indexRef.current - 1), [showAt])
+  const doNext      = useCallback(() => showAt(indexRef.current + 1), [showAt])
+  const doPrev      = useCallback(() => showAt(indexRef.current - 1), [showAt])
   const togglePause = useCallback(() => setSlideshowPaused(p => !p), [])
 
-  // Seed indexRef from resume position (or 0) whenever the photo list changes
   useEffect(() => {
     if (library.photos.length === 0) return
-    const startIdx = library.initialPhoto
-      ? Math.max(0, library.photos.indexOf(library.initialPhoto))
-      : 0
+    const startIdx = library.initialPhoto ? Math.max(0, library.photos.indexOf(library.initialPhoto)) : 0
     showAt(startIdx)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [library.photos]) // showAt and library.initialPhoto change with library.photos
+  }, [library.photos])
 
-  // Auto-load the last folder on startup
   useEffect(() => {
     const lastFolder = localStorage.getItem('pd_last_folder')
     if (lastFolder) library.setFolder(lastFolder)
   }, [])
 
-  // Re-scan when subfolders toggle changes
   useEffect(() => {
     if (library.folder) library.setFolder(library.folder)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.subfolders])
 
-  // ── Track-change → emit to display window ────────────────────────────────
+  // ── Track / volume → display window ──────────────────────────────────────
   const prevTrackIdRef = useRef<string | null>(null)
   useEffect(() => {
     const id = player.track?.id ?? null
     if (id && id !== prevTrackIdRef.current) {
       prevTrackIdRef.current = id
-      emit('track-changed', {
-        name:     player.track!.name,
-        artists:  player.track!.artists,
-        albumArt: player.track!.albumArt,
-      }).catch(console.error)
+      emit('track-changed', { name: player.track!.name, artists: player.track!.artists, albumArt: player.track!.albumArt }).catch(console.error)
     }
   }, [player.track?.id])
 
-  // ── Volume change → emit to display window ────────────────────────────────
   const prevVolumeRef = useRef(player.volume)
   useEffect(() => {
     if (Math.abs(player.volume - prevVolumeRef.current) > 0.005) {
@@ -112,15 +157,14 @@ export default function ControlPanel() {
     }
   }, [player.volume])
 
-  // ── Fixed interval mode ───────────────────────────────────────────────────
-  // Total cycle = display time + transition time (transition does NOT eat into display time)
+  // ── Slideshow interval ────────────────────────────────────────────────────
   useEffect(() => {
     if (library.photos.length === 0 || slideshowPaused) return
     const id = setInterval(doNext, config.fixedSec * 1000 + displaySettings.transitionDurationMs)
     return () => clearInterval(id)
   }, [config.fixedSec, displaySettings.transitionDurationMs, library.photos, slideshowPaused, doNext])
 
-  // ── Auto-start WASAPI capture when player is ready ───────────────────────
+  // ── Audio capture ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!player.ready) return
     invoke('start_audio_capture').catch(e => setCaptureError(String(e)))
@@ -130,10 +174,8 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, spectrumVisible: !s.spectrumVisible }))
   }, [])
 
-  // ── Hotkeys (this window) ─────────────────────────────────────────────────
   useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum })
 
-  // ── Hotkey relay from display window ──────────────────────────────────────
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
       if (payload.action === 'next')     doNext()
@@ -144,83 +186,142 @@ export default function ControlPanel() {
     return () => { unlisten.then(fn => fn()) }
   }, [doNext, doPrev, togglePause, toggleSpectrum])
 
+  // ── Render ────────────────────────────────────────────────────────────────
+  const hasErrors = !!(authError || player.error || captureError)
+
   return (
-    <div style={{ fontFamily: 'monospace', padding: 24, background: '#111', color: '#eee', minHeight: '100vh' }}>
-      <h2 style={{ color: '#1db954', margin: '0 0 20px' }}>Party Display</h2>
+    <div style={{
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontSize: 13, background: '#0f0f0f', color: '#e8e8e8',
+      height: '100vh', display: 'flex', flexDirection: 'column',
+      overflow: 'hidden', minWidth: 380,
+    }}>
 
-      <LoginButton
-        authenticated={authenticated}
-        loading={loading}
-        onLogin={login}
-        onLogout={logout}
-      />
-
-      {authError    && <p style={{ color: '#e74c3c' }}>❌ Auth: {authError}</p>}
-      {player.error && <p style={{ color: '#e74c3c' }}>❌ Player: {player.error}</p>}
-
-      {authenticated && player.ready && (
-        <p style={{ color: '#1db954', marginTop: 8 }}>
-          ✅ Connected — device_id: {player.deviceId}
-        </p>
-      )}
-
-      <NowPlaying track={player.track} paused={player.paused} />
-
-      {player.track && (
-        <PlayerControls
-          track={player.track}
-          paused={player.paused}
-          positionMs={player.positionMs}
-          togglePlay={player.togglePlay}
-          nextTrack={player.nextTrack}
-          prevTrack={player.prevTrack}
-          seek={player.seek}
-        />
-      )}
-
-      {/* Volume slider */}
-      {player.ready && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-          <span style={{ fontSize: 16 }}>
-            {player.volume === 0 ? '🔇' : player.volume < 0.4 ? '🔉' : '🔊'}
-          </span>
-          <input
-            type="range" min={0} max={1} step={0.02}
-            value={player.volume}
-            onChange={e => player.setVolume(Number(e.target.value))}
-            style={{ width: 120, accentColor: '#1db954', cursor: 'pointer' }}
-          />
-          <span style={{ color: '#666', fontSize: 12, minWidth: 32 }}>
-            {Math.round(player.volume * 100)}%
-          </span>
-        </div>
-      )}
-
-      {captureError && <p style={{ color: '#e74c3c' }}>❌ Capture: {captureError}</p>}
-
-      {/* Small audio-active indicator — just enough to confirm capture is working */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-        <span style={{ color: '#666', fontSize: 11 }}>Audio</span>
-        <div style={{ flex: 1 }}>
-          <SpectrumCanvas bins={bins} height={32} renderStyle={displaySettings.spectrumStyle} theme={displaySettings.spectrumTheme} />
-        </div>
+      {/* ── Sticky header ─────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px', height: 46, flexShrink: 0,
+        borderBottom: '1px solid #1a1a1a', background: '#0f0f0f',
+      }}>
+        <span style={{ color: '#1db954', fontWeight: 700, fontSize: 14, letterSpacing: -0.2 }}>
+          Party Display
+        </span>
+        <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
       </div>
 
-      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <FolderPicker
-          folder={library.folder}
-          photoCount={library.photos.length}
-          onPick={library.setFolder}
-        />
-        <SlideshowConfigPanel
-          config={config}
-          onChange={setConfig}
-          hasPhotos={library.photos.length > 0}
-          paused={slideshowPaused}
-          onTogglePause={togglePause}
-        />
-        <DisplaySettingsPanel settings={displaySettings} onChange={setDisplaySettings} />
-        <DisplayWindowControls />
+      {/* ── Scrollable body ───────────────────────────────────────────── */}
+      <div style={{
+        flex: 1, overflowY: 'auto', overflowX: 'hidden',
+        padding: '10px 12px 28px',
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}>
+
+        {/* Error banners */}
+        {hasErrors && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {authError    && <ErrBanner>Auth: {authError}</ErrBanner>}
+            {player.error && <ErrBanner>Player: {player.error}</ErrBanner>}
+            {captureError && <ErrBanner>Capture: {captureError}</ErrBanner>}
+          </div>
+        )}
+
+        {/* ── Music card ──────────────────────────────────────────────── */}
+        <Card label="Music">
+          {!authenticated ? (
+            <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+              Connect Spotify using the button above.
+            </p>
+          ) : !player.ready ? (
+            <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+              Waiting for Spotify device…
+            </p>
+          ) : (
+            <>
+              <NowPlaying track={player.track} paused={player.paused} />
+
+              {player.track && (
+                <PlayerControls
+                  track={player.track}
+                  paused={player.paused}
+                  positionMs={player.positionMs}
+                  togglePlay={player.togglePlay}
+                  nextTrack={player.nextTrack}
+                  prevTrack={player.prevTrack}
+                  seek={player.seek}
+                />
+              )}
+
+              {/* Volume + audio indicator row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#555', fontSize: 11, width: 12, flexShrink: 0 }}>
+                  {player.volume === 0 ? '0' : player.volume < 0.4 ? '–' : '+'}
+                </span>
+                <input
+                  type="range" min={0} max={1} step={0.02}
+                  value={player.volume}
+                  onChange={e => player.setVolume(Number(e.target.value))}
+                  style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
+                />
+                <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
+                  {Math.round(player.volume * 100)}%
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <SpectrumCanvas
+                    bins={bins} height={22}
+                    renderStyle={displaySettings.spectrumStyle}
+                    theme={displaySettings.spectrumTheme}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </Card>
+
+        {/* ── Slideshow card ──────────────────────────────────────────── */}
+        <Card
+          label="Slideshow"
+          right={
+            <button style={pauseBtn(slideshowPaused)} onClick={togglePause} title="Space">
+              {slideshowPaused ? 'PAUSED' : 'RUNNING'}
+            </button>
+          }
+        >
+          <FolderPicker
+            folder={library.folder}
+            photoCount={library.photos.length}
+            onPick={library.setFolder}
+          />
+          <SlideshowConfigPanel
+            config={config}
+            onChange={setConfig}
+            hasPhotos={library.photos.length > 0}
+          />
+        </Card>
+
+        {/* ── Display window card ─────────────────────────────────────── */}
+        <Card label="Display Window">
+          <DisplayWindowControls />
+        </Card>
+
+        {/* ── Display settings card (collapsible) ─────────────────────── */}
+        <Card
+          label="Display Settings"
+          right={
+            <button style={chevronBtn} onClick={() => setSettingsOpen(o => !o)}>
+              {settingsOpen ? '▲' : '▼'}
+            </button>
+          }
+        >
+          {settingsOpen && (
+            <DisplaySettingsPanel settings={displaySettings} onChange={setDisplaySettings} />
+          )}
+          {!settingsOpen && (
+            <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
+              Toasts · Transitions · Spectrum · Battery
+            </p>
+          )}
+        </Card>
+
       </div>
     </div>
   )
