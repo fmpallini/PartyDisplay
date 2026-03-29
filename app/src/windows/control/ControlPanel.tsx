@@ -210,11 +210,14 @@ export default function ControlPanel() {
       </div>
 
       {/* ── Scrollable body ───────────────────────────────────────────── */}
-      <div style={{
-        flex: 1, overflowY: 'auto', overflowX: 'hidden',
-        padding: '10px 12px 28px',
-        display: 'flex', flexDirection: 'column', gap: 8,
-      }}>
+      {/* Outer div ONLY scrolls — no flex here, otherwise flex-shrink
+          compresses sibling cards instead of letting the container overflow */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        {/* Inner div handles the vertical flex layout */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: '10px 12px 28px', minHeight: 'min-content',
+        }}>
 
         {/* Error banners */}
         {hasErrors && (
@@ -322,7 +325,8 @@ export default function ControlPanel() {
           )}
         </Card>
 
-      </div>
+        </div>{/* end inner flex column */}
+      </div>{/* end scroll container */}
     </div>
   )
 }
