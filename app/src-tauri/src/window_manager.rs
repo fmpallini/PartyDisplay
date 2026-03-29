@@ -19,6 +19,8 @@ pub struct DisplayState {
     pub width: u32,
     pub height: u32,
     pub fullscreen: bool,
+    #[serde(default)]
+    pub is_open: bool,
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) {
         let (w, h) = win.outer_size()
             .map(|s| (s.width, s.height))
             .unwrap_or((existing.width, existing.height));
-        DisplayState { x, y, width: w, height: h, fullscreen: false, monitor_name }
+        DisplayState { x, y, width: w, height: h, fullscreen: false, monitor_name, is_open: existing.is_open }
     };
     write_state_file(app, &state);
 }
@@ -144,8 +146,11 @@ pub fn open_display_window(
     win.show().map_err(|e| e.to_string())?;
     win.set_focus().map_err(|e| e.to_string())?;
 
-    // Snapshot after opening so saved state reflects the new intent
+    // Snapshot after opening and mark as open
     snapshot_window_state(&app, &win);
+    let mut state = load_state_file(&app);
+    state.is_open = true;
+    write_state_file(&app, &state);
     Ok(())
 }
 
@@ -154,8 +159,24 @@ pub fn close_display_window(app: AppHandle) -> Result<(), String> {
     let win = app.get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
     snapshot_window_state(&app, &win);
+    let mut state = load_state_file(&app);
+    state.is_open = false;
+    write_state_file(&app, &state);
     win.hide().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// Called when the user manually closes the display window (native X button).
+/// Hides the window instead of destroying it, saves is_open = false, and
+/// emits an event so the control panel can update its button.
+pub fn handle_display_close_requested(app: &AppHandle, win: &WebviewWindow) {
+    snapshot_window_state(app, win);
+    let mut state = load_state_file(app);
+    state.is_open = false;
+    write_state_file(app, &state);
+    let _ = win.hide();
+    use tauri::Emitter;
+    let _ = app.emit("display-window-closed", ());
 }
 
 #[tauri::command]

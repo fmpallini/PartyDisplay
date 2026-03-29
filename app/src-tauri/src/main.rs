@@ -150,7 +150,7 @@ fn main() {
                     }
                 });
             }
-            // Auto-save display window state on every resize/move/fullscreen change
+            // Auto-save display window state on every resize/move; intercept manual close
             if let Some(display) = app.get_webview_window("display") {
                 let app_handle2 = app.handle().clone();
                 display.on_window_event(move |event| {
@@ -159,6 +159,13 @@ fn main() {
                         | tauri::WindowEvent::Moved(_) => {
                             if let Some(w) = app_handle2.get_webview_window("display") {
                                 window_manager::snapshot_window_state(&app_handle2, &w);
+                            }
+                        }
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            // Prevent destroy; hide instead so the window can be re-opened
+                            api.prevent_close();
+                            if let Some(w) = app_handle2.get_webview_window("display") {
+                                window_manager::handle_display_close_requested(&app_handle2, &w);
                             }
                         }
                         _ => {}
