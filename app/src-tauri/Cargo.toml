@@ -7,7 +7,7 @@ edition = "2021"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri              = { version = "2", features = ["devtools", "protocol-asset"] }
+tauri              = { version = "2", features = ["protocol-asset", "devtools"] }
 tauri-plugin-deep-link        = "2"
 tauri-plugin-shell            = "2"
 tauri-plugin-single-instance  = "2"
