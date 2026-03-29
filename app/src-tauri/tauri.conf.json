@@ -25,7 +25,8 @@
         "width": 1280,
         "height": 720,
         "resizable": true,
-        "visible": false
+        "visible": false,
+        "backgroundColor": "#000000"
       }
     ],
     "security": {

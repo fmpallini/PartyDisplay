@@ -92,7 +92,7 @@ export default function DisplayWindow() {
       {displaySettings.spectrumVisible && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, width: '100%', height: spectrumHeightPx, zIndex: 10,
-          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 100%)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%)',
         }}>
           <SpectrumCanvas
             bins={bins}
