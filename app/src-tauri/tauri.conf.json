@@ -30,10 +30,15 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://i.scdn.co https://*.spotifycdn.com https://*.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://*.spotify.com wss://*.spotify.com; media-src 'self' blob:",
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**/*.jpg",  "**/*.jpeg", "**/*.png",  "**/*.gif",
+          "**/*.webp", "**/*.bmp",  "**/*.tiff", "**/*.tif",
+          "**/*.JPG",  "**/*.JPEG", "**/*.PNG",  "**/*.GIF",
+          "**/*.WEBP", "**/*.BMP",  "**/*.TIFF", "**/*.TIF"
+        ]
       }
     }
   },

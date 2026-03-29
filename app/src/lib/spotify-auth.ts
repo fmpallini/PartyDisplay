@@ -23,7 +23,11 @@ export async function generatePkce(): Promise<{ verifier: string; challenge: str
   return { verifier, challenge }
 }
 
-export function buildAuthUrl(challenge: string): string {
+export function generateState(): string {
+  return base64url(randomBytes(32).buffer as ArrayBuffer)
+}
+
+export function buildAuthUrl(challenge: string, state: string): string {
   const params = new URLSearchParams({
     client_id:             CLIENT_ID,
     response_type:         'code',
@@ -31,6 +35,7 @@ export function buildAuthUrl(challenge: string): string {
     scope:                 SCOPES,
     code_challenge_method: 'S256',
     code_challenge:        challenge,
+    state,
   })
   return `https://accounts.spotify.com/authorize?${params}`
 }

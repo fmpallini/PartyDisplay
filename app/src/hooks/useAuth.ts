@@ -8,6 +8,7 @@ import {
   exchangeCode,
   expiresAt,
   generatePkce,
+  generateState,
   refreshAccessToken,
 } from '../lib/spotify-auth'
 
@@ -27,6 +28,7 @@ export function useAuth() {
   })
 
   const verifierRef = useRef<string | null>(null)
+  const stateRef    = useRef<string | null>(null)
 
   // ── Persist + update state ────────────────────────────────────────────────
 
@@ -66,11 +68,18 @@ export function useAuth() {
   // ── OAuth callback listener (loopback server emits 'oauth-code') ─────────
 
   useEffect(() => {
-    const unlisten = listen<string>('oauth-code', ({ payload: code }) => {
-      if (!verifierRef.current) return
+    const unlisten = listen<{ code: string; state: string }>('oauth-code', ({ payload }) => {
+      if (!verifierRef.current || !stateRef.current) return
+      if (payload.state !== stateRef.current) {
+        setState(s => ({ ...s, loading: false, error: 'OAuth state mismatch — rejecting callback' }))
+        verifierRef.current = null
+        stateRef.current = null
+        return
+      }
       const verifier = verifierRef.current
       verifierRef.current = null
-      exchangeCode(code, verifier)
+      stateRef.current = null
+      exchangeCode(payload.code, verifier)
         .then(persistTokens)
         .catch(e => setState(s => ({ ...s, loading: false, error: String(e) })))
     })
@@ -114,9 +123,11 @@ export function useAuth() {
     setState(s => ({ ...s, loading: true, error: null }))
     try {
       const { verifier, challenge } = await generatePkce()
+      const state = generateState()
       verifierRef.current = verifier
+      stateRef.current    = state
       await invoke('start_oauth_callback_server')
-      await open(buildAuthUrl(challenge))
+      await open(buildAuthUrl(challenge, state))
     } catch (e) {
       setState(s => ({ ...s, loading: false, error: String(e) }))
     }

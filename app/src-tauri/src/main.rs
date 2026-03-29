@@ -40,6 +40,7 @@ fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
 
         let mut code: Option<String> = None;
         let mut err_param: Option<String> = None;
+        let mut state: Option<String> = None;
 
         if let Some(first_line) = request.lines().next() {
             if let Some(query) = first_line.split('?').nth(1).and_then(|s| s.split(' ').next()) {
@@ -48,6 +49,7 @@ fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
                     match (kv.next(), kv.next()) {
                         (Some("code"),  Some(v)) => code      = Some(v.to_string()),
                         (Some("error"), Some(v)) => err_param = Some(v.to_string()),
+                        (Some("state"), Some(v)) => state     = Some(v.to_string()),
                         _ => {}
                     }
                 }
@@ -76,8 +78,14 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
         );
         let _ = stream.write_all(response.as_bytes());
 
+        #[derive(serde::Serialize, Clone)]
+        struct OAuthPayload { code: String, state: String }
+
         if let Some(c) = code {
-            let _ = app.emit("oauth-code", c);
+            let _ = app.emit("oauth-code", OAuthPayload {
+                code:  c,
+                state: state.unwrap_or_default(),
+            });
         }
     });
     Ok(())
