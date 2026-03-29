@@ -136,7 +136,101 @@ vcup2/
 - [x] Spike 1 — Electron (abandoned)
 - [x] Spike 2 — Browser (validated SDK + found FFT limitation)
 - [x] Spike 3 — Tauri v2 (validated full stack) ✅
-- [ ] Phase 2 — Full app implementation
+- [x] Phase 2 — Full app implementation (**v0.5 Beta**)
+
+---
+
+## v0.5 Beta — Current state
+
+The app is functional and in daily use. All core features are implemented. Below is a full feature inventory as of this release.
+
+### Spotify integration
+
+- Registers as a **Spotify Connect device** via the Web Playback SDK running inside WebView2
+- Full **OAuth PKCE** flow — browser opens for auth, redirect is caught by a single-instance deep-link handler, tokens stored in the Windows credential store (keyring)
+- Automatic **token refresh** — sessions survive app restarts without re-auth
+- **Now playing** card: album art, track name, artist, progress bar with seek
+- Transport controls: play/pause, previous, next
+- **Volume** slider with live feedback; volume changes emitted to the display window as toast notifications
+
+### Photo slideshow
+
+- Folder picker — watches a local folder for images (JPEG/PNG/WebP/GIF)
+- Optional **recursive subfolder** scan
+- **Play order**: alphabetical (with resume-from-last across restarts) or shuffle
+- Configurable **fixed display time** per photo (seconds)
+- **8 transition effects**: fade, slide left/right/up/down, zoom in/out, blur — plus a **random** mode that picks a different effect each advance
+- Configurable **transition duration**
+- **Image fit**: fill (cover/crop) or letterbox (contain)
+- **Keyboard hotkeys** on the display window: `→`/`←` next/prev, `Space` pause/resume
+
+### Display window
+
+- Runs in a separate window — intended for a second monitor, projector or TV
+- **Fullscreen** toggle via double-click or Escape to exit
+- Window position and fullscreen state **persisted** across restarts
+- Position **validated against available monitors** on restore — repositioned to primary if the saved monitor is gone
+- **Screensaver / sleep blocked** via `SetThreadExecutionState` while the display window is open
+- Close button in control panel stays in sync even if the user closes the display window manually
+
+### Spectrum analyser overlay
+
+- Real-time **WASAPI loopback** audio capture (Rust — no driver install needed)
+- **64-bin FFT** with logarithmic frequency mapping (40 Hz – 16 kHz) — eliminates the empty high-frequency bins that linear mapping produces
+- Exponential smoothing with **fast attack / slow decay** for a polished, flicker-free look
+- Two render styles: **bars** or **lines** (filled gradient area + stroke)
+- Six colour themes: Energy (green→red), Cyan, Fire, White, Rainbow, Purple
+- Configurable **height** as % of screen (default 10%) — true overlay, photo uses full screen underneath
+- Toggled with the `S` hotkey
+- A small **audio indicator** strip is also shown in the control panel Music card
+
+### Track overlay
+
+- Optional **"artist — title" overlay** on the display window, toggled with `T`
+- Configurable: font family, font size, corner position (top/bottom × left/right), text colour, background colour, background opacity
+- Artist name shown smaller above the track title
+
+### Battery widget
+
+- SVG battery icon in the top-right corner of the display window
+- **5-step colour scale**: green → yellow-green → yellow → orange → red
+- Lightning bolt overlay when charging; plug icon on desktops with no battery
+- Configurable size; can be disabled
+
+### Song & volume toasts
+
+- **Song changed toast**: album art + track name slides in when the track changes, auto-dismisses
+- **Volume changed toast**: compact level indicator on volume change
+- Configurable display duration and scale
+
+### Control panel
+
+- Card-based layout with sticky header and vertical scroll
+- **Cards**: Music, Slideshow, Display Window, Display Settings (collapsible)
+- All display settings live-synced to the display window without restart
+
+### Help panel
+
+- `?` button in the header opens a modal with: app description, GitHub link, hotkeys reference table
+- **Reset button**: clears all `localStorage` settings + Spotify credentials from the credential store, then relaunches the app — useful for diagnosing unknown issues
+
+### App icon
+
+- Custom icon: gold treble clef on a dark purple/navy gradient canvas with a gold painting frame and colourful paint-splash accents
+- All platform sizes generated (Windows ICO, macOS ICNS, iOS, Android)
+
+---
+
+## Hotkeys (display window)
+
+| Key | Action |
+|---|---|
+| `→` / `←` | Next / previous photo |
+| `Space` | Pause / resume slideshow |
+| `S` | Toggle spectrum analyser |
+| `T` | Toggle track overlay |
+| `Esc` | Exit fullscreen |
+| Double-click | Toggle fullscreen |
 
 ---
 

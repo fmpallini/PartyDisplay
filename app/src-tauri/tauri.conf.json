@@ -1,0 +1,55 @@
+{
+  "productName": "Party Display",
+  "version": "0.5.0",
+  "identifier": "com.partydisplay.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "control",
+        "title": "Party Display — Control",
+        "width": 420,
+        "height": 720,
+        "minWidth": 380,
+        "minHeight": 480,
+        "resizable": true
+      },
+      {
+        "label": "display",
+        "title": "Party Display — Display",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "visible": false,
+        "backgroundColor": "#000000"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://i.scdn.co https://*.spotifycdn.com https://*.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://*.spotify.com wss://*.spotify.com; media-src 'self' blob:",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**/*.jpg",  "**/*.jpeg", "**/*.png",  "**/*.gif",
+          "**/*.webp", "**/*.bmp",  "**/*.tiff", "**/*.tif",
+          "**/*.JPG",  "**/*.JPEG", "**/*.PNG",  "**/*.GIF",
+          "**/*.WEBP", "**/*.BMP",  "**/*.TIFF", "**/*.TIF"
+        ]
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["party-display"]
+      }
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}
