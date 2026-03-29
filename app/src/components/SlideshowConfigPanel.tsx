@@ -1,13 +1,17 @@
 export interface SlideshowConfig {
-  mode:         'fixed' | 'beat'
-  fixedSec:     number   // seconds between advances in fixed mode  (default 5)
-  beatMinSec:   number   // minimum seconds between advances in beat mode (default 3)
+  mode:       'fixed' | 'beat'
+  fixedSec:   number
+  beatMinSec: number
+  order:      'shuffle' | 'alpha'
+  subfolders: boolean
 }
 
 export const DEFAULT_SLIDESHOW_CONFIG: SlideshowConfig = {
   mode:       'fixed',
   fixedSec:   5,
   beatMinSec: 3,
+  order:      'shuffle',
+  subfolders: false,
 }
 
 interface Props {
@@ -53,44 +57,50 @@ export function SlideshowConfigPanel({ config, onChange, hasPhotos, paused, onTo
         </button>
       </div>
 
-      {/* Fixed interval */}
+      {/* Advance mode */}
       <label style={label}>
-        <input
-          type="radio"
-          checked={config.mode === 'fixed'}
-          onChange={() => set({ mode: 'fixed' })}
-        />
+        <input type="radio" checked={config.mode === 'fixed'} onChange={() => set({ mode: 'fixed' })} />
         Fixed — every
         <input
-          type="number"
-          min={1}
-          max={3600}
-          value={config.fixedSec}
+          type="number" min={1} max={3600} value={config.fixedSec}
           onChange={e => set({ fixedSec: Math.max(1, Number(e.target.value)) })}
-          style={numInput}
-          disabled={config.mode !== 'fixed'}
+          style={numInput} disabled={config.mode !== 'fixed'}
         />
         seconds
       </label>
 
-      {/* Beat sync */}
       <label style={label}>
-        <input
-          type="radio"
-          checked={config.mode === 'beat'}
-          onChange={() => set({ mode: 'beat' })}
-        />
+        <input type="radio" checked={config.mode === 'beat'} onChange={() => set({ mode: 'beat' })} />
         Follow beat — min
         <input
-          type="number"
-          min={1}
-          max={60}
-          value={config.beatMinSec}
+          type="number" min={1} max={60} value={config.beatMinSec}
           onChange={e => set({ beatMinSec: Math.max(1, Number(e.target.value)) })}
-          style={numInput}
-          disabled={config.mode !== 'beat'}
+          style={numInput} disabled={config.mode !== 'beat'}
         />
         seconds between changes
+      </label>
+
+      {/* Photo order */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 4 }}>
+        <span style={{ color: '#888', fontSize: 12 }}>Order:</span>
+        <label style={label}>
+          <input type="radio" checked={config.order === 'shuffle'} onChange={() => set({ order: 'shuffle' })} />
+          Shuffle
+        </label>
+        <label style={label}>
+          <input type="radio" checked={config.order === 'alpha'} onChange={() => set({ order: 'alpha' })} />
+          Alphabetic
+        </label>
+      </div>
+
+      {/* Subfolders */}
+      <label style={label}>
+        <input
+          type="checkbox"
+          checked={config.subfolders}
+          onChange={e => set({ subfolders: e.target.checked })}
+        />
+        Include subfolders
       </label>
 
       {!hasPhotos && (
