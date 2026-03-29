@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { emit } from '@tauri-apps/api/event'
+import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
+
+export type { SpectrumTheme, SpectrumStyle }
 
 export type TransitionEffect =
   | 'fade'
@@ -21,6 +24,9 @@ export interface DisplaySettings {
   transitionEffect:     TransitionEffect
   transitionDurationMs: number
   imageFit:             ImageFit
+  spectrumVisible:      boolean
+  spectrumStyle:        SpectrumStyle
+  spectrumTheme:        SpectrumTheme
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -30,7 +36,10 @@ export function readDisplaySettings(): DisplaySettings {
     volumeZoom:           Number(localStorage.getItem('pd_volume_toast_zoom')       ?? '1.7'),
     transitionEffect:     (localStorage.getItem('pd_transition_effect') as TransitionEffect) ?? 'random',
     transitionDurationMs: Number(localStorage.getItem('pd_transition_duration_ms') ?? '500'),
-    imageFit:             (localStorage.getItem('pd_image_fit') as ImageFit) ?? 'cover',
+    imageFit:             (localStorage.getItem('pd_image_fit') as ImageFit)         ?? 'cover',
+    spectrumVisible:      localStorage.getItem('pd_spectrum_visible') === 'true',
+    spectrumStyle:        (localStorage.getItem('pd_spectrum_style') as SpectrumStyle) ?? 'bars',
+    spectrumTheme:        (localStorage.getItem('pd_spectrum_theme') as SpectrumTheme) ?? 'energy',
   }
 }
 
@@ -46,7 +55,16 @@ const TRANSITION_EFFECTS: { value: TransitionEffect; label: string }[] = [
   { value: 'blur',        label: 'Blur'        },
 ]
 
-const label: React.CSSProperties = {
+const SPECTRUM_THEMES: { value: SpectrumTheme; label: string }[] = [
+  { value: 'energy',  label: 'Energy (green→red)'  },
+  { value: 'cyan',    label: 'Cyan'                },
+  { value: 'fire',    label: 'Fire'                },
+  { value: 'white',   label: 'White'               },
+  { value: 'rainbow', label: 'Rainbow'             },
+  { value: 'purple',  label: 'Purple'              },
+]
+
+const labelStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 8, color: '#ccc', fontSize: 14,
 }
 
@@ -61,10 +79,17 @@ const selectInput: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export function DisplaySettingsPanel() {
-  const [settings, setSettings] = useState<DisplaySettings>(readDisplaySettings)
+const sectionHeader: React.CSSProperties = {
+  margin: 0, color: '#888', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1,
+}
 
-  // Sync to localStorage and notify display window on every settings change
+interface Props {
+  settings: DisplaySettings
+  onChange: (s: DisplaySettings) => void
+}
+
+export function DisplaySettingsPanel({ settings, onChange }: Props) {
+  // Sync to localStorage and notify display window whenever settings change
   useEffect(() => {
     localStorage.setItem('pd_toast_duration_ms',      String(settings.toastDurationMs))
     localStorage.setItem('pd_song_toast_zoom',         String(settings.songZoom))
@@ -72,21 +97,22 @@ export function DisplaySettingsPanel() {
     localStorage.setItem('pd_transition_effect',       settings.transitionEffect)
     localStorage.setItem('pd_transition_duration_ms',  String(settings.transitionDurationMs))
     localStorage.setItem('pd_image_fit',               settings.imageFit)
+    localStorage.setItem('pd_spectrum_visible',        String(settings.spectrumVisible))
+    localStorage.setItem('pd_spectrum_style',          settings.spectrumStyle)
+    localStorage.setItem('pd_spectrum_theme',          settings.spectrumTheme)
     emit('display-settings-changed', settings).catch(console.error)
   }, [settings])
 
   function set(patch: Partial<DisplaySettings>) {
-    setSettings(s => ({ ...s, ...patch }))
+    onChange({ ...settings, ...patch })
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p style={{ margin: 0, color: '#888', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-        Display
-      </p>
+      <p style={sectionHeader}>Display</p>
 
       {/* Toast duration */}
-      <label style={label}>
+      <label style={labelStyle}>
         Toast duration
         <input
           type="number" min={1} max={60}
@@ -98,7 +124,7 @@ export function DisplaySettingsPanel() {
       </label>
 
       {/* Song toast zoom */}
-      <label style={label}>
+      <label style={labelStyle}>
         Song toast size
         <input
           type="number" min={0.5} max={3} step={0.1}
@@ -110,7 +136,7 @@ export function DisplaySettingsPanel() {
       </label>
 
       {/* Volume toast zoom */}
-      <label style={label}>
+      <label style={labelStyle}>
         Volume toast size
         <input
           type="number" min={0.5} max={3} step={0.1}
@@ -122,21 +148,21 @@ export function DisplaySettingsPanel() {
       </label>
 
       {/* Transition effect */}
-      <label style={label}>
+      <label style={labelStyle}>
         Transition
         <select
           value={settings.transitionEffect}
           onChange={e => set({ transitionEffect: e.target.value as TransitionEffect })}
           style={selectInput}
         >
-          {TRANSITION_EFFECTS.map(({ value, label: lbl }) => (
-            <option key={value} value={value}>{lbl}</option>
+          {TRANSITION_EFFECTS.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
           ))}
         </select>
       </label>
 
       {/* Transition duration */}
-      <label style={label}>
+      <label style={labelStyle}>
         Transition duration
         <input
           type="number" min={0.1} max={5} step={0.1}
@@ -148,7 +174,7 @@ export function DisplaySettingsPanel() {
       </label>
 
       {/* Image fit */}
-      <label style={label}>
+      <label style={labelStyle}>
         Image fit
         <select
           value={settings.imageFit}
@@ -157,6 +183,44 @@ export function DisplaySettingsPanel() {
         >
           <option value="cover">Fill screen (crop)</option>
           <option value="contain">Fit to screen (letterbox)</option>
+        </select>
+      </label>
+
+      {/* ── Spectrum ─────────────────────────────────────────────────── */}
+      <p style={{ ...sectionHeader, marginTop: 8 }}>Spectrum  <span style={{ color: '#555', fontSize: 11 }}>(S to toggle)</span></p>
+
+      <label style={labelStyle}>
+        <input
+          type="checkbox"
+          checked={settings.spectrumVisible}
+          onChange={e => set({ spectrumVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show spectrum on display
+      </label>
+
+      <label style={labelStyle}>
+        Style
+        <select
+          value={settings.spectrumStyle}
+          onChange={e => set({ spectrumStyle: e.target.value as SpectrumStyle })}
+          style={selectInput}
+        >
+          <option value="bars">Bars</option>
+          <option value="lines">Lines</option>
+        </select>
+      </label>
+
+      <label style={labelStyle}>
+        Theme
+        <select
+          value={settings.spectrumTheme}
+          onChange={e => set({ spectrumTheme: e.target.value as SpectrumTheme })}
+          style={selectInput}
+        >
+          {SPECTRUM_THEMES.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
       </label>
     </div>

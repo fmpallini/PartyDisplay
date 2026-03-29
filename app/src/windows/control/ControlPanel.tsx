@@ -35,11 +35,7 @@ export default function ControlPanel() {
   const [config, setConfigState]            = useState<SlideshowConfig>(readSlideshowConfig)
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
 
-  // Track transitionDurationMs from DisplaySettings so we can add it to the interval
-  const [transitionDurationMs, setTransitionDurationMs] = useState(
-    () => readDisplaySettings().transitionDurationMs,
-  )
-
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
 
   function setConfig(c: SlideshowConfig) {
@@ -120,9 +116,9 @@ export default function ControlPanel() {
   // Total cycle = display time + transition time (transition does NOT eat into display time)
   useEffect(() => {
     if (library.photos.length === 0 || slideshowPaused) return
-    const id = setInterval(doNext, config.fixedSec * 1000 + transitionDurationMs)
+    const id = setInterval(doNext, config.fixedSec * 1000 + displaySettings.transitionDurationMs)
     return () => clearInterval(id)
-  }, [config.fixedSec, transitionDurationMs, library.photos, slideshowPaused, doNext])
+  }, [config.fixedSec, displaySettings.transitionDurationMs, library.photos, slideshowPaused, doNext])
 
   // ── Auto-start WASAPI capture when player is ready ───────────────────────
   useEffect(() => {
@@ -130,26 +126,23 @@ export default function ControlPanel() {
     invoke('start_audio_capture').catch(e => setCaptureError(String(e)))
   }, [player.ready])
 
-  // ── Hotkeys (this window) ─────────────────────────────────────────────────
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause })
-
-  // ── Sync transitionDurationMs when display settings change ───────────────
-  useEffect(() => {
-    const unlisten = listen<DisplaySettings>('display-settings-changed', ({ payload }) => {
-      setTransitionDurationMs(payload.transitionDurationMs)
-    })
-    return () => { unlisten.then(fn => fn()) }
+  const toggleSpectrum = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, spectrumVisible: !s.spectrumVisible }))
   }, [])
+
+  // ── Hotkeys (this window) ─────────────────────────────────────────────────
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum })
 
   // ── Hotkey relay from display window ──────────────────────────────────────
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
-      if (payload.action === 'next')  doNext()
-      if (payload.action === 'prev')  doPrev()
-      if (payload.action === 'pause') togglePause()
+      if (payload.action === 'next')     doNext()
+      if (payload.action === 'prev')     doPrev()
+      if (payload.action === 'pause')    togglePause()
+      if (payload.action === 'spectrum') toggleSpectrum()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause])
+  }, [doNext, doPrev, togglePause, toggleSpectrum])
 
   return (
     <div style={{ fontFamily: 'monospace', padding: 24, background: '#111', color: '#eee', minHeight: '100vh' }}>
@@ -205,7 +198,7 @@ export default function ControlPanel() {
 
       {captureError && <p style={{ color: '#e74c3c' }}>❌ Capture: {captureError}</p>}
 
-      <SpectrumCanvas bins={bins} />
+      <SpectrumCanvas bins={bins} renderStyle={displaySettings.spectrumStyle} theme={displaySettings.spectrumTheme} />
       <p style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
         FFT: {bins.reduce((a, b) => a + Math.max(0, b + 100), 0).toFixed(0)} energy units
       </p>
@@ -223,7 +216,7 @@ export default function ControlPanel() {
           paused={slideshowPaused}
           onTogglePause={togglePause}
         />
-        <DisplaySettingsPanel />
+        <DisplaySettingsPanel settings={displaySettings} onChange={setDisplaySettings} />
         <DisplayWindowControls />
       </div>
     </div>
