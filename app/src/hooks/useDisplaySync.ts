@@ -36,7 +36,7 @@ export function useDisplaySync(
 
   // Listen for advance commands from control window
   useEffect(() => {
-    const unlisten = listen<{ photo: string }>('photo-advance', ({ payload }) => {
+    const unlisten = listen<{ photo: string; index: number; total: number }>('photo-advance', ({ payload }) => {
       const resolved = resolveEffect(effectRef.current)
       setActiveEffect(resolved)
       setCurrentPhoto(prev => {
@@ -53,6 +53,6 @@ export function useDisplaySync(
 }
 
 // Call this from the control window to push the next photo to the display
-export async function advancePhoto(photo: string) {
-  await emit('photo-advance', { photo })
+export async function advancePhoto(photo: string, index: number, total: number) {
+  await emit('photo-advance', { photo, index, total })
 }

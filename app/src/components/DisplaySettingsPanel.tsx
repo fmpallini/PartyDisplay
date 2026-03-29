@@ -1,5 +1,3 @@
-import { useEffect } from 'react'
-import { emit } from '@tauri-apps/api/event'
 import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
 
 export type { SpectrumTheme, SpectrumStyle }
@@ -39,6 +37,7 @@ export interface DisplaySettings {
   trackColor:           string
   trackBgColor:         string
   trackBgOpacity:       number
+  photoCounterVisible:  boolean
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -62,6 +61,7 @@ export function readDisplaySettings(): DisplaySettings {
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
     trackBgOpacity:       Number(localStorage.getItem('pd_track_bg_opacity') ?? '0.5'),
+    photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
   }
 }
 
@@ -123,29 +123,6 @@ interface Props {
 }
 
 export function DisplaySettingsPanel({ settings, onChange }: Props) {
-  useEffect(() => {
-    localStorage.setItem('pd_toast_duration_ms',      String(settings.toastDurationMs))
-    localStorage.setItem('pd_song_toast_zoom',         String(settings.songZoom))
-    localStorage.setItem('pd_volume_toast_zoom',       String(settings.volumeZoom))
-    localStorage.setItem('pd_transition_effect',       settings.transitionEffect)
-    localStorage.setItem('pd_transition_duration_ms',  String(settings.transitionDurationMs))
-    localStorage.setItem('pd_image_fit',               settings.imageFit)
-    localStorage.setItem('pd_spectrum_visible',        String(settings.spectrumVisible))
-    localStorage.setItem('pd_spectrum_style',          settings.spectrumStyle)
-    localStorage.setItem('pd_spectrum_theme',          settings.spectrumTheme)
-    localStorage.setItem('pd_spectrum_height_pct',     String(settings.spectrumHeightPct))
-    localStorage.setItem('pd_battery_visible',         String(settings.batteryVisible))
-    localStorage.setItem('pd_battery_size',            String(settings.batterySize))
-    localStorage.setItem('pd_track_overlay_visible',   String(settings.trackOverlayVisible))
-    localStorage.setItem('pd_track_font',              settings.trackFont)
-    localStorage.setItem('pd_track_font_size',         String(settings.trackFontSize))
-    localStorage.setItem('pd_track_position',          settings.trackPosition)
-    localStorage.setItem('pd_track_color',             settings.trackColor)
-    localStorage.setItem('pd_track_bg_color',          settings.trackBgColor)
-    localStorage.setItem('pd_track_bg_opacity',        String(settings.trackBgOpacity))
-    emit('display-settings-changed', settings).catch(console.error)
-  }, [settings])
-
   function set(patch: Partial<DisplaySettings>) {
     onChange({ ...settings, ...patch })
   }
@@ -356,6 +333,17 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           </label>
         </div>
       </div>
+
+      {/* ── Photo counter ─────────────────────────────────────────────── */}
+      <p style={subHead}>Photo counter <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(P to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.photoCounterVisible}
+          onChange={e => set({ photoCounterVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show on display
+      </label>
 
     </div>
   )

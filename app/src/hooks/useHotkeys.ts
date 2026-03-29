@@ -7,10 +7,11 @@ interface Handlers {
   onToggleSpectrum?:     () => void
   onToggleTrackOverlay?: () => void
   onToggleFullscreen?:   () => void
-  onToggleBattery?:      () => void
+  onToggleBattery?:         () => void
+  onTogglePhotoCounter?:    () => void
 }
 
-export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery }: Handlers) {
+export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter }: Handlers) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       // Don't steal keys when the user is typing in a form element
@@ -25,9 +26,10 @@ export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, on
         case 't': case 'T': e.preventDefault(); onToggleTrackOverlay?.();   break
         case 'f': case 'F': e.preventDefault(); onToggleFullscreen?.();     break
         case 'b': case 'B': e.preventDefault(); onToggleBattery?.();        break
+        case 'p': case 'P': e.preventDefault(); onTogglePhotoCounter?.();   break
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery])
+  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter])
 }

@@ -19,6 +19,7 @@ export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [currentTrack, setCurrentTrack] = useState<TrackInfo | null>(null)
+  const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
   const bins    = useFftData()
   const battery = useBattery()
 
@@ -58,6 +59,14 @@ export default function DisplayWindow() {
     return () => { unlisten.then(fn => fn()) }
   }, [])
 
+  // Track photo index for counter overlay
+  useEffect(() => {
+    const unlisten = listen<{ photo: string; index: number; total: number }>('photo-advance', ({ payload }) => {
+      setPhotoCounter({ index: payload.index, total: payload.total })
+    })
+    return () => { unlisten.then(fn => fn()) }
+  }, [])
+
   useHotkeys({
     onNext:               () => emit('display-hotkey', { action: 'next'       }).catch(console.error),
     onPrev:               () => emit('display-hotkey', { action: 'prev'       }).catch(console.error),
@@ -66,6 +75,7 @@ export default function DisplayWindow() {
     onToggleTrackOverlay: () => emit('display-hotkey', { action: 'track'      }).catch(console.error),
     onToggleFullscreen:   () => invoke('toggle_display_fullscreen').catch(console.error),
     onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
+    onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
   })
 
   const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
@@ -109,6 +119,36 @@ export default function DisplayWindow() {
       {displaySettings.trackOverlayVisible && currentTrack && (
         <TrackOverlay track={currentTrack} settings={displaySettings} />
       )}
+
+      {displaySettings.photoCounterVisible && photoCounter !== null && (
+        <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
+      )}
+    </div>
+  )
+}
+
+// ── Photo counter overlay ─────────────────────────────────────────────────────
+
+function PhotoCounterOverlay({ index, total }: { index: number; total: number }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 16,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 15,
+      pointerEvents: 'none',
+      padding: '4px 10px',
+      borderRadius: 999,
+      background: 'rgba(0,0,0,0.45)',
+      color: '#fff',
+      fontFamily: 'monospace',
+      fontSize: 13,
+      letterSpacing: '0.5px',
+      backdropFilter: 'blur(2px)',
+      whiteSpace: 'nowrap',
+    }}>
+      {index + 1}/{total}
     </div>
   )
 }
