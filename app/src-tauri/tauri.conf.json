@@ -30,7 +30,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' blob:; worker-src blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://i.scdn.co https://*.spotifycdn.com https://*.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://*.spotify.com wss://*.spotify.com https://*.spotilocal.com; media-src 'self' blob:;",
+      "csp": "default-src 'self'; script-src 'self' blob: 'unsafe-eval'; worker-src blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://asset.localhost https://i.scdn.co https://*.spotifycdn.com https://*.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://*.spotify.com wss://*.spotify.com https://*.spotilocal.com; media-src 'self' blob:;",
       "assetProtocol": {
         "enable": true,
         "scope": [
