@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#1a0536"/>
+      <stop offset="55%"  stop-color="#0d1a45"/>
+      <stop offset="100%" stop-color="#04101f"/>
+    </linearGradient>
+    <linearGradient id="clefGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#ffe97a"/>
+      <stop offset="100%" stop-color="#d4820a"/>
+    </linearGradient>
+    <linearGradient id="frameGrad" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#b87820"/>
+      <stop offset="40%"  stop-color="#f5d060"/>
+      <stop offset="100%" stop-color="#b87820"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="148" fill="url(#bg)"/>
+
+  <!-- Paint-splash blobs — give it an artistic / party feel -->
+  <ellipse cx="148" cy="168" rx="72" ry="58"  fill="#c0392b" opacity="0.22" transform="rotate(-20 148 168)"/>
+  <ellipse cx="876" cy="190" rx="55" ry="44"  fill="#2980b9" opacity="0.20" transform="rotate(15 876 190)"/>
+  <ellipse cx="112" cy="810" rx="62" ry="48"  fill="#27ae60" opacity="0.20" transform="rotate(30 112 810)"/>
+  <ellipse cx="896" cy="840" rx="64" ry="50"  fill="#8e44ad" opacity="0.22" transform="rotate(-15 896 840)"/>
+  <ellipse cx="310" cy="98"  rx="38" ry="26"  fill="#e67e22" opacity="0.32" transform="rotate(10 310 98)"/>
+  <ellipse cx="738" cy="920" rx="42" ry="30"  fill="#1db954" opacity="0.28" transform="rotate(-8 738 920)"/>
+  <ellipse cx="940" cy="490" rx="36" ry="28"  fill="#f39c12" opacity="0.22" transform="rotate(25 940 490)"/>
+  <ellipse cx="74"  cy="490" rx="32" ry="24"  fill="#3498db" opacity="0.18" transform="rotate(-20 74 490)"/>
+
+  <!-- Scattered small paint drops -->
+  <circle cx="210" cy="390" r="11" fill="#e74c3c" opacity="0.50"/>
+  <circle cx="830" cy="340" r="9"  fill="#f5d060" opacity="0.55"/>
+  <circle cx="360" cy="876" r="13" fill="#2980b9" opacity="0.45"/>
+  <circle cx="710" cy="135" r="10" fill="#2ecc71" opacity="0.50"/>
+  <circle cx="618" cy="918" r="12" fill="#9b59b6" opacity="0.45"/>
+  <circle cx="168" cy="620" r="8"  fill="#e67e22" opacity="0.50"/>
+  <circle cx="870" cy="640" r="9"  fill="#1db954" opacity="0.45"/>
+  <circle cx="490" cy="64"  r="10" fill="#e74c3c" opacity="0.40"/>
+
+  <!-- Canvas / painting frame — outer gold stroke -->
+  <rect x="26" y="26" width="972" height="972" rx="134" fill="none"
+        stroke="url(#frameGrad)" stroke-width="26"/>
+  <!-- Inner thinner line -->
+  <rect x="52" y="52" width="920" height="920" rx="112" fill="none"
+        stroke="#f5d060" stroke-width="5" opacity="0.45"/>
+
+  <!-- Treble clef — centred, gold, with soft glow -->
+  <text x="520" y="790"
+        text-anchor="middle"
+        font-family="'Times New Roman', Georgia, 'Segoe UI Symbol', serif"
+        font-size="710"
+        fill="url(#clefGrad)"
+        filter="url(#glow)">𝄞</text>
+</svg>
