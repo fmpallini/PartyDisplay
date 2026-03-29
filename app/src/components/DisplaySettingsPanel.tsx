@@ -10,8 +10,8 @@ export interface DisplaySettings {
 export function readDisplaySettings(): DisplaySettings {
   return {
     toastDurationMs: Number(localStorage.getItem('pd_toast_duration_ms') ?? '5000'),
-    songZoom:        Number(localStorage.getItem('pd_song_toast_zoom')    ?? '1'),
-    volumeZoom:      Number(localStorage.getItem('pd_volume_toast_zoom')  ?? '1'),
+    songZoom:        Number(localStorage.getItem('pd_song_toast_zoom')    ?? '1.7'),
+    volumeZoom:      Number(localStorage.getItem('pd_volume_toast_zoom')  ?? '1.7'),
   }
 }
 

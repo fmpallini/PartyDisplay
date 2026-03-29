@@ -81,6 +81,12 @@ export default function ControlPanel() {
     if (lastFolder) library.setFolder(lastFolder)
   }, [])
 
+  // Re-scan when subfolders toggle changes
+  useEffect(() => {
+    if (library.folder) library.setFolder(library.folder)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.subfolders])
+
   // ── Track-change → emit to display window ────────────────────────────────
   const prevTrackIdRef = useRef<string | null>(null)
   useEffect(() => {
