@@ -7,9 +7,12 @@ export interface TrackChangedPayload {
   albumArt: string
 }
 
-const DISPLAY_MS = 5000
+interface Props {
+  displayMs: number
+  zoom:      number
+}
 
-export function SongToast() {
+export function SongToast({ displayMs, zoom }: Props) {
   const [track, setTrack]     = useState<TrackChangedPayload | null>(null)
   const [visible, setVisible] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -19,31 +22,32 @@ export function SongToast() {
       setTrack(payload)
       setVisible(true)
       if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS)
+      timerRef.current = setTimeout(() => setVisible(false), displayMs)
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [])
+  }, [displayMs])
 
   if (!track) return null
 
   return (
     <div style={{
-      position:       'fixed',
-      bottom:         32,
-      left:           32,
-      display:        'flex',
-      alignItems:     'center',
-      gap:            12,
-      background:     'rgba(0,0,0,0.78)',
-      backdropFilter: 'blur(10px)',
-      borderRadius:   12,
-      padding:        '10px 16px 10px 10px',
-      zIndex:         200,
-      maxWidth:       320,
-      opacity:        visible ? 1 : 0,
-      transform:      visible ? 'translateY(0)' : 'translateY(16px)',
-      transition:     'opacity 0.4s ease, transform 0.4s ease',
-      pointerEvents:  'none',
+      position:        'fixed',
+      bottom:          32,
+      left:            32,
+      display:         'flex',
+      alignItems:      'center',
+      gap:             12,
+      background:      'rgba(0,0,0,0.78)',
+      backdropFilter:  'blur(10px)',
+      borderRadius:    12,
+      padding:         '10px 16px 10px 10px',
+      zIndex:          200,
+      maxWidth:        320,
+      opacity:         visible ? 1 : 0,
+      transform:       `scale(${zoom})`,
+      transformOrigin: 'bottom left',
+      transition:      'opacity 0.4s ease',
+      pointerEvents:   'none',
     }}>
       {track.albumArt && (
         <img

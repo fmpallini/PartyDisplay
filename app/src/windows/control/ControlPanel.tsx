@@ -8,6 +8,7 @@ import { FolderPicker } from '../../components/FolderPicker'
 import { DisplayWindowControls } from '../../components/DisplayWindowControls'
 import { PlayerControls } from '../../components/PlayerControls'
 import { SlideshowConfigPanel, DEFAULT_SLIDESHOW_CONFIG } from '../../components/SlideshowConfigPanel'
+import { DisplaySettingsPanel } from '../../components/DisplaySettingsPanel'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
@@ -17,15 +18,36 @@ import { useBeatScheduler } from '../../hooks/useBeatScheduler'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto } from '../../hooks/useDisplaySync'
 
+function readSlideshowConfig(): SlideshowConfig {
+  return {
+    mode:       (localStorage.getItem('pd_slideshow_mode') as SlideshowConfig['mode'])
+                  ?? DEFAULT_SLIDESHOW_CONFIG.mode,
+    fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec')     ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
+    beatMinSec: Number(localStorage.getItem('pd_slideshow_beat_min_sec')  ?? DEFAULT_SLIDESHOW_CONFIG.beatMinSec),
+    order:      (localStorage.getItem('pd_order') as SlideshowConfig['order'])
+                  ?? DEFAULT_SLIDESHOW_CONFIG.order,
+    subfolders: localStorage.getItem('pd_subfolder') === 'true',
+  }
+}
+
 export default function ControlPanel() {
   const { authenticated, loading, accessToken, error: authError, login, logout } = useAuth()
   const player  = useSpotifyPlayer(authenticated ? accessToken : null)
   const bins    = useFftData()
-  const library = usePhotoLibrary()
-
   const [captureError, setCaptureError]     = useState<string | null>(null)
-  const [config, setConfig]                 = useState<SlideshowConfig>(DEFAULT_SLIDESHOW_CONFIG)
+  const [config, setConfigState]            = useState<SlideshowConfig>(readSlideshowConfig)
+  const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
+
   const [slideshowPaused, setSlideshowPaused] = useState(false)
+
+  function setConfig(c: SlideshowConfig) {
+    setConfigState(c)
+    localStorage.setItem('pd_slideshow_mode',         c.mode)
+    localStorage.setItem('pd_slideshow_fixed_sec',    String(c.fixedSec))
+    localStorage.setItem('pd_slideshow_beat_min_sec', String(c.beatMinSec))
+    localStorage.setItem('pd_order',                  c.order)
+    localStorage.setItem('pd_subfolder',              String(c.subfolders))
+  }
 
   // ── Photo navigation ──────────────────────────────────────────────────────
   // indexRef = index of the CURRENTLY displayed photo
@@ -35,12 +57,35 @@ export default function ControlPanel() {
     if (library.photos.length === 0) return
     const i = ((idx % library.photos.length) + library.photos.length) % library.photos.length
     indexRef.current = i
-    advancePhoto(library.photos[i]).catch(console.error)
-  }, [library.photos])
+    const photo = library.photos[i]
+    advancePhoto(photo).catch(console.error)
+    if (config.order === 'alpha' && library.folder) {
+      const raw = localStorage.getItem('pd_last_photo')
+      const map: Record<string, string> = raw ? JSON.parse(raw) : {}
+      map[library.folder] = photo
+      localStorage.setItem('pd_last_photo', JSON.stringify(map))
+    }
+  }, [library.photos, library.folder, config.order])
 
   const doNext = useCallback(() => showAt(indexRef.current + 1), [showAt])
   const doPrev = useCallback(() => showAt(indexRef.current - 1), [showAt])
   const togglePause = useCallback(() => setSlideshowPaused(p => !p), [])
+
+  // Seed indexRef from resume position (or 0) whenever the photo list changes
+  useEffect(() => {
+    if (library.photos.length === 0) return
+    const startIdx = library.initialPhoto
+      ? Math.max(0, library.photos.indexOf(library.initialPhoto))
+      : 0
+    showAt(startIdx)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [library.photos]) // showAt and library.initialPhoto change with library.photos
+
+  // Auto-load the last folder on startup
+  useEffect(() => {
+    const lastFolder = localStorage.getItem('pd_last_folder')
+    if (lastFolder) library.setFolder(lastFolder)
+  }, [])
 
   // ── Track-change → emit to display window ────────────────────────────────
   const prevTrackIdRef = useRef<string | null>(null)
@@ -172,6 +217,7 @@ export default function ControlPanel() {
           paused={slideshowPaused}
           onTogglePause={togglePause}
         />
+        <DisplaySettingsPanel />
         <DisplayWindowControls />
       </div>
     </div>

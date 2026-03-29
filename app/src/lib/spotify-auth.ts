@@ -15,7 +15,7 @@ function base64url(buf: ArrayBuffer): string {
 
 export async function generatePkce(): Promise<{ verifier: string; challenge: string }> {
   const verifierBytes = randomBytes(64)
-  const verifier      = base64url(verifierBytes.buffer)
+  const verifier      = base64url(verifierBytes.buffer as ArrayBuffer)
   // Challenge must be SHA-256 of the verifier STRING (as UTF-8), not of the raw bytes.
   // Spotify verifies: base64url(sha256(verifier)) === stored_challenge
   const digest        = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
