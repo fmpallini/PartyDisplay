@@ -198,10 +198,13 @@ export default function ControlPanel() {
 
       {captureError && <p style={{ color: '#e74c3c' }}>❌ Capture: {captureError}</p>}
 
-      <SpectrumCanvas bins={bins} renderStyle={displaySettings.spectrumStyle} theme={displaySettings.spectrumTheme} />
-      <p style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
-        FFT: {bins.reduce((a, b) => a + Math.max(0, b + 100), 0).toFixed(0)} energy units
-      </p>
+      {/* Small audio-active indicator — just enough to confirm capture is working */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+        <span style={{ color: '#666', fontSize: 11 }}>Audio</span>
+        <div style={{ flex: 1 }}>
+          <SpectrumCanvas bins={bins} height={32} renderStyle={displaySettings.spectrumStyle} theme={displaySettings.spectrumTheme} />
+        </div>
+      </div>
 
       <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <FolderPicker

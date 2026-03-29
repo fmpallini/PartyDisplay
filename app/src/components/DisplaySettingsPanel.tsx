@@ -28,6 +28,8 @@ export interface DisplaySettings {
   spectrumStyle:        SpectrumStyle
   spectrumTheme:        SpectrumTheme
   spectrumHeightPct:    number
+  batteryVisible:       boolean
+  batterySize:          number
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -42,6 +44,8 @@ export function readDisplaySettings(): DisplaySettings {
     spectrumStyle:        (localStorage.getItem('pd_spectrum_style') as SpectrumStyle) ?? 'bars',
     spectrumTheme:        (localStorage.getItem('pd_spectrum_theme') as SpectrumTheme) ?? 'energy',
     spectrumHeightPct:    Number(localStorage.getItem('pd_spectrum_height_pct') ?? '10'),
+    batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
+    batterySize:          Number(localStorage.getItem('pd_battery_size') ?? '36'),
   }
 }
 
@@ -103,6 +107,8 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
     localStorage.setItem('pd_spectrum_style',          settings.spectrumStyle)
     localStorage.setItem('pd_spectrum_theme',          settings.spectrumTheme)
     localStorage.setItem('pd_spectrum_height_pct',     String(settings.spectrumHeightPct))
+    localStorage.setItem('pd_battery_visible',         String(settings.batteryVisible))
+    localStorage.setItem('pd_battery_size',            String(settings.batterySize))
     emit('display-settings-changed', settings).catch(console.error)
   }, [settings])
 
@@ -236,6 +242,30 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           style={numInput}
         />
         % of screen
+      </label>
+
+      {/* ── Battery widget ────────────────────────────────────────────── */}
+      <p style={{ ...sectionHeader, marginTop: 8 }}>Battery</p>
+
+      <label style={labelStyle}>
+        <input
+          type="checkbox"
+          checked={settings.batteryVisible}
+          onChange={e => set({ batteryVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show battery icon on display
+      </label>
+
+      <label style={labelStyle}>
+        Icon size
+        <input
+          type="number" min={16} max={80} step={2}
+          value={settings.batterySize}
+          onChange={e => set({ batterySize: Math.min(80, Math.max(16, Number(e.target.value))) })}
+          style={numInput}
+        />
+        px
       </label>
     </div>
   )

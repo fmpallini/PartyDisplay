@@ -160,6 +160,9 @@ pub fn open_display_window(
     let mut state = load_state_file(&app);
     state.is_open = true;
     write_state_file(&app, &state);
+
+    // Prevent screen saver / display sleep while the display window is active
+    crate::system::prevent_sleep(true);
     Ok(())
 }
 
@@ -172,6 +175,7 @@ pub fn close_display_window(app: AppHandle) -> Result<(), String> {
     state.is_open = false;
     write_state_file(&app, &state);
     win.hide().map_err(|e| e.to_string())?;
+    crate::system::prevent_sleep(false);
     Ok(())
 }
 
@@ -184,6 +188,7 @@ pub fn handle_display_close_requested(app: &AppHandle, win: &WebviewWindow) {
     state.is_open = false;
     write_state_file(app, &state);
     let _ = win.hide();
+    crate::system::prevent_sleep(false);
     use tauri::Emitter;
     let _ = app.emit("display-window-closed", ());
 }

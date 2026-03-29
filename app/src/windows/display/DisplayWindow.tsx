@@ -4,17 +4,20 @@ import { emit, listen } from '@tauri-apps/api/event'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { useFftData } from '../../hooks/useFftData'
+import { useBattery } from '../../hooks/useBattery'
 import { SlideshowView } from '../../components/SlideshowView'
 import { SongToast } from '../../components/SongToast'
 import { VolumeToast } from '../../components/VolumeToast'
 import SpectrumCanvas from '../../components/SpectrumCanvas'
+import { BatteryWidget } from '../../components/BatteryWidget'
 import { readDisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 
 export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
-  const bins = useFftData()
+  const bins    = useFftData()
+  const battery = useBattery()
 
   // Track viewport height so the spectrum % is always accurate (e.g. on fullscreen toggle)
   const [winHeight, setWinHeight] = useState(window.innerHeight)
@@ -67,6 +70,17 @@ export default function DisplayWindow() {
 
       <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
       <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
+
+      {displaySettings.batteryVisible && (
+        <div style={{
+          position: 'absolute',
+          top: 12,
+          right: 16,
+          zIndex: 20,
+        }}>
+          <BatteryWidget status={battery} size={displaySettings.batterySize} />
+        </div>
+      )}
 
       {displaySettings.spectrumVisible && (
         <div style={{
