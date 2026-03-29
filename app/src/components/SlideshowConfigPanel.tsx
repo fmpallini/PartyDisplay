@@ -1,15 +1,11 @@
 export interface SlideshowConfig {
-  mode:       'fixed' | 'beat'
   fixedSec:   number
-  beatMinSec: number
   order:      'shuffle' | 'alpha'
   subfolders: boolean
 }
 
 export const DEFAULT_SLIDESHOW_CONFIG: SlideshowConfig = {
-  mode:       'fixed',
   fixedSec:   5,
-  beatMinSec: 3,
   order:      'shuffle',
   subfolders: false,
 }
@@ -57,27 +53,15 @@ export function SlideshowConfigPanel({ config, onChange, hasPhotos, paused, onTo
         </button>
       </div>
 
-      {/* Advance mode */}
+      {/* Advance interval */}
       <label style={label}>
-        <input type="radio" checked={config.mode === 'fixed'} onChange={() => set({ mode: 'fixed' })} />
-        Fixed — every
+        Advance every
         <input
           type="number" min={1} max={3600} value={config.fixedSec}
           onChange={e => set({ fixedSec: Math.max(1, Number(e.target.value)) })}
-          style={numInput} disabled={config.mode !== 'fixed'}
+          style={numInput}
         />
         seconds
-      </label>
-
-      <label style={label}>
-        <input type="radio" checked={config.mode === 'beat'} onChange={() => set({ mode: 'beat' })} />
-        Follow beat — min
-        <input
-          type="number" min={1} max={60} value={config.beatMinSec}
-          onChange={e => set({ beatMinSec: Math.max(1, Number(e.target.value)) })}
-          style={numInput} disabled={config.mode !== 'beat'}
-        />
-        seconds between changes
       </label>
 
       {/* Photo order */}

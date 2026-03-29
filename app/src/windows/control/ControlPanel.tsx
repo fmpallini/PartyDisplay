@@ -14,16 +14,12 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
-import { useBeatScheduler } from '../../hooks/useBeatScheduler'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto } from '../../hooks/useDisplaySync'
 
 function readSlideshowConfig(): SlideshowConfig {
   return {
-    mode:       (localStorage.getItem('pd_slideshow_mode') as SlideshowConfig['mode'])
-                  ?? DEFAULT_SLIDESHOW_CONFIG.mode,
-    fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec')     ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
-    beatMinSec: Number(localStorage.getItem('pd_slideshow_beat_min_sec')  ?? DEFAULT_SLIDESHOW_CONFIG.beatMinSec),
+    fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec') ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
     order:      (localStorage.getItem('pd_order') as SlideshowConfig['order'])
                   ?? DEFAULT_SLIDESHOW_CONFIG.order,
     subfolders: localStorage.getItem('pd_subfolder') === 'true',
@@ -42,11 +38,9 @@ export default function ControlPanel() {
 
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
-    localStorage.setItem('pd_slideshow_mode',         c.mode)
-    localStorage.setItem('pd_slideshow_fixed_sec',    String(c.fixedSec))
-    localStorage.setItem('pd_slideshow_beat_min_sec', String(c.beatMinSec))
-    localStorage.setItem('pd_order',                  c.order)
-    localStorage.setItem('pd_subfolder',              String(c.subfolders))
+    localStorage.setItem('pd_slideshow_fixed_sec', String(c.fixedSec))
+    localStorage.setItem('pd_order',               c.order)
+    localStorage.setItem('pd_subfolder',           String(c.subfolders))
   }
 
   // ── Photo navigation ──────────────────────────────────────────────────────
@@ -112,19 +106,10 @@ export default function ControlPanel() {
 
   // ── Fixed interval mode ───────────────────────────────────────────────────
   useEffect(() => {
-    if (config.mode !== 'fixed' || library.photos.length === 0 || slideshowPaused) return
+    if (library.photos.length === 0 || slideshowPaused) return
     const id = setInterval(doNext, config.fixedSec * 1000)
     return () => clearInterval(id)
-  }, [config.mode, config.fixedSec, library.photos, slideshowPaused, doNext])
-
-  // ── Beat sync mode ────────────────────────────────────────────────────────
-  useBeatScheduler({
-    trackId:       config.mode === 'beat' && !slideshowPaused ? (player.track?.id ?? null) : null,
-    positionMs:    player.positionMs,
-    accessToken:   accessToken,
-    minIntervalMs: config.beatMinSec * 1000,
-    onBeat:        doNext,
-  })
+  }, [config.fixedSec, library.photos, slideshowPaused, doNext])
 
   // ── Auto-start WASAPI capture when player is ready ───────────────────────
   useEffect(() => {
