@@ -40,10 +40,17 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   // On mount: fetch whatever the watcher already has (handles late-opening display window)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    const lastFolder = localStorage.getItem('pd_last_folder')
     invoke<string[]>('get_photos').then(paths => {
       if (paths.length > 0) {
+        if (lastFolder && !folderRef.current) folderRef.current = lastFolder
         const { photos, initialPhoto } = applyOrder(paths, folderRef.current)
-        setState(s => ({ ...s, photos, initialPhoto }))
+        setState(s => ({
+          ...s,
+          folder: s.folder ?? lastFolder,
+          photos,
+          initialPhoto,
+        }))
       }
     }).catch(err => console.error('[usePhotoLibrary] get_photos failed:', err))
   }, [])
@@ -63,7 +70,12 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   useEffect(() => {
     const unlisten = listen<{ paths: string[] }>('photo-list', ({ payload }) => {
       const { photos, initialPhoto } = applyOrder(payload.paths, folderRef.current)
-      setState(s => ({ ...s, photos, initialPhoto }))
+      setState(s => ({
+        ...s,
+        folder: s.folder ?? folderRef.current,
+        photos,
+        initialPhoto,
+      }))
     })
     return () => { unlisten.then(fn => fn()) }
   }, [])
