@@ -12,6 +12,7 @@ logs/
 dist/
 build/
 out/
+releases/
 .next/
 .nuxt/
 .cache/
