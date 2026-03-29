@@ -12,21 +12,25 @@ export type TransitionEffect =
   | 'blur'
   | 'random'
 
+export type ImageFit = 'cover' | 'contain'
+
 export interface DisplaySettings {
-  toastDurationMs:    number
-  songZoom:           number
-  volumeZoom:         number
-  transitionEffect:   TransitionEffect
+  toastDurationMs:      number
+  songZoom:             number
+  volumeZoom:           number
+  transitionEffect:     TransitionEffect
   transitionDurationMs: number
+  imageFit:             ImageFit
 }
 
 export function readDisplaySettings(): DisplaySettings {
   return {
-    toastDurationMs:    Number(localStorage.getItem('pd_toast_duration_ms')      ?? '5000'),
-    songZoom:           Number(localStorage.getItem('pd_song_toast_zoom')         ?? '1.7'),
-    volumeZoom:         Number(localStorage.getItem('pd_volume_toast_zoom')       ?? '1.7'),
-    transitionEffect:   (localStorage.getItem('pd_transition_effect') as TransitionEffect) ?? 'fade',
+    toastDurationMs:      Number(localStorage.getItem('pd_toast_duration_ms')      ?? '5000'),
+    songZoom:             Number(localStorage.getItem('pd_song_toast_zoom')         ?? '1.7'),
+    volumeZoom:           Number(localStorage.getItem('pd_volume_toast_zoom')       ?? '1.7'),
+    transitionEffect:     (localStorage.getItem('pd_transition_effect') as TransitionEffect) ?? 'random',
     transitionDurationMs: Number(localStorage.getItem('pd_transition_duration_ms') ?? '500'),
+    imageFit:             (localStorage.getItem('pd_image_fit') as ImageFit) ?? 'cover',
   }
 }
 
@@ -67,6 +71,7 @@ export function DisplaySettingsPanel() {
     localStorage.setItem('pd_volume_toast_zoom',       String(settings.volumeZoom))
     localStorage.setItem('pd_transition_effect',       settings.transitionEffect)
     localStorage.setItem('pd_transition_duration_ms',  String(settings.transitionDurationMs))
+    localStorage.setItem('pd_image_fit',               settings.imageFit)
     emit('display-settings-changed', settings).catch(console.error)
   }, [settings])
 
@@ -140,6 +145,19 @@ export function DisplaySettingsPanel() {
           style={numInput}
         />
         s
+      </label>
+
+      {/* Image fit */}
+      <label style={label}>
+        Image fit
+        <select
+          value={settings.imageFit}
+          onChange={e => set({ imageFit: e.target.value as ImageFit })}
+          style={selectInput}
+        >
+          <option value="cover">Fill screen (crop)</option>
+          <option value="contain">Fit to screen (letterbox)</option>
+        </select>
       </label>
     </div>
   )

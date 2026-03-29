@@ -1,14 +1,15 @@
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { useDisplaySync } from '../hooks/useDisplaySync'
-import type { TransitionEffect } from './DisplaySettingsPanel'
+import type { TransitionEffect, ImageFit } from './DisplaySettingsPanel'
 
 interface Props {
   photos:               string[]
   transitionEffect:     TransitionEffect
   transitionDurationMs: number
+  imageFit:             ImageFit
 }
 
-export function SlideshowView({ photos, transitionEffect, transitionDurationMs }: Props) {
+export function SlideshowView({ photos, transitionEffect, transitionDurationMs, imageFit }: Props) {
   const { currentPhoto, previousPhoto, transitioning, activeEffect } =
     useDisplaySync(photos, { transitionEffect, transitionDurationMs })
 
@@ -40,6 +41,7 @@ export function SlideshowView({ photos, transitionEffect, transitionDurationMs }
           src={toAssetUrl(previousPhoto)}
           style={{
             ...photoStyle,
+            objectFit: imageFit,
             animation: `${activeEffect}-out ${durationSec} ease-in-out forwards`,
             zIndex: 1,
           }}
@@ -52,6 +54,7 @@ export function SlideshowView({ photos, transitionEffect, transitionDurationMs }
         src={toAssetUrl(displayPhoto)}
         style={{
           ...photoStyle,
+          objectFit: imageFit,
           animation: transitioning
             ? `${activeEffect}-in ${durationSec} ease-in-out forwards`
             : undefined,

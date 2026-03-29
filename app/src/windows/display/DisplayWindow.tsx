@@ -45,6 +45,7 @@ export default function DisplayWindow() {
         photos={photos}
         transitionEffect={displaySettings.transitionEffect}
         transitionDurationMs={displaySettings.transitionDurationMs}
+        imageFit={displaySettings.imageFit}
       />
       <SongToast
         displayMs={displaySettings.toastDurationMs}
