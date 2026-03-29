@@ -40,6 +40,9 @@ pids/
 # Claude Code local settings (keep .claude/settings.json but not local overrides)
 .claude/settings.local.json
 
+# Git worktrees
+.worktrees/
+
 # OS
 .DS_Store
 Thumbs.db
