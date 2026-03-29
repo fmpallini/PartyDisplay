@@ -89,6 +89,11 @@ fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(),
     Ok(())
 }
 
+#[tauri::command]
+fn relaunch(app: tauri::AppHandle) {
+    app.restart();
+}
+
 fn main() {
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
@@ -135,6 +140,7 @@ fn main() {
             window_manager::toggle_display_fullscreen,
             window_manager::exit_display_fullscreen,
             system::get_battery_status,
+            relaunch,
         ])
         .setup(|app| {
             #[cfg(desktop)]
