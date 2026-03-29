@@ -6,28 +6,37 @@ use tauri::Emitter;
 
 #[derive(Default)]
 pub struct SlideshowState {
-    pub folder:  Mutex<Option<PathBuf>>,
-    pub photos:  Mutex<Vec<PathBuf>>,
-    pub watcher: Mutex<Option<RecommendedWatcher>>,
+    pub folder:    Mutex<Option<PathBuf>>,
+    pub photos:    Mutex<Vec<PathBuf>>,
+    pub watcher:   Mutex<Option<RecommendedWatcher>>,
+    pub recursive: Mutex<bool>,
 }
 
 static PHOTO_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif", "bmp"];
 
-pub fn collect_photos(folder: &PathBuf) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(folder) else { return vec![] };
-    let mut photos: Vec<PathBuf> = entries
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| {
-            p.is_file()
-                && p.extension()
-                    .and_then(|e| e.to_str())
-                    .map(|e| PHOTO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
-                    .unwrap_or(false)
-        })
-        .collect();
+pub fn collect_photos(folder: &std::path::Path, recursive: bool) -> Vec<PathBuf> {
+    let mut photos = Vec::new();
+    collect_photos_inner(folder, recursive, &mut photos);
     photos.sort();
     photos
+}
+
+fn collect_photos_inner(folder: &std::path::Path, recursive: bool, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(folder) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() && recursive {
+            collect_photos_inner(&path, recursive, out);
+        } else if path.is_file()
+            && path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| PHOTO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
+                .unwrap_or(false)
+        {
+            out.push(path);
+        }
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -38,6 +47,7 @@ pub struct PhotoListPayload {
 #[tauri::command]
 pub fn watch_folder(
     path: String,
+    recursive: bool,
     state: tauri::State<Arc<SlideshowState>>,
     app: tauri::AppHandle,
 ) -> Result<(), String> {
@@ -46,21 +56,16 @@ pub fn watch_folder(
         return Err(format!("Not a directory: {path}"));
     }
 
-    let photos = collect_photos(&folder);
-    {
-        let mut f = state.folder.lock().unwrap();
-        *f = Some(folder.clone());
-        let mut p = state.photos.lock().unwrap();
-        *p = photos.clone();
-    }
+    let photos = collect_photos(&folder, recursive);
+    { *state.folder.lock().unwrap()    = Some(folder.clone()); }
+    { *state.photos.lock().unwrap()    = photos.clone(); }
+    { *state.recursive.lock().unwrap() = recursive; }
 
-    // Emit initial list
     let payload = PhotoListPayload {
         paths: photos.iter().map(|p| p.to_string_lossy().into_owned()).collect(),
     };
-    app.emit("photo-list", payload.clone()).map_err(|e| e.to_string())?;
+    app.emit("photo-list", payload).map_err(|e| e.to_string())?;
 
-    // Spawn filesystem watcher
     let state_arc = Arc::clone(&*state);
     let app2 = app.clone();
     let folder2 = folder.clone();
@@ -70,7 +75,8 @@ pub fn watch_folder(
             use notify::EventKind::*;
             match event.kind {
                 Create(_) | Remove(_) | Modify(notify::event::ModifyKind::Name(_)) => {
-                    let new_photos = collect_photos(&folder2);
+                    let is_recursive = *state_arc.recursive.lock().unwrap();
+                    let new_photos = collect_photos(&folder2, is_recursive);
                     let mut p = state_arc.photos.lock().unwrap();
                     *p = new_photos.clone();
                     let payload = PhotoListPayload {
@@ -84,9 +90,12 @@ pub fn watch_folder(
     })
     .map_err(|e| e.to_string())?;
 
-    watcher
-        .watch(&folder, RecursiveMode::NonRecursive)
-        .map_err(|e| e.to_string())?;
+    let watch_mode = if recursive {
+        RecursiveMode::Recursive
+    } else {
+        RecursiveMode::NonRecursive
+    };
+    watcher.watch(&folder, watch_mode).map_err(|e| e.to_string())?;
 
     *state.watcher.lock().unwrap() = Some(watcher);
     Ok(())
@@ -110,7 +119,7 @@ mod tests {
 
     #[test]
     fn collect_photos_filters_extensions() {
-        let dir = std::env::temp_dir().join("party_display_test_photos");
+        let dir = std::env::temp_dir().join("party_display_test_flat");
         fs::create_dir_all(&dir).unwrap();
 
         let keep = ["a.jpg", "b.jpeg", "c.png", "d.webp"];
@@ -120,22 +129,49 @@ mod tests {
             fs::write(dir.join(name), b"").unwrap();
         }
 
-        let result = collect_photos(&dir);
+        let result = collect_photos(&dir, false);
         let names: Vec<&str> = result
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap())
             .collect();
 
-        for k in &keep {
-            assert!(names.contains(k), "expected {k} in result");
-        }
-        for s in &skip {
-            assert!(!names.contains(s), "did not expect {s} in result");
-        }
+        for k in &keep { assert!(names.contains(k), "expected {k}"); }
+        for s in &skip { assert!(!names.contains(s), "did not expect {s}"); }
 
-        // cleanup
         for name in keep.iter().chain(skip.iter()) {
             let _ = fs::remove_file(dir.join(name));
         }
+    }
+
+    #[test]
+    fn collect_photos_recursive_finds_nested() {
+        let root = std::env::temp_dir().join("party_display_test_recursive");
+        let sub  = root.join("sub");
+        fs::create_dir_all(&sub).unwrap();
+
+        fs::write(root.join("top.jpg"), b"").unwrap();
+        fs::write(sub.join("nested.png"), b"").unwrap();
+        fs::write(sub.join("skip.txt"), b"").unwrap();
+
+        let flat      = collect_photos(&root, false);
+        let recursive = collect_photos(&root, true);
+
+        let flat_names: Vec<&str> = flat.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
+        let rec_names: Vec<&str> = recursive.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
+
+        assert!(flat_names.contains(&"top.jpg"));
+        assert!(!flat_names.contains(&"nested.png"), "flat should not find nested");
+
+        assert!(rec_names.contains(&"top.jpg"));
+        assert!(rec_names.contains(&"nested.png"), "recursive should find nested");
+        assert!(!rec_names.contains(&"skip.txt"));
+
+        let _ = fs::remove_file(root.join("top.jpg"));
+        let _ = fs::remove_file(sub.join("nested.png"));
+        let _ = fs::remove_file(sub.join("skip.txt"));
+        let _ = fs::remove_dir(&sub);
+        let _ = fs::remove_dir(&root);
     }
 }
