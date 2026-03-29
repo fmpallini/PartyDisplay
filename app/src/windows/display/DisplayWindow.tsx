@@ -41,7 +41,11 @@ export default function DisplayWindow() {
 
   return (
     <div style={{ width: '100vw', height: '100vh' }} onDoubleClick={handleDoubleClick}>
-      <SlideshowView photos={photos} />
+      <SlideshowView
+        photos={photos}
+        transitionEffect={displaySettings.transitionEffect}
+        transitionDurationMs={displaySettings.transitionDurationMs}
+      />
       <SongToast
         displayMs={displaySettings.toastDurationMs}
         zoom={displaySettings.songZoom}

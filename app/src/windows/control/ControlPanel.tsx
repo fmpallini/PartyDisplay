@@ -8,8 +8,9 @@ import { FolderPicker } from '../../components/FolderPicker'
 import { DisplayWindowControls } from '../../components/DisplayWindowControls'
 import { PlayerControls } from '../../components/PlayerControls'
 import { SlideshowConfigPanel, DEFAULT_SLIDESHOW_CONFIG } from '../../components/SlideshowConfigPanel'
-import { DisplaySettingsPanel } from '../../components/DisplaySettingsPanel'
+import { DisplaySettingsPanel, readDisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
+import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
@@ -33,6 +34,11 @@ export default function ControlPanel() {
   const [captureError, setCaptureError]     = useState<string | null>(null)
   const [config, setConfigState]            = useState<SlideshowConfig>(readSlideshowConfig)
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
+
+  // Track transitionDurationMs from DisplaySettings so we can add it to the interval
+  const [transitionDurationMs, setTransitionDurationMs] = useState(
+    () => readDisplaySettings().transitionDurationMs,
+  )
 
   const [slideshowPaused, setSlideshowPaused] = useState(false)
 
@@ -111,11 +117,12 @@ export default function ControlPanel() {
   }, [player.volume])
 
   // ── Fixed interval mode ───────────────────────────────────────────────────
+  // Total cycle = display time + transition time (transition does NOT eat into display time)
   useEffect(() => {
     if (library.photos.length === 0 || slideshowPaused) return
-    const id = setInterval(doNext, config.fixedSec * 1000)
+    const id = setInterval(doNext, config.fixedSec * 1000 + transitionDurationMs)
     return () => clearInterval(id)
-  }, [config.fixedSec, library.photos, slideshowPaused, doNext])
+  }, [config.fixedSec, transitionDurationMs, library.photos, slideshowPaused, doNext])
 
   // ── Auto-start WASAPI capture when player is ready ───────────────────────
   useEffect(() => {
@@ -125,6 +132,14 @@ export default function ControlPanel() {
 
   // ── Hotkeys (this window) ─────────────────────────────────────────────────
   useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause })
+
+  // ── Sync transitionDurationMs when display settings change ───────────────
+  useEffect(() => {
+    const unlisten = listen<DisplaySettings>('display-settings-changed', ({ payload }) => {
+      setTransitionDurationMs(payload.transitionDurationMs)
+    })
+    return () => { unlisten.then(fn => fn()) }
+  }, [])
 
   // ── Hotkey relay from display window ──────────────────────────────────────
   useEffect(() => {
