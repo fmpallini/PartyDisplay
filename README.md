@@ -162,7 +162,7 @@ The app is functional and in daily use. All core features are implemented. Below
 - **8 transition effects**: fade, slide left/right/up/down, zoom in/out, blur — plus a **random** mode that picks a different effect each advance
 - Configurable **transition duration**
 - **Image fit**: fill (cover/crop) or letterbox (contain)
-- **Keyboard hotkeys** on the display window: `→`/`←` next/prev, `Space` pause/resume
+- **Keyboard hotkeys** on the display window: `→`/`←` next/prev, `Space` pause/resume, `F` fullscreen, `S` spectrum, `T` track overlay, `B` battery
 
 ### Display window
 
@@ -227,8 +227,10 @@ The app is functional and in daily use. All core features are implemented. Below
 |---|---|
 | `→` / `←` | Next / previous photo |
 | `Space` | Pause / resume slideshow |
+| `F` | Toggle fullscreen |
 | `S` | Toggle spectrum analyser |
 | `T` | Toggle track overlay |
+| `B` | Toggle battery icon |
 | `Esc` | Exit fullscreen |
 | Double-click | Toggle fullscreen |
 

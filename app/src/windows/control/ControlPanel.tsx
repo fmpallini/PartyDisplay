@@ -180,7 +180,11 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, trackOverlayVisible: !s.trackOverlayVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay })
+  const toggleBattery = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, batteryVisible: !s.batteryVisible }))
+  }, [])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -189,6 +193,7 @@ export default function ControlPanel() {
       if (payload.action === 'pause')    togglePause()
       if (payload.action === 'spectrum') toggleSpectrum()
       if (payload.action === 'track')    toggleTrackOverlay()
+      if (payload.action === 'battery')  toggleBattery()
     })
     return () => { unlisten.then(fn => fn()) }
   }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay])

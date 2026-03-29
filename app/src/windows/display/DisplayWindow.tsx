@@ -59,11 +59,13 @@ export default function DisplayWindow() {
   }, [])
 
   useHotkeys({
-    onNext:               () => emit('display-hotkey', { action: 'next'     }).catch(console.error),
-    onPrev:               () => emit('display-hotkey', { action: 'prev'     }).catch(console.error),
-    onTogglePause:        () => emit('display-hotkey', { action: 'pause'    }).catch(console.error),
-    onToggleSpectrum:     () => emit('display-hotkey', { action: 'spectrum' }).catch(console.error),
-    onToggleTrackOverlay: () => emit('display-hotkey', { action: 'track'    }).catch(console.error),
+    onNext:               () => emit('display-hotkey', { action: 'next'       }).catch(console.error),
+    onPrev:               () => emit('display-hotkey', { action: 'prev'       }).catch(console.error),
+    onTogglePause:        () => emit('display-hotkey', { action: 'pause'      }).catch(console.error),
+    onToggleSpectrum:     () => emit('display-hotkey', { action: 'spectrum'   }).catch(console.error),
+    onToggleTrackOverlay: () => emit('display-hotkey', { action: 'track'      }).catch(console.error),
+    onToggleFullscreen:   () => invoke('toggle_display_fullscreen').catch(console.error),
+    onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
   })
 
   const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
