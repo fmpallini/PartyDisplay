@@ -51,7 +51,7 @@ export function DisplaySettingsPanel() {
         <input
           type="number" min={1} max={60}
           value={Math.round(settings.toastDurationMs / 1000)}
-          onChange={e => set({ toastDurationMs: Math.max(1, Number(e.target.value)) * 1000 })}
+          onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, Number(e.target.value))) * 1000 })}
           style={numInput}
         />
         s
