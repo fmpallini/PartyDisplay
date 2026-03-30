@@ -111,10 +111,17 @@ export function useAuth() {
       return id
     }
 
+    let cancelled = false
     let timerId: ReturnType<typeof setTimeout> | undefined
-    scheduleRefresh().then(id => { timerId = id })
+    scheduleRefresh().then(id => {
+      if (cancelled) { if (id !== undefined) clearTimeout(id); return }
+      timerId = id
+    })
 
-    return () => { if (timerId !== undefined) clearTimeout(timerId) }
+    return () => {
+      cancelled = true
+      if (timerId !== undefined) clearTimeout(timerId)
+    }
   }, [state.authenticated])
 
   // ── login / logout ────────────────────────────────────────────────────────

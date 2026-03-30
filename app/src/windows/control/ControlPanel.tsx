@@ -170,10 +170,10 @@ export default function ControlPanel() {
   // ── Track / volume → display window ──────────────────────────────────────
   const prevTrackIdRef = useRef<string | null>(null)
   useEffect(() => {
-    const id = player.track?.id ?? null
-    if (id && id !== prevTrackIdRef.current) {
-      prevTrackIdRef.current = id
-      emit('track-changed', { name: player.track!.name, artists: player.track!.artists, albumArt: player.track!.albumArt }).catch(console.error)
+    const track = player.track
+    if (track && track.id !== prevTrackIdRef.current) {
+      prevTrackIdRef.current = track.id
+      emit('track-changed', { name: track.name, artists: track.artists, albumArt: track.albumArt }).catch(console.error)
     }
   }, [player.track?.id])
 
@@ -227,7 +227,7 @@ export default function ControlPanel() {
       if (payload.action === 'counter')  togglePhotoCounter()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)

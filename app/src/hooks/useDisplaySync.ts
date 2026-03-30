@@ -29,8 +29,9 @@ export function useDisplaySync(
   const [transitioning, setTransitioning] = useState(false)
   const [activeEffect, setActiveEffect]   = useState<Exclude<TransitionEffect, 'random'>>('fade')
 
-  const effectRef   = useRef(transitionEffect)
-  const durationRef = useRef(transitionDurationMs)
+  const effectRef         = useRef(transitionEffect)
+  const durationRef       = useRef(transitionDurationMs)
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   effectRef.current   = transitionEffect
   durationRef.current = transitionDurationMs
 
@@ -43,10 +44,14 @@ export function useDisplaySync(
         setPreviousPhoto(prev)
         return payload.photo
       })
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
       setTransitioning(true)
-      setTimeout(() => setTransitioning(false), durationRef.current)
+      transitionTimerRef.current = setTimeout(() => setTransitioning(false), durationRef.current)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => {
+      unlisten.then(fn => fn())
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
+    }
   }, [])
 
   return { currentPhoto, previousPhoto, transitioning, activeEffect }

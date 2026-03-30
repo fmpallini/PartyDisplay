@@ -127,6 +127,11 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
     onChange({ ...settings, ...patch })
   }
 
+  function n(v: string): number {
+    const x = Number(v)
+    return isNaN(x) ? 0 : x
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
@@ -138,7 +143,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={1} max={60}
               value={Math.round(settings.toastDurationMs / 1000)}
-              onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, Number(e.target.value))) * 1000 })}
+              onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, n(e.target.value))) * 1000 })}
               style={numInput}
             /> s
           </label>
@@ -157,7 +162,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0.5} max={3} step={0.1}
               value={settings.songZoom}
-              onChange={e => set({ songZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
+              onChange={e => set({ songZoom: Math.min(3, Math.max(0.5, n(e.target.value))) })}
               style={numInput}
             /> ×
           </label>
@@ -168,7 +173,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0.5} max={3} step={0.1}
               value={settings.volumeZoom}
-              onChange={e => set({ volumeZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
+              onChange={e => set({ volumeZoom: Math.min(3, Math.max(0.5, n(e.target.value))) })}
               style={numInput}
             /> ×
           </label>
@@ -191,7 +196,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0.1} max={5} step={0.1}
               value={settings.transitionDurationMs / 1000}
-              onChange={e => set({ transitionDurationMs: Math.min(5000, Math.max(100, Math.round(Number(e.target.value) * 1000))) })}
+              onChange={e => set({ transitionDurationMs: Math.min(5000, Math.max(100, Math.round(n(e.target.value) * 1000))) })}
               style={numInput}
             /> s
           </label>
@@ -231,7 +236,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={5} max={50} step={1}
               value={settings.spectrumHeightPct}
-              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, Number(e.target.value))) })}
+              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, n(e.target.value))) })}
               style={numInput}
             /> % of screen
           </label>
@@ -254,7 +259,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
         <label style={inlineRow}>
           <input type="number" min={16} max={80} step={2}
             value={settings.batterySize}
-            onChange={e => set({ batterySize: Math.min(80, Math.max(16, Number(e.target.value))) })}
+            onChange={e => set({ batterySize: Math.min(80, Math.max(16, n(e.target.value))) })}
             style={numInput}
           /> px
         </label>
@@ -288,7 +293,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={10} max={96} step={2}
               value={settings.trackFontSize}
-              onChange={e => set({ trackFontSize: Math.min(96, Math.max(10, Number(e.target.value))) })}
+              onChange={e => set({ trackFontSize: Math.min(96, Math.max(10, n(e.target.value))) })}
               style={numInput}
             /> px
           </label>
@@ -307,7 +312,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0} max={1} step={0.05}
               value={settings.trackBgOpacity}
-              onChange={e => set({ trackBgOpacity: Math.min(1, Math.max(0, Number(e.target.value))) })}
+              onChange={e => set({ trackBgOpacity: Math.min(1, Math.max(0, n(e.target.value))) })}
               style={numInput}
             />
           </label>

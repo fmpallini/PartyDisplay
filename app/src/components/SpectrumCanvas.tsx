@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export type SpectrumTheme = 'energy' | 'cyan' | 'fire' | 'white' | 'rainbow' | 'purple'
 export type SpectrumStyle = 'bars' | 'lines'
@@ -95,22 +95,32 @@ export default function SpectrumCanvas({
   overlay     = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [canvasWidth, setCanvasWidth] = useState(0)
 
+  // Track container width so the internal canvas resolution matches actual pixels
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    const ro = new ResizeObserver(entries => {
+      setCanvasWidth(Math.round(entries[0].contentRect.width))
+    })
+    ro.observe(canvas)
+    return () => ro.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || canvasWidth === 0) return
+    canvas.width = canvasWidth
     const ctx = canvas.getContext('2d')!
-    const w = canvas.width
-    const h = canvas.height
-    ctx.clearRect(0, 0, w, h)
-    if (renderStyle === 'bars') drawBars(ctx, bins, w, h, theme)
-    else                        drawLines(ctx, bins, w, h, theme)
-  }, [bins, renderStyle, theme])
+    ctx.clearRect(0, 0, canvasWidth, height)
+    if (renderStyle === 'bars') drawBars(ctx, bins, canvasWidth, height, theme)
+    else                        drawLines(ctx, bins, canvasWidth, height, theme)
+  }, [bins, renderStyle, theme, canvasWidth, height])
 
   return (
     <canvas
       ref={canvasRef}
-      width={1920}
       height={height}
       style={{ display: 'block', width: '100%', height, background: overlay ? 'transparent' : '#000', borderRadius: overlay ? 0 : 4 }}
     />

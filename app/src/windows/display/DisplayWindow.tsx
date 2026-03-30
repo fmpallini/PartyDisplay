@@ -48,7 +48,7 @@ export default function DisplayWindow() {
     const unlisten = listen<DisplaySettings>('display-settings-changed', ({ payload }) => {
       setDisplaySettings(payload)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   // Track current song for overlay
@@ -56,7 +56,7 @@ export default function DisplayWindow() {
     const unlisten = listen<TrackInfo>('track-changed', ({ payload }) => {
       setCurrentTrack(payload)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   // Track photo index for counter overlay
@@ -64,7 +64,7 @@ export default function DisplayWindow() {
     const unlisten = listen<{ photo: string; index: number; total: number }>('photo-advance', ({ payload }) => {
       setPhotoCounter({ index: payload.index, total: payload.total })
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   useHotkeys({
