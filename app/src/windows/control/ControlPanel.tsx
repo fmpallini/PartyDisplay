@@ -96,6 +96,32 @@ export default function ControlPanel() {
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [helpOpen, setHelpOpen]               = useState(false)
 
+  // Persist display settings to localStorage and propagate to display window
+  // whenever they change — including via hotkeys, regardless of panel visibility.
+  useEffect(() => {
+    localStorage.setItem('pd_toast_duration_ms',      String(displaySettings.toastDurationMs))
+    localStorage.setItem('pd_song_toast_zoom',         String(displaySettings.songZoom))
+    localStorage.setItem('pd_volume_toast_zoom',       String(displaySettings.volumeZoom))
+    localStorage.setItem('pd_transition_effect',       displaySettings.transitionEffect)
+    localStorage.setItem('pd_transition_duration_ms',  String(displaySettings.transitionDurationMs))
+    localStorage.setItem('pd_image_fit',               displaySettings.imageFit)
+    localStorage.setItem('pd_spectrum_visible',        String(displaySettings.spectrumVisible))
+    localStorage.setItem('pd_spectrum_style',          displaySettings.spectrumStyle)
+    localStorage.setItem('pd_spectrum_theme',          displaySettings.spectrumTheme)
+    localStorage.setItem('pd_spectrum_height_pct',     String(displaySettings.spectrumHeightPct))
+    localStorage.setItem('pd_battery_visible',         String(displaySettings.batteryVisible))
+    localStorage.setItem('pd_battery_size',            String(displaySettings.batterySize))
+    localStorage.setItem('pd_track_overlay_visible',   String(displaySettings.trackOverlayVisible))
+    localStorage.setItem('pd_track_font',              displaySettings.trackFont)
+    localStorage.setItem('pd_track_font_size',         String(displaySettings.trackFontSize))
+    localStorage.setItem('pd_track_position',          displaySettings.trackPosition)
+    localStorage.setItem('pd_track_color',             displaySettings.trackColor)
+    localStorage.setItem('pd_track_bg_color',          displaySettings.trackBgColor)
+    localStorage.setItem('pd_track_bg_opacity',        String(displaySettings.trackBgOpacity))
+    localStorage.setItem('pd_photo_counter_visible',   String(displaySettings.photoCounterVisible))
+    emit('display-settings-changed', displaySettings).catch(console.error)
+  }, [displaySettings])
+
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
     localStorage.setItem('pd_slideshow_fixed_sec', String(c.fixedSec))
@@ -111,7 +137,7 @@ export default function ControlPanel() {
     const i = ((idx % library.photos.length) + library.photos.length) % library.photos.length
     indexRef.current = i
     const photo = library.photos[i]
-    advancePhoto(photo).catch(console.error)
+    advancePhoto(photo, i, library.photos.length).catch(console.error)
     if (config.order === 'alpha' && library.folder) {
       const raw = localStorage.getItem('pd_last_photo')
       const map: Record<string, string> = raw ? JSON.parse(raw) : {}
@@ -144,10 +170,10 @@ export default function ControlPanel() {
   // ── Track / volume → display window ──────────────────────────────────────
   const prevTrackIdRef = useRef<string | null>(null)
   useEffect(() => {
-    const id = player.track?.id ?? null
-    if (id && id !== prevTrackIdRef.current) {
-      prevTrackIdRef.current = id
-      emit('track-changed', { name: player.track!.name, artists: player.track!.artists, albumArt: player.track!.albumArt }).catch(console.error)
+    const track = player.track
+    if (track && track.id !== prevTrackIdRef.current) {
+      prevTrackIdRef.current = track.id
+      emit('track-changed', { name: track.name, artists: track.artists, albumArt: track.albumArt }).catch(console.error)
     }
   }, [player.track?.id])
 
@@ -184,7 +210,11 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, batteryVisible: !s.batteryVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery })
+  const togglePhotoCounter = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, photoCounterVisible: !s.photoCounterVisible }))
+  }, [])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -194,9 +224,10 @@ export default function ControlPanel() {
       if (payload.action === 'spectrum') toggleSpectrum()
       if (payload.action === 'track')    toggleTrackOverlay()
       if (payload.action === 'battery')  toggleBattery()
+      if (payload.action === 'counter')  togglePhotoCounter()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)

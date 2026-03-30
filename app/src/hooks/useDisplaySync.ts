@@ -29,30 +29,35 @@ export function useDisplaySync(
   const [transitioning, setTransitioning] = useState(false)
   const [activeEffect, setActiveEffect]   = useState<Exclude<TransitionEffect, 'random'>>('fade')
 
-  const effectRef   = useRef(transitionEffect)
-  const durationRef = useRef(transitionDurationMs)
+  const effectRef         = useRef(transitionEffect)
+  const durationRef       = useRef(transitionDurationMs)
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   effectRef.current   = transitionEffect
   durationRef.current = transitionDurationMs
 
   // Listen for advance commands from control window
   useEffect(() => {
-    const unlisten = listen<{ photo: string }>('photo-advance', ({ payload }) => {
+    const unlisten = listen<{ photo: string; index: number; total: number }>('photo-advance', ({ payload }) => {
       const resolved = resolveEffect(effectRef.current)
       setActiveEffect(resolved)
       setCurrentPhoto(prev => {
         setPreviousPhoto(prev)
         return payload.photo
       })
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
       setTransitioning(true)
-      setTimeout(() => setTransitioning(false), durationRef.current)
+      transitionTimerRef.current = setTimeout(() => setTransitioning(false), durationRef.current)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => {
+      unlisten.then(fn => fn())
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
+    }
   }, [])
 
   return { currentPhoto, previousPhoto, transitioning, activeEffect }
 }
 
 // Call this from the control window to push the next photo to the display
-export async function advancePhoto(photo: string) {
-  await emit('photo-advance', { photo })
+export async function advancePhoto(photo: string, index: number, total: number) {
+  await emit('photo-advance', { photo, index, total })
 }

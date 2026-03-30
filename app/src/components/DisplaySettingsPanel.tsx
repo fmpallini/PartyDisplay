@@ -1,5 +1,3 @@
-import { useEffect } from 'react'
-import { emit } from '@tauri-apps/api/event'
 import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
 
 export type { SpectrumTheme, SpectrumStyle }
@@ -39,6 +37,7 @@ export interface DisplaySettings {
   trackColor:           string
   trackBgColor:         string
   trackBgOpacity:       number
+  photoCounterVisible:  boolean
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -62,6 +61,7 @@ export function readDisplaySettings(): DisplaySettings {
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
     trackBgOpacity:       Number(localStorage.getItem('pd_track_bg_opacity') ?? '0.5'),
+    photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
   }
 }
 
@@ -123,31 +123,13 @@ interface Props {
 }
 
 export function DisplaySettingsPanel({ settings, onChange }: Props) {
-  useEffect(() => {
-    localStorage.setItem('pd_toast_duration_ms',      String(settings.toastDurationMs))
-    localStorage.setItem('pd_song_toast_zoom',         String(settings.songZoom))
-    localStorage.setItem('pd_volume_toast_zoom',       String(settings.volumeZoom))
-    localStorage.setItem('pd_transition_effect',       settings.transitionEffect)
-    localStorage.setItem('pd_transition_duration_ms',  String(settings.transitionDurationMs))
-    localStorage.setItem('pd_image_fit',               settings.imageFit)
-    localStorage.setItem('pd_spectrum_visible',        String(settings.spectrumVisible))
-    localStorage.setItem('pd_spectrum_style',          settings.spectrumStyle)
-    localStorage.setItem('pd_spectrum_theme',          settings.spectrumTheme)
-    localStorage.setItem('pd_spectrum_height_pct',     String(settings.spectrumHeightPct))
-    localStorage.setItem('pd_battery_visible',         String(settings.batteryVisible))
-    localStorage.setItem('pd_battery_size',            String(settings.batterySize))
-    localStorage.setItem('pd_track_overlay_visible',   String(settings.trackOverlayVisible))
-    localStorage.setItem('pd_track_font',              settings.trackFont)
-    localStorage.setItem('pd_track_font_size',         String(settings.trackFontSize))
-    localStorage.setItem('pd_track_position',          settings.trackPosition)
-    localStorage.setItem('pd_track_color',             settings.trackColor)
-    localStorage.setItem('pd_track_bg_color',          settings.trackBgColor)
-    localStorage.setItem('pd_track_bg_opacity',        String(settings.trackBgOpacity))
-    emit('display-settings-changed', settings).catch(console.error)
-  }, [settings])
-
   function set(patch: Partial<DisplaySettings>) {
     onChange({ ...settings, ...patch })
+  }
+
+  function n(v: string): number {
+    const x = Number(v)
+    return isNaN(x) ? 0 : x
   }
 
   return (
@@ -161,7 +143,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={1} max={60}
               value={Math.round(settings.toastDurationMs / 1000)}
-              onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, Number(e.target.value))) * 1000 })}
+              onChange={e => set({ toastDurationMs: Math.min(60, Math.max(1, n(e.target.value))) * 1000 })}
               style={numInput}
             /> s
           </label>
@@ -180,7 +162,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0.5} max={3} step={0.1}
               value={settings.songZoom}
-              onChange={e => set({ songZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
+              onChange={e => set({ songZoom: Math.min(3, Math.max(0.5, n(e.target.value))) })}
               style={numInput}
             /> ×
           </label>
@@ -191,7 +173,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0.5} max={3} step={0.1}
               value={settings.volumeZoom}
-              onChange={e => set({ volumeZoom: Math.min(3, Math.max(0.5, Number(e.target.value))) })}
+              onChange={e => set({ volumeZoom: Math.min(3, Math.max(0.5, n(e.target.value))) })}
               style={numInput}
             /> ×
           </label>
@@ -214,7 +196,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0.1} max={5} step={0.1}
               value={settings.transitionDurationMs / 1000}
-              onChange={e => set({ transitionDurationMs: Math.min(5000, Math.max(100, Math.round(Number(e.target.value) * 1000))) })}
+              onChange={e => set({ transitionDurationMs: Math.min(5000, Math.max(100, Math.round(n(e.target.value) * 1000))) })}
               style={numInput}
             /> s
           </label>
@@ -254,7 +236,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={5} max={50} step={1}
               value={settings.spectrumHeightPct}
-              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, Number(e.target.value))) })}
+              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, n(e.target.value))) })}
               style={numInput}
             /> % of screen
           </label>
@@ -277,7 +259,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
         <label style={inlineRow}>
           <input type="number" min={16} max={80} step={2}
             value={settings.batterySize}
-            onChange={e => set({ batterySize: Math.min(80, Math.max(16, Number(e.target.value))) })}
+            onChange={e => set({ batterySize: Math.min(80, Math.max(16, n(e.target.value))) })}
             style={numInput}
           /> px
         </label>
@@ -311,7 +293,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={10} max={96} step={2}
               value={settings.trackFontSize}
-              onChange={e => set({ trackFontSize: Math.min(96, Math.max(10, Number(e.target.value))) })}
+              onChange={e => set({ trackFontSize: Math.min(96, Math.max(10, n(e.target.value))) })}
               style={numInput}
             /> px
           </label>
@@ -330,7 +312,7 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           <label style={inlineRow}>
             <input type="number" min={0} max={1} step={0.05}
               value={settings.trackBgOpacity}
-              onChange={e => set({ trackBgOpacity: Math.min(1, Math.max(0, Number(e.target.value))) })}
+              onChange={e => set({ trackBgOpacity: Math.min(1, Math.max(0, n(e.target.value))) })}
               style={numInput}
             />
           </label>
@@ -356,6 +338,17 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           </label>
         </div>
       </div>
+
+      {/* ── Photo counter ─────────────────────────────────────────────── */}
+      <p style={subHead}>Photo counter <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(P to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.photoCounterVisible}
+          onChange={e => set({ photoCounterVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show on display
+      </label>
 
     </div>
   )

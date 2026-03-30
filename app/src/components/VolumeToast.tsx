@@ -22,7 +22,10 @@ export function VolumeToast({ displayMs, zoom }: Props) {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => setVisible(false), displayMs)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => {
+      unlisten.then(fn => fn())
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [displayMs])
 
   const pct  = Math.round(volume * 100)
