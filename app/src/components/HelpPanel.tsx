@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-shell'
 
@@ -34,6 +35,8 @@ const CREDITS = [
 ]
 
 export function HelpPanel({ onClose }: Props) {
+  const [creditsOpen, setCreditsOpen] = useState(false)
+
   function handleReset() {
     const ok = window.confirm(
       'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then restart the app.'
@@ -117,33 +120,6 @@ export function HelpPanel({ onClose }: Props) {
         {/* Divider */}
         <div style={{ borderTop: '1px solid #242424' }} />
 
-        {/* Credits */}
-        <div>
-          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#555' }}>
-            Built with
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {CREDITS.map(({ name, url, role }) => (
-              <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button
-                  onClick={() => open(url).catch(console.error)}
-                  style={{
-                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                    color: '#1db954', fontSize: 12, textAlign: 'left', fontFamily: 'inherit',
-                    fontWeight: 600,
-                  }}
-                >
-                  {name}
-                </button>
-                <span style={{ fontSize: 11, color: '#555', marginLeft: 0 }}>{role}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div style={{ borderTop: '1px solid #242424' }} />
-
         {/* Reset */}
         <div>
           <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#555' }}>
@@ -162,6 +138,44 @@ export function HelpPanel({ onClose }: Props) {
           <p style={{ margin: '5px 0 0', fontSize: 10, color: '#444', lineHeight: 1.4 }}>
             Clears all saved settings and Spotify credentials, then relaunches the app.
           </p>
+        </div>
+
+        {/* Divider */}
+        <div style={{ borderTop: '1px solid #242424' }} />
+
+        {/* Credits — collapsible */}
+        <div>
+          <button
+            onClick={() => setCreditsOpen(o => !o)}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 5, width: '100%',
+            }}
+          >
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#555' }}>
+              Built with
+            </span>
+            <span style={{ fontSize: 10, color: '#444', marginLeft: 'auto', transition: 'transform 0.2s', display: 'inline-block', transform: creditsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+          </button>
+          {creditsOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+              {CREDITS.map(({ name, url, role }) => (
+                <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <button
+                    onClick={() => open(url).catch(console.error)}
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      color: '#1db954', fontSize: 12, textAlign: 'left', fontFamily: 'inherit',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {name}
+                  </button>
+                  <span style={{ fontSize: 11, color: '#555' }}>{role}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
