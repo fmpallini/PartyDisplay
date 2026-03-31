@@ -30,6 +30,7 @@ export interface DisplaySettings {
   spectrumHeightPct:    number
   batteryVisible:       boolean
   batterySize:          number
+  batteryPosition:      TrackPosition
   trackOverlayVisible:  boolean
   trackFont:            string
   trackFontSize:        number
@@ -38,6 +39,11 @@ export interface DisplaySettings {
   trackBgColor:         string
   trackBgOpacity:       number
   photoCounterVisible:  boolean
+  clockWeatherVisible:    boolean
+  clockWeatherPosition:   TrackPosition
+  clockWeatherTimeFormat: '12h' | '24h'
+  clockWeatherTempUnit:   'celsius' | 'fahrenheit'
+  clockWeatherCity:       string
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -54,6 +60,7 @@ export function readDisplaySettings(): DisplaySettings {
     spectrumHeightPct:    Number(localStorage.getItem('pd_spectrum_height_pct') ?? '10'),
     batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
     batterySize:          Number(localStorage.getItem('pd_battery_size') ?? '36'),
+    batteryPosition:      (localStorage.getItem('pd_battery_position') as TrackPosition) ?? 'top-right',
     trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
     trackFont:            localStorage.getItem('pd_track_font') ?? 'system-ui',
     trackFontSize:        Number(localStorage.getItem('pd_track_font_size') ?? '14'),
@@ -62,6 +69,11 @@ export function readDisplaySettings(): DisplaySettings {
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
     trackBgOpacity:       Number(localStorage.getItem('pd_track_bg_opacity') ?? '0.5'),
     photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
+    clockWeatherVisible:    localStorage.getItem('pd_cw_visible') !== 'false',
+    clockWeatherPosition:   (localStorage.getItem('pd_cw_position') as TrackPosition) ?? 'bottom-left',
+    clockWeatherTimeFormat: (localStorage.getItem('pd_cw_time_format') as '12h' | '24h') ?? '24h',
+    clockWeatherTempUnit:   (localStorage.getItem('pd_cw_temp_unit') as 'celsius' | 'fahrenheit') ?? 'celsius',
+    clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
   }
 }
 
@@ -254,15 +266,28 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
         Show on display
       </label>
 
-      <div>
-        <span style={fieldLabel}>Icon size</span>
-        <label style={inlineRow}>
-          <input type="number" min={16} max={80} step={2}
-            value={settings.batterySize}
-            onChange={e => set({ batterySize: Math.min(80, Math.max(16, n(e.target.value))) })}
-            style={numInput}
-          /> px
-        </label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+        <div>
+          <span style={fieldLabel}>Position</span>
+          <select value={settings.batteryPosition}
+            onChange={e => set({ batteryPosition: e.target.value as TrackPosition })}
+            style={selectInput}>
+            <option value="top-left">Top left</option>
+            <option value="top-right">Top right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="bottom-right">Bottom right</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Icon size</span>
+          <label style={inlineRow}>
+            <input type="number" min={16} max={80} step={2}
+              value={settings.batterySize}
+              onChange={e => set({ batterySize: Math.min(80, Math.max(16, n(e.target.value))) })}
+              style={numInput}
+            /> px
+          </label>
+        </div>
       </div>
 
       {/* ── Track overlay ─────────────────────────────────────────────── */}
@@ -349,6 +374,59 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
         />
         Show on display
       </label>
+
+      {/* ── Clock & weather ───────────────────────────────────────────────── */}
+      <p style={subHead}>Clock &amp; weather <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(C to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.clockWeatherVisible}
+          onChange={e => set({ clockWeatherVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show on display
+      </label>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+        <div>
+          <span style={fieldLabel}>Position</span>
+          <select value={settings.clockWeatherPosition}
+            onChange={e => set({ clockWeatherPosition: e.target.value as TrackPosition })}
+            style={selectInput}>
+            <option value="top-left">Top left</option>
+            <option value="top-right">Top right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="bottom-right">Bottom right</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Time format</span>
+          <select value={settings.clockWeatherTimeFormat}
+            onChange={e => set({ clockWeatherTimeFormat: e.target.value as '12h' | '24h' })}
+            style={selectInput}>
+            <option value="24h">24h</option>
+            <option value="12h">12h</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Temperature</span>
+          <select value={settings.clockWeatherTempUnit}
+            onChange={e => set({ clockWeatherTempUnit: e.target.value as 'celsius' | 'fahrenheit' })}
+            style={selectInput}>
+            <option value="celsius">°C</option>
+            <option value="fahrenheit">°F</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>City</span>
+          <input
+            type="text"
+            value={settings.clockWeatherCity}
+            onChange={e => set({ clockWeatherCity: e.target.value })}
+            placeholder="Auto-detect by IP"
+            style={{ ...selectInput, width: '100%' }}
+          />
+        </div>
+      </div>
 
     </div>
   )

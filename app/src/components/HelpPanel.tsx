@@ -12,6 +12,7 @@ const HOTKEYS = [
   { key: 'T',         action: 'Toggle track overlay'      },
   { key: 'B',         action: 'Toggle battery'            },
   { key: 'P',         action: 'Toggle photo counter'      },
+  { key: 'C',         action: 'Toggle clock & weather'    },
   { key: 'F',         action: 'Toggle fullscreen'         },
   { key: 'Esc',       action: 'Exit fullscreen'           },
   { key: 'Dbl-click', action: 'Toggle fullscreen'         },
