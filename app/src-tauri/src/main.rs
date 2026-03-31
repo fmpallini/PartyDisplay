@@ -7,7 +7,23 @@ mod system;
 mod window_manager;
 
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::Manager;
+
+/// Monotonic counter: each call to `start_oauth_callback_server` bumps this.
+/// The spawned thread compares its snapshot — if it no longer matches, the
+/// thread exits, freeing port 7357 for the new server.
+static OAUTH_SERVER_GEN: AtomicUsize = AtomicUsize::new(0);
+
+/// Escape the five HTML special characters so user-controlled strings are safe
+/// to interpolate into HTML responses.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+     .replace('<', "&lt;")
+     .replace('>', "&gt;")
+     .replace('"', "&quot;")
+     .replace('\'', "&#39;")
+}
 
 pub struct AppState {
     pub device_id: Mutex<Option<String>>,
@@ -21,18 +37,66 @@ fn ping() -> &'static str {
 /// Starts a one-shot HTTP server on 127.0.0.1:7357 that receives the OAuth
 /// callback from the browser, emits the code as a Tauri event, and responds
 /// with a self-closing HTML page.
+///
+/// Hardening:
+/// - Bumps OAUTH_SERVER_GEN so any previous hung server thread exits promptly.
+/// - Uses non-blocking accept with a 5-minute timeout instead of blocking forever.
+/// - Retries bind up to 10× (100 ms apart) to handle the brief window while the
+///   previous thread is still releasing the port.
+/// - HTML-escapes the error parameter before embedding it in the response page.
 #[tauri::command]
 fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
     use std::io::{Read, Write};
     use std::net::TcpListener;
+    use std::time::{Duration, Instant};
     use tauri::Emitter;
 
+    // Signal any running server thread to exit, then capture our generation id.
+    let my_gen = OAUTH_SERVER_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+
     std::thread::spawn(move || {
-        let listener = match TcpListener::bind("127.0.0.1:7357") {
-            Ok(l) => l,
-            Err(e) => { eprintln!("OAuth server bind error: {e}"); return; }
+        // The previous server thread may still hold the port for up to ~100 ms
+        // while it notices the generation change. Retry binding accordingly.
+        const BIND_RETRIES: u32 = 10;
+        let mut listener_opt: Option<TcpListener> = None;
+        for i in 0..BIND_RETRIES {
+            if i > 0 { std::thread::sleep(Duration::from_millis(100)); }
+            if OAUTH_SERVER_GEN.load(Ordering::SeqCst) != my_gen { return; }
+            match TcpListener::bind("127.0.0.1:7357") {
+                Ok(l)  => { listener_opt = Some(l); break; }
+                Err(e) => {
+                    if i == BIND_RETRIES - 1 {
+                        eprintln!("OAuth server bind error: {e}");
+                        return;
+                    }
+                }
+            }
+        }
+        let listener = match listener_opt {
+            Some(l) => l,
+            None    => return,
         };
-        let Ok((mut stream, _)) = listener.accept() else { return };
+        listener.set_nonblocking(true).ok();
+
+        // Poll accept until a connection arrives, our generation is superseded,
+        // or the 5-minute timeout elapses (user abandoned the login flow).
+        let deadline = Instant::now() + Duration::from_secs(300);
+        let mut stream = loop {
+            if OAUTH_SERVER_GEN.load(Ordering::SeqCst) != my_gen { return; }
+            if Instant::now() > deadline { return; }
+            match listener.accept() {
+                Ok((s, _)) => break s,
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+                Err(e) => { eprintln!("OAuth accept error: {e}"); return; }
+            }
+        };
+
+        // Switch back to blocking for the actual read/write with a short timeout.
+        stream.set_nonblocking(false).ok();
+        stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
+        stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
 
         let mut buf = [0u8; 4096];
         let n = stream.read(&mut buf).unwrap_or(0);
@@ -65,11 +129,13 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
 <script>try{window.close()}catch(e){}</script>
 </body></html>"#.to_string()
         } else {
+            // html_escape prevents XSS if the error value contains HTML characters.
+            let safe_err = html_escape(err_param.as_deref().unwrap_or("unknown"));
             format!(r#"<!doctype html><html><head><title>Party Display</title></head>
 <body style="font-family:monospace;background:#111;color:#e74c3c;display:flex;align-items:center;
 justify-content:center;height:100vh;margin:0;flex-direction:column">
-<h2>&#x274C; Auth error: {}</h2><p style="color:#aaa">You can close this tab.</p>
-</body></html>"#, err_param.as_deref().unwrap_or("unknown"))
+<h2>&#x274C; Auth error: {safe_err}</h2><p style="color:#aaa">You can close this tab.</p>
+</body></html>"#)
         };
 
         let response = format!(

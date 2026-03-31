@@ -5,6 +5,7 @@ import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { useFftData } from '../../hooks/useFftData'
 import { useBattery } from '../../hooks/useBattery'
+import type { BatteryStatus } from '../../hooks/useBattery'
 import { SlideshowView } from '../../components/SlideshowView'
 import { SongToast } from '../../components/SongToast'
 import { VolumeToast } from '../../components/VolumeToast'
@@ -12,6 +13,8 @@ import SpectrumCanvas from '../../components/SpectrumCanvas'
 import { BatteryWidget } from '../../components/BatteryWidget'
 import { readDisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
+import { useWeather } from '../../hooks/useWeather'
+import { ClockWeatherWidget } from '../../components/ClockWeatherWidget'
 
 interface TrackInfo { name: string; artists: string }
 
@@ -22,6 +25,7 @@ export default function DisplayWindow() {
   const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
   const bins    = useFftData()
   const battery = useBattery()
+  const [weather, weatherError] = useWeather(displaySettings.clockWeatherTempUnit, displaySettings.clockWeatherCity)
 
   // Track viewport height so the spectrum % is always accurate (e.g. on fullscreen toggle)
   const [winHeight, setWinHeight] = useState(window.innerHeight)
@@ -76,6 +80,7 @@ export default function DisplayWindow() {
     onToggleFullscreen:   () => invoke('toggle_display_fullscreen').catch(console.error),
     onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
     onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
+    onToggleClockWeather: () => emit('display-hotkey', { action: 'clock'      }).catch(console.error),
   })
 
   const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
@@ -95,12 +100,6 @@ export default function DisplayWindow() {
       <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
       <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
 
-      {displaySettings.batteryVisible && (
-        <div style={{ position: 'absolute', top: 12, right: 16, zIndex: 20 }}>
-          <BatteryWidget status={battery} size={displaySettings.batterySize} />
-        </div>
-      )}
-
       {displaySettings.spectrumVisible && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, width: '100%', height: spectrumHeightPx, zIndex: 10,
@@ -116,14 +115,85 @@ export default function DisplayWindow() {
         </div>
       )}
 
-      {displaySettings.trackOverlayVisible && currentTrack && (
-        <TrackOverlay track={currentTrack} settings={displaySettings} />
-      )}
-
       {displaySettings.photoCounterVisible && photoCounter !== null && (
         <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
       )}
+
+      <CornerOverlays
+        displaySettings={displaySettings}
+        currentTrack={currentTrack}
+        weather={weather}
+        weatherError={weatherError}
+        battery={battery}
+      />
     </div>
+  )
+}
+
+// ── Corner overlays (battery + track + clock, with collision stacking) ────────
+
+function CornerOverlays({ displaySettings, currentTrack, weather, weatherError, battery }: {
+  displaySettings: DisplaySettings
+  currentTrack: TrackInfo | null
+  weather: import('../../hooks/useWeather').WeatherData | null
+  weatherError: string | null
+  battery: BatteryStatus
+}) {
+  type WidgetId = 'battery' | 'clock' | 'track'
+  type Corner   = import('../../components/DisplaySettingsPanel').TrackPosition
+
+  const corners = new Map<Corner, WidgetId[]>()
+  function add(pos: Corner, id: WidgetId) {
+    if (!corners.has(pos)) corners.set(pos, [])
+    corners.get(pos)!.push(id)
+  }
+
+  if (displaySettings.batteryVisible) add(displaySettings.batteryPosition, 'battery')
+  if (displaySettings.clockWeatherVisible) add(displaySettings.clockWeatherPosition, 'clock')
+  if (displaySettings.trackOverlayVisible && currentTrack) add(displaySettings.trackPosition, 'track')
+
+  return (
+    <>
+      {[...corners.entries()].map(([pos, widgets]) => {
+        const isBottom = pos.startsWith('bottom')
+        const wrapStyle: React.CSSProperties = {
+          position: 'absolute',
+          top:    isBottom             ? undefined : 16,
+          bottom: isBottom             ? 16        : undefined,
+          left:   pos.endsWith('left') ? 16        : undefined,
+          right:  pos.endsWith('right')? 16        : undefined,
+          display: 'flex',
+          flexDirection: isBottom ? 'column-reverse' : 'column',
+          alignItems: pos.endsWith('left') ? 'flex-start' : 'flex-end',
+          gap: 8,
+          zIndex: 15,
+          pointerEvents: 'none',
+        }
+        return (
+          <div key={pos} style={wrapStyle}>
+            {widgets.map(w => {
+              if (w === 'battery') return (
+                <BatteryWidget key="battery" status={battery} size={displaySettings.batterySize} />
+              )
+              if (w === 'clock') return (
+                <ClockWeatherWidget key="clock"
+                  timeFormat={displaySettings.clockWeatherTimeFormat}
+                  position={pos}
+                  tempUnit={displaySettings.clockWeatherTempUnit}
+                  weather={weather}
+                  debugError={weatherError}
+                  embedded
+                />
+              )
+              if (w === 'track') return (
+                <TrackOverlay key="track" track={currentTrack!} settings={displaySettings} embedded />
+              )
+              return null
+            })}
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -155,17 +225,20 @@ function PhotoCounterOverlay({ index, total }: { index: number; total: number })
 
 // ── Track overlay ─────────────────────────────────────────────────────────────
 
-function hexToRgba(hex: string, alpha: number) {
+function hexToRgba(hex: string, alpha: number): string {
+  // Guard against corrupted localStorage values — fall back to opaque black.
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return `rgba(0,0,0,${alpha})`
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function TrackOverlay({ track, settings }: { track: TrackInfo; settings: DisplaySettings }) {
+function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; settings: DisplaySettings; embedded?: boolean }) {
   const { trackPosition, trackFont, trackFontSize, trackColor, trackBgColor, trackBgOpacity } = settings
 
-  const posStyle: React.CSSProperties = {
+  const posStyle: React.CSSProperties = embedded ? {} : {
+    position: 'absolute',
     top:    trackPosition.startsWith('top')    ? 20 : undefined,
     bottom: trackPosition.startsWith('bottom') ? 20 : undefined,
     left:   trackPosition.endsWith('left')     ? 20 : undefined,
@@ -174,10 +247,9 @@ function TrackOverlay({ track, settings }: { track: TrackInfo; settings: Display
 
   return (
     <div style={{
-      position: 'absolute',
       ...posStyle,
       zIndex: 15,
-      maxWidth: '60%',
+      maxWidth: '45vw',
       padding: '8px 14px',
       borderRadius: 6,
       background: hexToRgba(trackBgColor, trackBgOpacity),
@@ -187,10 +259,11 @@ function TrackOverlay({ track, settings }: { track: TrackInfo; settings: Display
       fontWeight: 600,
       lineHeight: 1.3,
       pointerEvents: 'none',
-      backdropFilter: 'blur(2px)',
+      backdropFilter: trackBgOpacity > 0 ? 'blur(2px)' : 'none',
+      overflow: 'hidden',
     }}>
-      <div style={{ fontSize: trackFontSize * 0.65, opacity: 0.8, marginBottom: 2 }}>{track.artists}</div>
-      <div>{track.name}</div>
+      <div style={{ fontSize: trackFontSize * 0.65, opacity: 0.8, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artists}</div>
+      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.name}</div>
     </div>
   )
 }

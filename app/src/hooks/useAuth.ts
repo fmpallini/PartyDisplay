@@ -122,7 +122,10 @@ export function useAuth() {
       cancelled = true
       if (timerId !== undefined) clearTimeout(timerId)
     }
-  }, [state.authenticated])
+  // Depend on accessToken (not just authenticated): accessToken changes on every
+  // successful refresh, so the effect re-runs and reschedules the next refresh.
+  // When authenticated is false, accessToken is null and the early-return guard fires.
+  }, [state.accessToken])
 
   // ── login / logout ────────────────────────────────────────────────────────
 
@@ -135,6 +138,9 @@ export function useAuth() {
       stateRef.current    = state
       await invoke('start_oauth_callback_server')
       await open(buildAuthUrl(challenge, state))
+      // Re-enable the button once the browser tab is open so the user can
+      // retry if they close the tab without completing auth.
+      setState(s => ({ ...s, loading: false }))
     } catch (e) {
       setState(s => ({ ...s, loading: false, error: String(e) }))
     }

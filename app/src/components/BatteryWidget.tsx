@@ -2,7 +2,7 @@ import type { BatteryStatus } from '../hooks/useBattery'
 
 interface Props {
   status: BatteryStatus
-  size:   number  // height in px; width is derived from aspect ratio
+  size:   number  // height in px
 }
 
 // 5-step color scale: green → yellow-green → yellow → orange → red
@@ -14,97 +14,66 @@ function levelColor(pct: number): string {
   return '#f44336'
 }
 
-// Lightning bolt path (centered in a W×H box)
-function boltPath(x: number, y: number, w: number, h: number): string {
-  const cx = x + w / 2
-  return [
-    `M ${cx + w * 0.1} ${y}`,
-    `L ${cx - w * 0.25} ${y + h * 0.52}`,
-    `L ${cx + w * 0.05} ${y + h * 0.52}`,
-    `L ${cx - w * 0.1} ${y + h}`,
-    `L ${cx + w * 0.25} ${y + h * 0.48}`,
-    `L ${cx - w * 0.05} ${y + h * 0.48}`,
-    'Z',
-  ].join(' ')
-}
-
-// Plug icon for when there's no battery (desktop always on AC)
-function PlugIcon({ size }: { size: number }) {
-  const s = size
-  const color = '#4caf50'
+// Bolt-in-circle icon for desktop / AC power (no battery)
+function AcIcon({ size }: { size: number }) {
   return (
-    <svg width={s} height={s} viewBox="0 0 24 24" style={{ display: 'block' }}>
-      <rect x={10} y={2} width={4} height={5} rx={1} fill={color} />
-      <rect x={6}  y={7} width={12} height={8} rx={2} fill={color} />
-      <rect x={11} y={15} width={2} height={5} fill={color} />
-      <rect x={9} y={19} width={6} height={2} rx={1} fill={color} />
+    <svg width={size} height={size} viewBox="0 0 30 30" fill="none" style={{ display: 'block' }}>
+      <circle cx="15" cy="15" r="13"
+        fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" />
+      <path d="M 17 4 L 10 16 L 14.5 16 L 13 26 L 20 14 L 15.5 14 Z"
+        fill="rgba(255,255,255,0.9)" />
     </svg>
   )
 }
 
 export function BatteryWidget({ status, size }: Props) {
-  // If no battery (desktop): show a plug icon when on AC
+  // Desktop (no battery) — show AC icon
   if (!status.available) {
-    if (!status.charging) return null  // no battery, not on AC — shouldn't happen
+    if (!status.charging) return null
     return (
       <div style={containerStyle}>
-        <PlugIcon size={size} />
+        <AcIcon size={size} />
       </div>
     )
   }
 
-  // Battery body dimensions
+  // Vertical battery: viewBox 0 0 16 30, height = size, width derived from aspect ratio
   const h  = size
-  const bw = Math.max(1.5, h * 0.07)   // border stroke width
-  const tw = h * 0.10                   // terminal width
-  const th = h * 0.38                   // terminal height
-  const r  = h * 0.12                   // corner radius
-  const bodyW = h * 1.9                 // battery body width
+  const w  = Math.round(h * 16 / 30)
 
-  // Inner fill area (inset by border width)
-  const pad   = bw * 1.2
-  const fillX = pad
-  const fillY = pad
-  const fillMaxW = bodyW - pad * 2
-  const fillH    = h - pad * 2
-  const fillW    = fillMaxW * (status.level / 100)
+  // Fill area: y=5 to y=27 (height=22) in viewBox units, bottom-aligned
+  const fillAreaH = 22
+  const fillAreaY = 27 - (status.level / 100) * fillAreaH
+  const fillH     = (status.level / 100) * fillAreaH
   const fillColor = levelColor(status.level)
-
-  const totalW = bodyW + tw
-  const boltW  = bodyW * 0.28
-  const boltH  = h * 0.52
 
   return (
     <div style={containerStyle}>
       <svg
-        width={totalW}
-        height={h}
-        viewBox={`0 0 ${totalW} ${h}`}
+        width={w} height={h}
+        viewBox="0 0 16 30"
+        fill="none"
         style={{ display: 'block', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))' }}
       >
+        {/* Terminal bump (top) */}
+        <rect x="5" y="0" width="6" height="4" rx="1.5"
+          fill="rgba(255,255,255,0.85)" />
+
         {/* Body outline */}
-        <rect x={0} y={0} width={bodyW} height={h} rx={r} ry={r}
-          fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.9)" strokeWidth={bw} />
+        <rect x="1" y="3.5" width="14" height="25.5" rx="3"
+          fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" />
 
-        {/* Terminal bump */}
-        <rect
-          x={bodyW} y={(h - th) / 2} width={tw} height={th}
-          rx={tw * 0.35} ry={tw * 0.35}
-          fill="rgba(255,255,255,0.9)"
-        />
-
-        {/* Level fill */}
-        {fillW > 0 && (
-          <rect x={fillX} y={fillY} width={fillW} height={fillH}
-            rx={r * 0.5} ry={r * 0.5} fill={fillColor} />
+        {/* Level fill (bottom-aligned) */}
+        {fillH > 0 && (
+          <rect x="2.75" y={fillAreaY} width="10.5" height={fillH} rx="2"
+            fill={fillColor} />
         )}
 
-        {/* Charging lightning bolt */}
+        {/* Charging bolt */}
         {status.charging && (
           <path
-            d={boltPath(bodyW / 2 - boltW / 2, h / 2 - boltH / 2, boltW, boltH)}
-            fill="white"
-            opacity={0.95}
+            d="M 9.5 8 L 5.5 17 L 8.5 17 L 6.5 24 L 10.5 16 L 7.5 16 Z"
+            fill="white" opacity={0.9}
           />
         )}
       </svg>

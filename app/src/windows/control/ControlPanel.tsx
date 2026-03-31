@@ -111,6 +111,7 @@ export default function ControlPanel() {
     localStorage.setItem('pd_spectrum_height_pct',     String(displaySettings.spectrumHeightPct))
     localStorage.setItem('pd_battery_visible',         String(displaySettings.batteryVisible))
     localStorage.setItem('pd_battery_size',            String(displaySettings.batterySize))
+    localStorage.setItem('pd_battery_position',        displaySettings.batteryPosition)
     localStorage.setItem('pd_track_overlay_visible',   String(displaySettings.trackOverlayVisible))
     localStorage.setItem('pd_track_font',              displaySettings.trackFont)
     localStorage.setItem('pd_track_font_size',         String(displaySettings.trackFontSize))
@@ -119,6 +120,11 @@ export default function ControlPanel() {
     localStorage.setItem('pd_track_bg_color',          displaySettings.trackBgColor)
     localStorage.setItem('pd_track_bg_opacity',        String(displaySettings.trackBgOpacity))
     localStorage.setItem('pd_photo_counter_visible',   String(displaySettings.photoCounterVisible))
+    localStorage.setItem('pd_cw_visible',              String(displaySettings.clockWeatherVisible))
+    localStorage.setItem('pd_cw_position',             displaySettings.clockWeatherPosition)
+    localStorage.setItem('pd_cw_time_format',          displaySettings.clockWeatherTimeFormat)
+    localStorage.setItem('pd_cw_temp_unit',            displaySettings.clockWeatherTempUnit)
+    localStorage.setItem('pd_cw_city',                 displaySettings.clockWeatherCity)
     emit('display-settings-changed', displaySettings).catch(console.error)
   }, [displaySettings])
 
@@ -139,8 +145,18 @@ export default function ControlPanel() {
     const photo = library.photos[i]
     advancePhoto(photo, i, library.photos.length).catch(console.error)
     if (config.order === 'alpha' && library.folder) {
-      const raw = localStorage.getItem('pd_last_photo')
-      const map: Record<string, string> = raw ? JSON.parse(raw) : {}
+      let map: Record<string, string> = {}
+      try {
+        const raw = localStorage.getItem('pd_last_photo')
+        if (raw) map = JSON.parse(raw)
+      } catch {
+        // Corrupted localStorage — start fresh rather than crashing.
+      }
+      // Prune to at most 50 folders to prevent unbounded growth.
+      const keys = Object.keys(map)
+      if (keys.length >= 50) {
+        map = Object.fromEntries(keys.slice(-49).map(k => [k, map[k]]))
+      }
       map[library.folder] = photo
       localStorage.setItem('pd_last_photo', JSON.stringify(map))
     }
@@ -214,7 +230,11 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, photoCounterVisible: !s.photoCounterVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter })
+  const toggleClockWeather = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, clockWeatherVisible: !s.clockWeatherVisible }))
+  }, [])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -225,9 +245,10 @@ export default function ControlPanel() {
       if (payload.action === 'track')    toggleTrackOverlay()
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
+      if (payload.action === 'clock')    toggleClockWeather()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)

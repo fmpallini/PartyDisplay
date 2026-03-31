@@ -61,10 +61,21 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
       player.addListener('ready', ({ device_id }) => {
         setState(s => ({ ...s, ready: true, deviceId: device_id, error: null }))
         invoke('set_device_id', { deviceId: device_id }).catch(console.error)
-        // Read actual volume from the SDK device on connect
-        ;(player as any).getVolume().then((vol: number) => {
-          setState(s => ({ ...s, volume: vol }))
-        }).catch(() => {})
+        // Fetch actual session volume from Spotify Web API (SDK getVolume() returns its own
+        // initial value, not the real device volume the user had before connecting).
+        fetch('https://api.spotify.com/v1/me/player', {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        })
+          .then(r => r.status === 200 ? r.json() : null)
+          .then((data: any) => {
+            const pct = data?.device?.volume_percent
+            if (pct != null) {
+              const vol = pct / 100
+              ;(player as any).setVolume(vol)
+              setState(s => ({ ...s, volume: vol }))
+            }
+          })
+          .catch(() => {})
       })
 
       player.addListener('not_ready', ({ device_id }) => {
