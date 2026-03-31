@@ -14,8 +14,8 @@ export interface LyricsResult {
   status:       LyricsStatus
 }
 
-// Parse LRC format: [mm:ss.xx] text  OR  [mm:ss.xxx] text
-const LRC_RE = /^\[(\d{2}):(\d{2})\.(\d{2,3})\]\s*(.*)$/
+// Parse LRC format: [mm:ss.xx] text  OR  [mm:ss.xxx] text  OR  [mm:ss] text
+const LRC_RE = /^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/
 
 function parseLrc(lrc: string): LyricLine[] {
   return lrc
@@ -25,7 +25,8 @@ function parseLrc(lrc: string): LyricLine[] {
       if (!m) return null
       const min  = parseInt(m[1], 10)
       const sec  = parseInt(m[2], 10)
-      const frac = m[3].length === 2 ? parseInt(m[3], 10) * 10 : parseInt(m[3], 10)
+      // Fractional part is optional; normalise to ms (2 digits = centiseconds, 3 = ms)
+      const frac = m[3] == null ? 0 : m[3].length === 2 ? parseInt(m[3], 10) * 10 : parseInt(m[3], 10)
       return { timeMs: (min * 60 + sec) * 1000 + frac, text: m[4] }
     })
     .filter((l): l is LyricLine => l !== null && l.text.trim() !== '')

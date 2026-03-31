@@ -193,6 +193,11 @@ export default function ControlPanel() {
   const prevTrackIdRef = useRef<string | null>(null)
   useEffect(() => {
     const track = player.track
+    if (!track && prevTrackIdRef.current !== null) {
+      prevTrackIdRef.current = null
+      emit('track-cleared', {}).catch(console.error)
+      return
+    }
     if (track && track.id !== prevTrackIdRef.current) {
       prevTrackIdRef.current = track.id
       emit('track-changed', {

@@ -79,6 +79,7 @@ export async function refreshAccessToken(refresh_token: string): Promise<RawToke
 }
 
 export function expiresAt(expires_in: number): number {
-  // Subtract 60s buffer so we refresh before actual expiry
-  return Date.now() + (expires_in - 60) * 1000
+  // Subtract 60s buffer so we refresh before actual expiry.
+  // Math.max(0, ...) guards against a server returning a very short TTL (< 60s).
+  return Date.now() + Math.max(0, expires_in - 60) * 1000
 }

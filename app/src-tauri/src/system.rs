@@ -56,7 +56,11 @@ mod platform {
             battery_life_time: 0,
             battery_full_life_time: 0,
         };
-        unsafe { GetSystemPowerStatus(&mut s); }
+        let ok = unsafe { GetSystemPowerStatus(&mut s) };
+        // GetSystemPowerStatus returns 0 on failure; fall back to safe defaults.
+        if ok == 0 {
+            return BatteryStatus { level: 100, charging: false, available: false };
+        }
 
         let no_battery = (s.battery_flag & 128) != 0 || s.battery_life_percent == 255;
         let charging   = (s.battery_flag &   8) != 0 || s.ac_line_status == 1;

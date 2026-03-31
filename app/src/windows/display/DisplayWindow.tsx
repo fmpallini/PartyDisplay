@@ -68,6 +68,15 @@ export default function DisplayWindow() {
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
+  // Clear track overlay and lyrics when user logs out
+  useEffect(() => {
+    const unlisten = listen('track-cleared', () => {
+      setCurrentTrack(null)
+      setPositionMs(0)
+    })
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
   // Playback position tick from control panel (every ~500 ms)
   useEffect(() => {
     const unlisten = listen<{ positionMs: number; paused: boolean }>('playback-tick', ({ payload }) => {

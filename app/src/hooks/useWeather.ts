@@ -8,14 +8,11 @@ export interface WeatherData {
 
 async function resolveLocation(city: string): Promise<{ lat: number; lon: number; name: string }> {
   if (city.trim()) {
-    console.log('[useWeather] resolving city via geocoding:', city.trim())
     try {
       const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.trim())}&count=1`
       const res = await fetch(url)
-      console.log('[useWeather] geocoding response status:', res.status)
       if (!res.ok) throw new Error(`geocoding HTTP ${res.status}`)
       const json = await res.json()
-      console.log('[useWeather] geocoding result:', json)
       if (json.results?.length) {
         const r = json.results[0]
         return { lat: r.latitude, lon: r.longitude, name: `${r.name}, ${r.country}` }
@@ -26,12 +23,9 @@ async function resolveLocation(city: string): Promise<{ lat: number; lon: number
     }
   }
   // IP geolocation fallback
-  console.log('[useWeather] resolving location via IP geolocation')
   const res = await fetch('https://ipapi.co/json/')
-  console.log('[useWeather] ipapi.co response status:', res.status)
   if (!res.ok) throw new Error(`ip geolocation HTTP ${res.status}`)
   const json = await res.json()
-  console.log('[useWeather] ipapi.co result:', json)
   if (json.error) throw new Error(`ip geolocation error: ${json.reason}`)
   return { lat: json.latitude, lon: json.longitude, name: `${json.city}, ${json.country_name}` }
 }
@@ -42,12 +36,9 @@ async function fetchWeatherData(
 ): Promise<WeatherData> {
   const { lat, lon, name } = await resolveLocation(city)
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=${tempUnit}`
-  console.log('[useWeather] fetching weather:', url)
   const res = await fetch(url)
-  console.log('[useWeather] weather response status:', res.status)
   if (!res.ok) throw new Error(`weather fetch HTTP ${res.status}`)
   const json = await res.json()
-  console.log('[useWeather] weather result:', json)
   return {
     locationName: name,
     temperature: json.current.temperature_2m,
@@ -66,10 +57,8 @@ export function useWeather(
     let cancelled = false
 
     async function doFetch() {
-      console.log(`[useWeather] doFetch — city="${city}" tempUnit="${tempUnit}"`)
       try {
         const result = await fetchWeatherData(city, tempUnit)
-        console.log('[useWeather] fetch succeeded:', result)
         if (!cancelled) { setData(result); setError(null) }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

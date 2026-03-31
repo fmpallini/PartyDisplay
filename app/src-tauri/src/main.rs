@@ -142,7 +142,9 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
             "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
             body.len(), body
         );
-        let _ = stream.write_all(response.as_bytes());
+        if let Err(e) = stream.write_all(response.as_bytes()) {
+            eprintln!("OAuth response write error: {e}");
+        }
 
         #[derive(serde::Serialize, Clone)]
         struct OAuthPayload { code: String, state: String }
