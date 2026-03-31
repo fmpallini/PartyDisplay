@@ -125,6 +125,12 @@ export default function ControlPanel() {
     localStorage.setItem('pd_cw_time_format',          displaySettings.clockWeatherTimeFormat)
     localStorage.setItem('pd_cw_temp_unit',            displaySettings.clockWeatherTempUnit)
     localStorage.setItem('pd_cw_city',                 displaySettings.clockWeatherCity)
+    localStorage.setItem('pd_lyrics_visible',          String(displaySettings.lyricsVisible))
+    localStorage.setItem('pd_lyrics_size',             String(displaySettings.lyricsSize))
+    localStorage.setItem('pd_lyrics_opacity',          String(displaySettings.lyricsOpacity))
+    localStorage.setItem('pd_lyrics_position',         displaySettings.lyricsPosition)
+    localStorage.setItem('pd_lyrics_split',            String(displaySettings.lyricsSplit))
+    localStorage.setItem('pd_lyrics_split_side',       displaySettings.lyricsSplitSide)
     emit('display-settings-changed', displaySettings).catch(console.error)
   }, [displaySettings])
 
@@ -189,7 +195,15 @@ export default function ControlPanel() {
     const track = player.track
     if (track && track.id !== prevTrackIdRef.current) {
       prevTrackIdRef.current = track.id
-      emit('track-changed', { name: track.name, artists: track.artists, albumArt: track.albumArt }).catch(console.error)
+      emit('track-changed', {
+        name:      track.name,
+        artists:   track.artists,
+        albumArt:  track.albumArt,
+        id:        track.id,
+        duration:  track.duration,
+        positionMs: player.positionMs,
+        paused:    player.paused,
+      }).catch(console.error)
     }
   }, [player.track?.id])
 
@@ -200,6 +214,14 @@ export default function ControlPanel() {
       emit('volume-changed', { volume: player.volume }).catch(console.error)
     }
   }, [player.volume])
+
+  const prevTickRef = useRef({ positionMs: -1, paused: true })
+  useEffect(() => {
+    const prev = prevTickRef.current
+    if (prev.positionMs === player.positionMs && prev.paused === player.paused) return
+    prevTickRef.current = { positionMs: player.positionMs, paused: player.paused }
+    emit('playback-tick', { positionMs: player.positionMs, paused: player.paused }).catch(() => {})
+  }, [player.positionMs, player.paused])
 
   // ── Slideshow interval ────────────────────────────────────────────────────
   useEffect(() => {
@@ -234,7 +256,11 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, clockWeatherVisible: !s.clockWeatherVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather })
+  const toggleLyrics = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, lyricsVisible: !s.lyricsVisible }))
+  }, [])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -246,9 +272,10 @@ export default function ControlPanel() {
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
       if (payload.action === 'clock')    toggleClockWeather()
+      if (payload.action === 'lyrics')   toggleLyrics()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)

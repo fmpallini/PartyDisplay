@@ -113,7 +113,7 @@ Before writing a single line of production code, three validation spikes were ru
 └─────────────────────────────────────────┘
 ```
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · rustfft · Spotify Web Playback SDK · Spotify Web API
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · rustfft · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ipapi.co
 
 ---
 
@@ -231,8 +231,32 @@ The app is functional and in daily use. All core features are implemented. Below
 | `S` | Toggle spectrum analyser |
 | `T` | Toggle track overlay |
 | `B` | Toggle battery icon |
+| `P` | Toggle photo counter |
+| `C` | Toggle clock & weather |
+| `L` | Toggle lyrics |
 | `Esc` | Exit fullscreen |
 | Double-click | Toggle fullscreen |
+
+---
+
+## Credits & open-source dependencies
+
+Party Display is grateful to the following projects and services:
+
+| Name | Role |
+|---|---|
+| [Tauri v2](https://tauri.app) | Desktop app framework (Rust + WebView2) |
+| [Spotify Web Playback SDK](https://developer.spotify.com/documentation/web-playback-sdk) | Spotify Connect device registration and audio playback |
+| [Spotify Web API](https://developer.spotify.com/documentation/web-api) | Playback state, volume, device info |
+| [LRCLIB](https://lrclib.net) | Free, open synchronized lyrics API — no auth required |
+| [Open-Meteo](https://open-meteo.com) | Free weather forecast API — no API key required |
+| [ipapi.co](https://ipapi.co) | IP-based geolocation for weather auto-detect |
+| [cpal](https://github.com/RustAudio/cpal) | Cross-platform audio I/O — WASAPI loopback capture |
+| [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time spectrum analysis |
+| [keyring-rs](https://github.com/hwchen/keyring-rs) | Secure credential storage via Windows Credential Store |
+| [React](https://react.dev) | UI framework |
+| [Vite](https://vitejs.dev) | Frontend build tooling |
+| [TypeScript](https://www.typescriptlang.org) | Type-safe JavaScript |
 
 ---
 

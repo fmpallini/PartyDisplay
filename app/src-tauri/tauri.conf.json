@@ -31,7 +31,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://i.scdn.co data:; frame-src https://sdk.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://ipapi.co; font-src 'self'; object-src 'none'",
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://i.scdn.co data:; frame-src https://sdk.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://ipapi.co https://lrclib.net; font-src 'self'; object-src 'none'",
       "assetProtocol": {
         "enable": true,
         "scope": [

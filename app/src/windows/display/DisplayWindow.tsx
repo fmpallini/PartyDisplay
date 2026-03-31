@@ -15,13 +15,17 @@ import { readDisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import { useWeather } from '../../hooks/useWeather'
 import { ClockWeatherWidget } from '../../components/ClockWeatherWidget'
+import { useLyrics } from '../../hooks/useLyrics'
+import { LyricsOverlay } from '../../components/LyricsOverlay'
+import { LyricsSplitPanel } from '../../components/LyricsSplitPanel'
 
-interface TrackInfo { name: string; artists: string }
+interface TrackInfo { name: string; artists: string; id: string; duration: number }
 
 export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [currentTrack, setCurrentTrack] = useState<TrackInfo | null>(null)
+  const [positionMs,   setPositionMs]   = useState(0)
   const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
   const bins    = useFftData()
   const battery = useBattery()
@@ -55,10 +59,19 @@ export default function DisplayWindow() {
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
-  // Track current song for overlay
+  // Track current song + initial position for overlay and lyrics
   useEffect(() => {
-    const unlisten = listen<TrackInfo>('track-changed', ({ payload }) => {
-      setCurrentTrack(payload)
+    const unlisten = listen<TrackInfo & { positionMs: number }>('track-changed', ({ payload }) => {
+      setCurrentTrack({ name: payload.name, artists: payload.artists, id: payload.id, duration: payload.duration })
+      setPositionMs(payload.positionMs ?? 0)
+    })
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
+  // Playback position tick from control panel (every ~500 ms)
+  useEffect(() => {
+    const unlisten = listen<{ positionMs: number; paused: boolean }>('playback-tick', ({ payload }) => {
+      setPositionMs(payload.positionMs)
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
@@ -81,24 +94,26 @@ export default function DisplayWindow() {
     onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
     onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
     onToggleClockWeather: () => emit('display-hotkey', { action: 'clock'      }).catch(console.error),
+    onToggleLyrics:       () => emit('display-hotkey', { action: 'lyrics'     }).catch(console.error),
   })
+
+  const lyrics = useLyrics(currentTrack, positionMs)
 
   const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
 
-  return (
-    // position: relative so absolutely-positioned overlays anchor to this div
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }} onDoubleClick={handleDoubleClick}>
+  // Split mode: show photo on one side and lyrics panel on the other
+  const isSplitMode = displaySettings.lyricsVisible && displaySettings.lyricsSplit
 
-      {/* Photo fills the entire screen — spectrum overlays on top, never displaces this */}
+  // The photo+overlays pane — used in both normal and split layouts
+  const photoPaneContent = (isSplit: boolean) => (
+    <>
       <SlideshowView
         photos={photos}
         transitionEffect={displaySettings.transitionEffect}
         transitionDurationMs={displaySettings.transitionDurationMs}
         imageFit={displaySettings.imageFit}
+        fillParent={isSplit}
       />
-
-      <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
-      <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
 
       {displaySettings.spectrumVisible && (
         <div style={{
@@ -119,6 +134,15 @@ export default function DisplayWindow() {
         <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
       )}
 
+      {!isSplit && displaySettings.lyricsVisible && lyrics.status !== 'not_found' && lyrics.status !== 'error' && lyrics.status !== 'idle' && (
+        <LyricsOverlay
+          lines={lyrics.lines}
+          currentIndex={lyrics.currentIndex}
+          status={lyrics.status}
+          settings={displaySettings}
+        />
+      )}
+
       <CornerOverlays
         displaySettings={displaySettings}
         currentTrack={currentTrack}
@@ -126,6 +150,43 @@ export default function DisplayWindow() {
         weatherError={weatherError}
         battery={battery}
       />
+    </>
+  )
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }} onDoubleClick={handleDoubleClick}>
+      <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
+      <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
+
+      {isSplitMode ? (
+        // ── Split layout ──────────────────────────────────────────────────
+        <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+          {displaySettings.lyricsSplitSide === 'right' ? (
+            <>
+              <div style={{ position: 'relative', flex: 1, height: '100%', overflow: 'hidden' }}>
+                {photoPaneContent(true)}
+              </div>
+              <div style={{ width: '40%', height: '100%', flexShrink: 0 }}>
+                <LyricsSplitPanel lines={lyrics.lines} currentIndex={lyrics.currentIndex} status={lyrics.status} settings={displaySettings} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ width: '40%', height: '100%', flexShrink: 0 }}>
+                <LyricsSplitPanel lines={lyrics.lines} currentIndex={lyrics.currentIndex} status={lyrics.status} settings={displaySettings} />
+              </div>
+              <div style={{ position: 'relative', flex: 1, height: '100%', overflow: 'hidden' }}>
+                {photoPaneContent(true)}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        // ── Normal full-screen layout ─────────────────────────────────────
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {photoPaneContent(false)}
+        </div>
+      )}
     </div>
   )
 }

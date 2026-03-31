@@ -7,9 +7,10 @@ interface Props {
   transitionEffect:     TransitionEffect
   transitionDurationMs: number
   imageFit:             ImageFit
+  fillParent?:          boolean
 }
 
-export function SlideshowView({ photos, transitionEffect, transitionDurationMs, imageFit }: Props) {
+export function SlideshowView({ photos, transitionEffect, transitionDurationMs, imageFit, fillParent }: Props) {
   const { currentPhoto, previousPhoto, transitioning, activeEffect } =
     useDisplaySync(photos, { transitionEffect, transitionDurationMs })
 
@@ -21,9 +22,13 @@ export function SlideshowView({ photos, transitionEffect, transitionDurationMs, 
 
   const durationSec = `${transitionDurationMs / 1000}s`
 
+  const cs: React.CSSProperties = fillParent
+    ? { ...containerStyle, width: '100%', height: '100%' }
+    : containerStyle
+
   if (!displayPhoto) {
     return (
-      <div style={containerStyle}>
+      <div style={cs}>
         <style>{KEYFRAMES}</style>
         <p style={{ color: '#555', fontFamily: 'monospace' }}>Waiting for photos…</p>
       </div>
@@ -31,7 +36,7 @@ export function SlideshowView({ photos, transitionEffect, transitionDurationMs, 
   }
 
   return (
-    <div style={containerStyle}>
+    <div style={cs}>
       <style>{KEYFRAMES}</style>
 
       {/* Previous photo — animates out */}

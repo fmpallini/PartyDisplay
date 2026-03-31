@@ -44,6 +44,12 @@ export interface DisplaySettings {
   clockWeatherTimeFormat: '12h' | '24h'
   clockWeatherTempUnit:   'celsius' | 'fahrenheit'
   clockWeatherCity:       string
+  lyricsVisible:          boolean
+  lyricsSize:             number
+  lyricsOpacity:          number
+  lyricsPosition:         'center' | 'lower-third'
+  lyricsSplit:            boolean
+  lyricsSplitSide:        'left' | 'right'
 }
 
 export function readDisplaySettings(): DisplaySettings {
@@ -74,6 +80,12 @@ export function readDisplaySettings(): DisplaySettings {
     clockWeatherTimeFormat: (localStorage.getItem('pd_cw_time_format') as '12h' | '24h') ?? '24h',
     clockWeatherTempUnit:   (localStorage.getItem('pd_cw_temp_unit') as 'celsius' | 'fahrenheit') ?? 'celsius',
     clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
+    lyricsVisible:          localStorage.getItem('pd_lyrics_visible') === 'true',
+    lyricsSize:             Number(localStorage.getItem('pd_lyrics_size')    ?? '32'),
+    lyricsOpacity:          Number(localStorage.getItem('pd_lyrics_opacity') ?? '0.9'),
+    lyricsPosition:         (localStorage.getItem('pd_lyrics_position') as 'center' | 'lower-third') ?? 'lower-third',
+    lyricsSplit:            localStorage.getItem('pd_lyrics_split') === 'true',
+    lyricsSplitSide:        (localStorage.getItem('pd_lyrics_split_side') as 'left' | 'right') ?? 'right',
   }
 }
 
@@ -427,6 +439,71 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           />
         </div>
       </div>
+
+      {/* ── Lyrics ────────────────────────────────────────────────────────── */}
+      <p style={subHead}>Lyrics <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(L to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.lyricsVisible}
+          onChange={e => set({ lyricsVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show on display
+      </label>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+        <div>
+          <span style={fieldLabel}>Position</span>
+          <select value={settings.lyricsPosition}
+            onChange={e => set({ lyricsPosition: e.target.value as 'center' | 'lower-third' })}
+            style={selectInput}>
+            <option value="lower-third">Lower third</option>
+            <option value="center">Center</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Font size</span>
+          <label style={inlineRow}>
+            <input type="number" min={16} max={72} step={2}
+              value={settings.lyricsSize}
+              onChange={e => set({ lyricsSize: Math.min(72, Math.max(16, n(e.target.value))) })}
+              style={numInput}
+            /> px
+          </label>
+        </div>
+        <div>
+          <span style={fieldLabel}>Opacity</span>
+          <label style={inlineRow}>
+            <input type="number" min={0.1} max={1} step={0.05}
+              value={settings.lyricsOpacity}
+              onChange={e => set({ lyricsOpacity: Math.min(1, Math.max(0.1, n(e.target.value))) })}
+              style={numInput}
+            />
+          </label>
+        </div>
+      </div>
+
+      <label style={{ ...checkRow, marginTop: 8, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.lyricsSplit}
+          onChange={e => set({ lyricsSplit: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Split view (photo + lyrics side by side)
+      </label>
+
+      {settings.lyricsSplit && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+          <div>
+            <span style={fieldLabel}>Lyrics side</span>
+            <select value={settings.lyricsSplitSide}
+              onChange={e => set({ lyricsSplitSide: e.target.value as 'left' | 'right' })}
+              style={selectInput}>
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </select>
+          </div>
+        </div>
+      )}
 
     </div>
   )

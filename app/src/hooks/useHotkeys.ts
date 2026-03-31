@@ -10,9 +10,10 @@ interface Handlers {
   onToggleBattery?:         () => void
   onTogglePhotoCounter?:    () => void
   onToggleClockWeather?:    () => void
+  onToggleLyrics?:          () => void
 }
 
-export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather }: Handlers) {
+export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics }: Handlers) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       // Don't steal keys when the user is typing in a form element
@@ -29,9 +30,10 @@ export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, on
         case 'b': case 'B': e.preventDefault(); onToggleBattery?.();         break
         case 'p': case 'P': e.preventDefault(); onTogglePhotoCounter?.();    break
         case 'c': case 'C': e.preventDefault(); onToggleClockWeather?.();    break
+        case 'l': case 'L': e.preventDefault(); onToggleLyrics?.();          break
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather])
+  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics])
 }

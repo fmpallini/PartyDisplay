@@ -13,9 +13,24 @@ const HOTKEYS = [
   { key: 'B',         action: 'Toggle battery'            },
   { key: 'P',         action: 'Toggle photo counter'      },
   { key: 'C',         action: 'Toggle clock & weather'    },
+  { key: 'L',         action: 'Toggle lyrics'             },
   { key: 'F',         action: 'Toggle fullscreen'         },
   { key: 'Esc',       action: 'Exit fullscreen'           },
   { key: 'Dbl-click', action: 'Toggle fullscreen'         },
+]
+
+const CREDITS = [
+  { name: 'Tauri v2',                  url: 'https://tauri.app',                        role: 'Desktop app framework (Rust + WebView2)' },
+  { name: 'Spotify Web Playback SDK',  url: 'https://developer.spotify.com/documentation/web-playback-sdk', role: 'Spotify Connect device + playback' },
+  { name: 'Spotify Web API',           url: 'https://developer.spotify.com/documentation/web-api', role: 'Playback state, volume, device info' },
+  { name: 'LRCLIB',                    url: 'https://lrclib.net',                       role: 'Free synchronized lyrics API' },
+  { name: 'Open-Meteo',                url: 'https://open-meteo.com',                   role: 'Free weather forecast API' },
+  { name: 'ipapi.co',                  url: 'https://ipapi.co',                         role: 'IP-based location for weather auto-detect' },
+  { name: 'cpal',                      url: 'https://github.com/RustAudio/cpal',        role: 'Cross-platform audio I/O (WASAPI loopback)' },
+  { name: 'RustFFT',                   url: 'https://github.com/ejmahler/RustFFT',      role: 'FFT for real-time spectrum analysis' },
+  { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },
+  { name: 'React',                     url: 'https://react.dev',                        role: 'UI framework' },
+  { name: 'Vite',                      url: 'https://vitejs.dev',                       role: 'Frontend build tool' },
 ]
 
 export function HelpPanel({ onClose }: Props) {
@@ -97,6 +112,33 @@ export function HelpPanel({ onClose }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Divider */}
+        <div style={{ borderTop: '1px solid #242424' }} />
+
+        {/* Credits */}
+        <div>
+          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#555' }}>
+            Built with
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {CREDITS.map(({ name, url, role }) => (
+              <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <button
+                  onClick={() => open(url).catch(console.error)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    color: '#1db954', fontSize: 12, textAlign: 'left', fontFamily: 'inherit',
+                    fontWeight: 600,
+                  }}
+                >
+                  {name}
+                </button>
+                <span style={{ fontSize: 11, color: '#555', marginLeft: 0 }}>{role}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Divider */}
