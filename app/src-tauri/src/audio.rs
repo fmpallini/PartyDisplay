@@ -1,16 +1,32 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
+
+/// True while a loopback capture thread is running.
+/// compare_exchange prevents a second thread from being spawned if the player
+/// reconnects (player.ready flips false→true more than once in a session).
+/// Reset to false if the stream exits so a future reconnect can restart capture.
+static CAPTURE_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Called from the frontend to start WASAPI loopback capture.
 /// Spawns a thread and returns immediately; capture runs for the app lifetime.
+/// Safe to call multiple times — only the first call per capture session spawns.
 #[tauri::command]
 pub fn start_audio_capture(app: tauri::AppHandle) -> Result<(), String> {
+    if CAPTURE_RUNNING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Ok(()); // Already running — ignore duplicate invocation.
+    }
     std::thread::spawn(move || {
         if let Err(e) = run_loopback(app) {
             eprintln!("Loopback error: {e}");
         }
+        // Reset so a future reconnect can restart capture if the stream dies.
+        CAPTURE_RUNNING.store(false, Ordering::SeqCst);
     });
     Ok(())
 }

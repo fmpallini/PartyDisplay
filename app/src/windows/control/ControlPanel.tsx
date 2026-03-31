@@ -145,8 +145,18 @@ export default function ControlPanel() {
     const photo = library.photos[i]
     advancePhoto(photo, i, library.photos.length).catch(console.error)
     if (config.order === 'alpha' && library.folder) {
-      const raw = localStorage.getItem('pd_last_photo')
-      const map: Record<string, string> = raw ? JSON.parse(raw) : {}
+      let map: Record<string, string> = {}
+      try {
+        const raw = localStorage.getItem('pd_last_photo')
+        if (raw) map = JSON.parse(raw)
+      } catch {
+        // Corrupted localStorage — start fresh rather than crashing.
+      }
+      // Prune to at most 50 folders to prevent unbounded growth.
+      const keys = Object.keys(map)
+      if (keys.length >= 50) {
+        map = Object.fromEntries(keys.slice(-49).map(k => [k, map[k]]))
+      }
       map[library.folder] = photo
       localStorage.setItem('pd_last_photo', JSON.stringify(map))
     }

@@ -28,12 +28,21 @@ interface Props {
 export function ClockWeatherWidget({ timeFormat, position, tempUnit, weather, debugError, embedded }: Props) {
   const [time, setTime] = useState(() => formatTime(new Date(), timeFormat))
 
+  // Clock interval — only restarts when the format changes, not on every weather refresh.
   useEffect(() => {
     function tick() { setTime(formatTime(new Date(), timeFormat)) }
     tick()
     const id = setInterval(tick, 60 * 1000)
     return () => clearInterval(id)
-  }, [timeFormat, weather])
+  }, [timeFormat])
+
+  // Refresh the displayed time immediately when new weather data arrives (e.g. after
+  // a city change) so the clock doesn't lag until the next 60-second tick.
+  useEffect(() => {
+    if (weather) setTime(formatTime(new Date(), timeFormat))
+  // timeFormat is stable here; the interval effect above already handles its changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weather])
 
   const posStyle: React.CSSProperties = embedded ? {} : {
     position: 'absolute',
