@@ -8,7 +8,7 @@
 
 Party Display is a desktop application that registers as a **Spotify Connect device** and shows a fullscreen photo slideshow on a projector or TV, synchronized to the music playing. Think of it as a smart jukebox backdrop — your photos, your playlist, your party.
 
-The app is being built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK** for device registration and audio, **WASAPI loopback** (via Rust) for real-time spectrum visualization, and the **Spotify Audio Analysis API** for beat-synchronized photo transitions.
+The app is built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK** for device registration and playback, **WASAPI loopback** (via Rust) for real-time spectrum visualization, and **LRCLIB** for synchronized lyrics display.
 
 ---
 
@@ -105,7 +105,6 @@ Before writing a single line of production code, three validation spikes were ru
 │  │           Rust Backend             │ │
 │  │                                    │ │
 │  │  WASAPI loopback → FFT → events    │ │
-│  │  Spotify Audio Analysis API        │ │
 │  │  OAuth PKCE + token refresh        │ │
 │  │  Slideshow engine (folder watch)   │ │
 │  │  IPC channels (typed)              │ │
@@ -113,7 +112,7 @@ Before writing a single line of production code, three validation spikes were ru
 └─────────────────────────────────────────┘
 ```
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · rustfft · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ipapi.co
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ipapi.co
 
 ---
 
