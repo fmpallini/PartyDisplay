@@ -40,13 +40,22 @@ export default function DisplayWindow() {
     return () => window.removeEventListener('resize', handler)
   }, [])
 
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
   function handleDoubleClick() {
-    invoke('toggle_display_fullscreen').catch(console.error)
+    const next = !isFullscreen
+    setIsFullscreen(next)
+    invoke('set_display_fullscreen', { fullscreen: next }).catch(console.error)
+    emit('fullscreen-changed', { fullscreen: next }).catch(console.error)
   }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') invoke('exit_display_fullscreen').catch(console.error)
+      if (e.key === 'Escape') {
+        setIsFullscreen(false)
+        invoke('exit_display_fullscreen').catch(console.error)
+        emit('fullscreen-changed', { fullscreen: false }).catch(console.error)
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -108,7 +117,12 @@ export default function DisplayWindow() {
     onTogglePause:        () => emit('display-hotkey', { action: 'pause'      }).catch(console.error),
     onToggleSpectrum:     () => emit('display-hotkey', { action: 'spectrum'   }).catch(console.error),
     onToggleTrackOverlay: () => emit('display-hotkey', { action: 'track'      }).catch(console.error),
-    onToggleFullscreen:   () => invoke('toggle_display_fullscreen').catch(console.error),
+    onToggleFullscreen:   () => {
+      const next = !isFullscreen
+      setIsFullscreen(next)
+      invoke('set_display_fullscreen', { fullscreen: next }).catch(console.error)
+      emit('fullscreen-changed', { fullscreen: next }).catch(console.error)
+    },
     onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
     onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
     onToggleClockWeather: () => emit('display-hotkey', { action: 'clock'      }).catch(console.error),

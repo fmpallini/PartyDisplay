@@ -56,6 +56,14 @@ export function useDisplayWindow() {
     return () => { unlisten.then(fn => fn()) }
   }, [])
 
+  // Keep fullscreen checkbox in sync when toggled from the display window
+  useEffect(() => {
+    const unlisten = listen<{ fullscreen: boolean }>('fullscreen-changed', ({ payload }) => {
+      setFullscreen(payload.fullscreen)
+    })
+    return () => { unlisten.then(fn => fn()) }
+  }, [])
+
   // Apply fullscreen state in real time when the window is already open
   useEffect(() => {
     if (!isOpen) return
