@@ -56,6 +56,12 @@ export function useDisplayWindow() {
     return () => { unlisten.then(fn => fn()) }
   }, [])
 
+  // Apply fullscreen state in real time when the window is already open
+  useEffect(() => {
+    if (!isOpen) return
+    invoke('set_display_fullscreen', { fullscreen }).catch(() => {})
+  }, [fullscreen, isOpen])
+
   const openWindow = useCallback(async (monName?: string, fs?: boolean) => {
     const mon = monName ?? selectedMonitor
     const goFs = fs ?? fullscreen

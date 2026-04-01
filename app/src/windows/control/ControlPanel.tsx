@@ -78,7 +78,7 @@ function readSlideshowConfig(): SlideshowConfig {
   return {
     fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec') ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
     order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
-    subfolders: localStorage.getItem('pd_subfolder') === 'true',
+    subfolders: localStorage.getItem('pd_subfolder') !== null ? localStorage.getItem('pd_subfolder') === 'true' : DEFAULT_SLIDESHOW_CONFIG.subfolders,
   }
 }
 
@@ -93,6 +93,11 @@ export default function ControlPanel() {
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
+
+  // Notify display window whenever slideshow pause state changes
+  useEffect(() => {
+    emit('slideshow-state', { paused: slideshowPaused }).catch(() => {})
+  }, [slideshowPaused])
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [helpOpen, setHelpOpen]               = useState(false)
 
@@ -265,7 +270,13 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, lyricsVisible: !s.lyricsVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics })
+  const musicNext   = useCallback(() => { player.nextTrack()  }, [player.nextTrack])
+  const musicPrev   = useCallback(() => { player.prevTrack()  }, [player.prevTrack])
+  const musicToggle = useCallback(() => { player.togglePlay() }, [player.togglePlay])
+  const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
+  const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -277,10 +288,15 @@ export default function ControlPanel() {
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
       if (payload.action === 'clock')    toggleClockWeather()
-      if (payload.action === 'lyrics')   toggleLyrics()
+      if (payload.action === 'lyrics')        toggleLyrics()
+      if (payload.action === 'music-next')    musicNext()
+      if (payload.action === 'music-prev')    musicPrev()
+      if (payload.action === 'music-toggle')  musicToggle()
+      if (payload.action === 'vol-up')        volumeUp()
+      if (payload.action === 'vol-down')      volumeDown()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)
@@ -425,7 +441,7 @@ export default function ControlPanel() {
           )}
           {!settingsOpen && (
             <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
-              Toasts · Transitions · Spectrum · Battery · Track
+              Toasts · Transitions · Spectrum · Battery · Track · Clock · Lyrics
             </p>
           )}
         </Card>

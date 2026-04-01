@@ -213,6 +213,7 @@ fn main() {
             window_manager::load_display_state,
             window_manager::open_display_window,
             window_manager::close_display_window,
+            window_manager::set_display_fullscreen,
             window_manager::toggle_display_fullscreen,
             window_manager::exit_display_fullscreen,
             system::get_battery_status,

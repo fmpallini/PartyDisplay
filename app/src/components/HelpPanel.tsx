@@ -18,6 +18,9 @@ const HOTKEYS = [
   { key: 'F',         action: 'Toggle fullscreen'         },
   { key: 'Esc',       action: 'Exit fullscreen'           },
   { key: 'Dbl-click', action: 'Toggle fullscreen'         },
+  { key: 'Num 4 / 6', action: 'Previous / next track'    },
+  { key: 'Num 5',     action: 'Play / pause music'        },
+  { key: 'Num + / −', action: 'Volume up / down'          },
 ]
 
 const CREDITS = [

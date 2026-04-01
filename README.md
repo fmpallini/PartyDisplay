@@ -282,6 +282,9 @@ All four corner widgets support independent corner positioning and stack gracefu
 | `L` | Toggle lyrics |
 | `Esc` | Exit fullscreen |
 | Double-click | Toggle fullscreen |
+| `Num 4` / `Num 6` | Previous / next Spotify track |
+| `Num 5` | Play / pause Spotify |
+| `Num +` / `Num −` | Volume up / down |
 
 ---
 

@@ -24,8 +24,9 @@ interface TrackInfo { name: string; artists: string; id: string; duration: numbe
 export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
-  const [currentTrack, setCurrentTrack] = useState<TrackInfo | null>(null)
-  const [positionMs,   setPositionMs]   = useState(0)
+  const [currentTrack,    setCurrentTrack]    = useState<TrackInfo | null>(null)
+  const [positionMs,      setPositionMs]      = useState(0)
+  const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
   const bins    = useFftData()
   const battery = useBattery()
@@ -85,6 +86,14 @@ export default function DisplayWindow() {
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
+  // Slideshow pause state from control panel
+  useEffect(() => {
+    const unlisten = listen<{ paused: boolean }>('slideshow-state', ({ payload }) => {
+      setSlideshowPaused(payload.paused)
+    })
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
   // Track photo index for counter overlay
   useEffect(() => {
     const unlisten = listen<{ photo: string; index: number; total: number }>('photo-advance', ({ payload }) => {
@@ -103,7 +112,12 @@ export default function DisplayWindow() {
     onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
     onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
     onToggleClockWeather: () => emit('display-hotkey', { action: 'clock'      }).catch(console.error),
-    onToggleLyrics:       () => emit('display-hotkey', { action: 'lyrics'     }).catch(console.error),
+    onToggleLyrics:       () => emit('display-hotkey', { action: 'lyrics'       }).catch(console.error),
+    onMusicPrev:          () => emit('display-hotkey', { action: 'music-prev'   }).catch(console.error),
+    onMusicToggle:        () => emit('display-hotkey', { action: 'music-toggle' }).catch(console.error),
+    onMusicNext:          () => emit('display-hotkey', { action: 'music-next'   }).catch(console.error),
+    onVolumeUp:           () => emit('display-hotkey', { action: 'vol-up'       }).catch(console.error),
+    onVolumeDown:         () => emit('display-hotkey', { action: 'vol-down'     }).catch(console.error),
   })
 
   const lyrics = useLyrics(currentTrack, positionMs)
@@ -159,6 +173,25 @@ export default function DisplayWindow() {
         weatherError={weatherError}
         battery={battery}
       />
+
+      {slideshowPaused && (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none', zIndex: 50,
+        }}>
+          <span style={{
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontSize: 28, fontWeight: 700, letterSpacing: 4,
+            color: 'rgba(255,255,255,0.85)',
+            textTransform: 'uppercase',
+            textShadow: '0 2px 16px rgba(0,0,0,0.8)',
+            background: 'rgba(0,0,0,0.45)',
+            padding: '10px 28px', borderRadius: 10,
+          }}>
+            Paused
+          </span>
+        </div>
+      )}
     </>
   )
 
