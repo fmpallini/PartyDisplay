@@ -19,7 +19,7 @@ import { useLyrics } from '../../hooks/useLyrics'
 import { LyricsOverlay } from '../../components/LyricsOverlay'
 import { LyricsSplitPanel } from '../../components/LyricsSplitPanel'
 
-interface TrackInfo { name: string; artists: string; id: string; duration: number; albumArt?: string }
+interface TrackInfo { name: string; artists: string; id: string; duration: number; albumArt: string }
 
 export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
@@ -72,7 +72,7 @@ export default function DisplayWindow() {
   // Track current song + initial position for overlay and lyrics
   useEffect(() => {
     const unlisten = listen<TrackInfo & { positionMs: number }>('track-changed', ({ payload }) => {
-      setCurrentTrack({ name: payload.name, artists: payload.artists, id: payload.id, duration: payload.duration })
+      setCurrentTrack({ name: payload.name, artists: payload.artists, id: payload.id, duration: payload.duration, albumArt: payload.albumArt ?? '' })
       setPositionMs(payload.positionMs ?? 0)
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
