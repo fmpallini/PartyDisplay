@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { safeNum } from '../../lib/utils'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
@@ -74,11 +75,6 @@ const pauseBtn = (paused: boolean): React.CSSProperties => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function safeNum(raw: string | null, fallback: number): number {
-  const n = Number(raw)
-  return raw !== null && !isNaN(n) ? n : fallback
-}
-
 function readSlideshowConfig(): SlideshowConfig {
   return {
     fixedSec:   safeNum(localStorage.getItem('pd_slideshow_fixed_sec'), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
@@ -99,8 +95,10 @@ export default function ControlPanel() {
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
 
-  // Notify display window whenever slideshow pause state changes
+  // Notify display window whenever slideshow pause state changes (skip initial mount)
+  const slideshowMountedRef = useRef(false)
   useEffect(() => {
+    if (!slideshowMountedRef.current) { slideshowMountedRef.current = true; return }
     emit('slideshow-state', { paused: slideshowPaused }).catch(() => {})
   }, [slideshowPaused])
   const [settingsOpen, setSettingsOpen]       = useState(false)

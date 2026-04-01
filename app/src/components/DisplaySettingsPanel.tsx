@@ -1,4 +1,5 @@
 import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
+import { safeNum } from '../lib/utils'
 
 export type { SpectrumTheme, SpectrumStyle }
 
@@ -50,11 +51,6 @@ export interface DisplaySettings {
   lyricsPosition:         'center' | 'lower-third'
   lyricsSplit:            boolean
   lyricsSplitSide:        'left' | 'right'
-}
-
-function safeNum(raw: string | null, fallback: number): number {
-  const n = Number(raw)
-  return raw !== null && !isNaN(n) ? n : fallback
 }
 
 export function readDisplaySettings(): DisplaySettings {

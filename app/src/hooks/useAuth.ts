@@ -84,7 +84,7 @@ export function useAuth() {
         .then(persistTokens)
         .catch(e => setState(s => ({ ...s, loading: false, error: String(e) })))
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   // ── Auto-refresh timer ────────────────────────────────────────────────────

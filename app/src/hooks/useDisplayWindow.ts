@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 
 export interface MonitorInfo {
   name: string
@@ -53,7 +53,7 @@ export function useDisplayWindow() {
   // Keep isOpen in sync when user closes display via native X button
   useEffect(() => {
     const unlisten = listen('display-window-closed', () => setIsOpen(false))
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   // Keep fullscreen checkbox in sync when toggled from the display window
@@ -61,13 +61,15 @@ export function useDisplayWindow() {
     const unlisten = listen<{ fullscreen: boolean }>('fullscreen-changed', ({ payload }) => {
       setFullscreen(payload.fullscreen)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
-  // Apply fullscreen state in real time when the window is already open
+  // Apply fullscreen state in real time when the window is already open;
+  // also emit so DisplayWindow keeps its local toggle state in sync.
   useEffect(() => {
     if (!isOpen) return
     invoke('set_display_fullscreen', { fullscreen }).catch(() => {})
+    emit('fullscreen-changed', { fullscreen }).catch(() => {})
   }, [fullscreen, isOpen])
 
   const openWindow = useCallback(async (monName?: string, fs?: boolean) => {
