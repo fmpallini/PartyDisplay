@@ -6,11 +6,11 @@ export interface WeatherData {
   weatherCode: number   // WMO 4677 code
 }
 
-async function resolveLocation(city: string): Promise<{ lat: number; lon: number; name: string }> {
+async function resolveLocation(city: string, signal: AbortSignal): Promise<{ lat: number; lon: number; name: string }> {
   if (city.trim()) {
     try {
       const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.trim())}&count=1`
-      const res = await fetch(url)
+      const res = await fetch(url, { signal })
       if (!res.ok) throw new Error(`geocoding HTTP ${res.status}`)
       const json = await res.json()
       if (json.results?.length) {
@@ -19,24 +19,33 @@ async function resolveLocation(city: string): Promise<{ lat: number; lon: number
       }
       console.warn('[useWeather] geocoding returned no results, falling back to IP')
     } catch (err) {
+      if ((err as any)?.name === 'AbortError') throw err
       console.warn('[useWeather] geocoding failed, falling back to IP:', err)
     }
   }
   // IP geolocation fallback
-  const res = await fetch('https://ipapi.co/json/')
+  const res = await fetch('https://ipapi.co/json/', { signal })
   if (!res.ok) throw new Error(`ip geolocation HTTP ${res.status}`)
   const json = await res.json()
   if (json.error) throw new Error(`ip geolocation error: ${json.reason}`)
-  return { lat: json.latitude, lon: json.longitude, name: `${json.city}, ${json.country_name}` }
+  const lat = json.latitude
+  const lon = json.longitude
+  const city2 = json.city
+  const country = json.country_name
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !city2 || !country) {
+    throw new Error('ip geolocation response missing required fields')
+  }
+  return { lat, lon, name: `${city2}, ${country}` }
 }
 
 async function fetchWeatherData(
   city: string,
   tempUnit: 'celsius' | 'fahrenheit',
+  signal: AbortSignal,
 ): Promise<WeatherData> {
-  const { lat, lon, name } = await resolveLocation(city)
+  const { lat, lon, name } = await resolveLocation(city, signal)
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=${tempUnit}`
-  const res = await fetch(url)
+  const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`weather fetch HTTP ${res.status}`)
   const json = await res.json()
   return {
@@ -54,16 +63,19 @@ export function useWeather(
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
+    const { signal } = controller
 
     async function doFetch() {
       try {
-        const result = await fetchWeatherData(city, tempUnit)
-        if (!cancelled) { setData(result); setError(null) }
+        const result = await fetchWeatherData(city, tempUnit, signal)
+        setData(result)
+        setError(null)
       } catch (err) {
+        if ((err as any)?.name === 'AbortError') return
         const msg = err instanceof Error ? err.message : String(err)
         console.error('[useWeather] fetch failed:', msg)
-        if (!cancelled) setError(msg)
+        setError(msg)
       }
     }
 
@@ -74,7 +86,7 @@ export function useWeather(
     const id = setInterval(doFetch, 30 * 60 * 1000)
 
     return () => {
-      cancelled = true
+      controller.abort()
       clearInterval(id)
     }
   }, [city, tempUnit])

@@ -52,28 +52,33 @@ export interface DisplaySettings {
   lyricsSplitSide:        'left' | 'right'
 }
 
+function safeNum(raw: string | null, fallback: number): number {
+  const n = Number(raw)
+  return raw !== null && !isNaN(n) ? n : fallback
+}
+
 export function readDisplaySettings(): DisplaySettings {
   return {
-    toastDurationMs:      Number(localStorage.getItem('pd_toast_duration_ms')      ?? '5000'),
-    songZoom:             Number(localStorage.getItem('pd_song_toast_zoom')         ?? '1.7'),
-    volumeZoom:           Number(localStorage.getItem('pd_volume_toast_zoom')       ?? '1.7'),
+    toastDurationMs:      safeNum(localStorage.getItem('pd_toast_duration_ms'),      5000),
+    songZoom:             safeNum(localStorage.getItem('pd_song_toast_zoom'),         1.7),
+    volumeZoom:           safeNum(localStorage.getItem('pd_volume_toast_zoom'),       1.7),
     transitionEffect:     (localStorage.getItem('pd_transition_effect') as TransitionEffect) ?? 'random',
-    transitionDurationMs: Number(localStorage.getItem('pd_transition_duration_ms') ?? '500'),
+    transitionDurationMs: safeNum(localStorage.getItem('pd_transition_duration_ms'), 500),
     imageFit:             (localStorage.getItem('pd_image_fit') as ImageFit)         ?? 'contain',
     spectrumVisible:      localStorage.getItem('pd_spectrum_visible') === 'true',
     spectrumStyle:        (localStorage.getItem('pd_spectrum_style') as SpectrumStyle) ?? 'bars',
     spectrumTheme:        (localStorage.getItem('pd_spectrum_theme') as SpectrumTheme) ?? 'energy',
-    spectrumHeightPct:    Number(localStorage.getItem('pd_spectrum_height_pct') ?? '10'),
+    spectrumHeightPct:    safeNum(localStorage.getItem('pd_spectrum_height_pct'),     10),
     batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
-    batterySize:          Number(localStorage.getItem('pd_battery_size') ?? '36'),
+    batterySize:          safeNum(localStorage.getItem('pd_battery_size'),            36),
     batteryPosition:      (localStorage.getItem('pd_battery_position') as TrackPosition) ?? 'top-right',
     trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
     trackFont:            localStorage.getItem('pd_track_font') ?? 'system-ui',
-    trackFontSize:        Number(localStorage.getItem('pd_track_font_size') ?? '14'),
+    trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         14),
     trackPosition:        (localStorage.getItem('pd_track_position') as TrackPosition) ?? 'top-left',
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
-    trackBgOpacity:       Number(localStorage.getItem('pd_track_bg_opacity') ?? '0.5'),
+    trackBgOpacity:       safeNum(localStorage.getItem('pd_track_bg_opacity'),        0.5),
     photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
     clockWeatherVisible:    localStorage.getItem('pd_cw_visible') !== 'false',
     clockWeatherPosition:   (localStorage.getItem('pd_cw_position') as TrackPosition) ?? 'bottom-left',
@@ -81,8 +86,8 @@ export function readDisplaySettings(): DisplaySettings {
     clockWeatherTempUnit:   (localStorage.getItem('pd_cw_temp_unit') as 'celsius' | 'fahrenheit') ?? 'celsius',
     clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
     lyricsVisible:          localStorage.getItem('pd_lyrics_visible') === 'true',
-    lyricsSize:             Number(localStorage.getItem('pd_lyrics_size')    ?? '32'),
-    lyricsOpacity:          Number(localStorage.getItem('pd_lyrics_opacity') ?? '0.9'),
+    lyricsSize:             safeNum(localStorage.getItem('pd_lyrics_size'),    32),
+    lyricsOpacity:          safeNum(localStorage.getItem('pd_lyrics_opacity'), 0.9),
     lyricsPosition:         (localStorage.getItem('pd_lyrics_position') as 'center' | 'lower-third') ?? 'lower-third',
     lyricsSplit:            localStorage.getItem('pd_lyrics_split') === 'true',
     lyricsSplitSide:        (localStorage.getItem('pd_lyrics_split_side') as 'left' | 'right') ?? 'right',

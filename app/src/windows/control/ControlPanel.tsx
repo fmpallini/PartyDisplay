@@ -74,9 +74,14 @@ const pauseBtn = (paused: boolean): React.CSSProperties => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function safeNum(raw: string | null, fallback: number): number {
+  const n = Number(raw)
+  return raw !== null && !isNaN(n) ? n : fallback
+}
+
 function readSlideshowConfig(): SlideshowConfig {
   return {
-    fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec') ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
+    fixedSec:   safeNum(localStorage.getItem('pd_slideshow_fixed_sec'), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
     order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
     subfolders: localStorage.getItem('pd_subfolder') !== null ? localStorage.getItem('pd_subfolder') === 'true' : DEFAULT_SLIDESHOW_CONFIG.subfolders,
   }

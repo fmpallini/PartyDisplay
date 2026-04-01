@@ -27,8 +27,9 @@ export function useAuth() {
     error: null,
   })
 
-  const verifierRef = useRef<string | null>(null)
-  const stateRef    = useRef<string | null>(null)
+  const verifierRef  = useRef<string | null>(null)
+  const stateRef     = useRef<string | null>(null)
+  const loggedOutRef = useRef(false)
 
   // ── Persist + update state ────────────────────────────────────────────────
 
@@ -94,8 +95,9 @@ export function useAuth() {
     async function doRefresh() {
       try {
         const stored = await invoke<TokenPayload | null>('load_tokens')
-        if (!stored) return
+        if (!stored || loggedOutRef.current) return
         const refreshed = await refreshAccessToken(stored.refresh_token)
+        if (loggedOutRef.current) return
         await persistTokens({ ...refreshed, refresh_token: refreshed.refresh_token ?? stored.refresh_token })
       } catch (e) {
         console.error('Auto-refresh failed:', e)
@@ -130,6 +132,7 @@ export function useAuth() {
   // ── login / logout ────────────────────────────────────────────────────────
 
   const login = useCallback(async () => {
+    loggedOutRef.current = false
     setState(s => ({ ...s, loading: true, error: null }))
     try {
       const { verifier, challenge } = await generatePkce()
@@ -147,6 +150,7 @@ export function useAuth() {
   }, [])
 
   const logout = useCallback(async () => {
+    loggedOutRef.current = true
     await invoke('clear_tokens')
     setState({ authenticated: false, accessToken: null, loading: false, error: null })
   }, [])
