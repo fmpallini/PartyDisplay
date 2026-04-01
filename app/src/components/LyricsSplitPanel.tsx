@@ -51,7 +51,7 @@ export function LyricsSplitPanel({ lines, currentIndex, status, settings }: Prop
     return (
       <div style={panelStyle}>
         <p style={{ color: '#2a2a2a', fontFamily: 'monospace', fontSize: 13, textAlign: 'center' }}>
-          {status === 'not_found' ? 'No lyrics found' : status === 'loading' ? 'Loading…' : '♪'}
+          {status === 'not_found' ? 'No lyrics found' : '♪'}
         </p>
       </div>
     )

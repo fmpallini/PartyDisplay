@@ -19,7 +19,7 @@ import { useLyrics } from '../../hooks/useLyrics'
 import { LyricsOverlay } from '../../components/LyricsOverlay'
 import { LyricsSplitPanel } from '../../components/LyricsSplitPanel'
 
-interface TrackInfo { name: string; artists: string; id: string; duration: number }
+interface TrackInfo { name: string; artists: string; id: string; duration: number; albumArt?: string }
 
 export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
