@@ -183,6 +183,7 @@ export default function DisplayWindow() {
       <CornerOverlays
         displaySettings={displaySettings}
         currentTrack={currentTrack}
+        positionMs={positionMs}
         weather={weather}
         weatherError={weatherError}
         battery={battery}
@@ -249,9 +250,10 @@ export default function DisplayWindow() {
 
 // ── Corner overlays (battery + track + clock, with collision stacking) ────────
 
-function CornerOverlays({ displaySettings, currentTrack, weather, weatherError, battery }: {
+function CornerOverlays({ displaySettings, currentTrack, positionMs, weather, weatherError, battery }: {
   displaySettings: DisplaySettings
   currentTrack: TrackInfo | null
+  positionMs: number
   weather: import('../../hooks/useWeather').WeatherData | null
   weatherError: string | null
   battery: BatteryStatus
@@ -303,7 +305,7 @@ function CornerOverlays({ displaySettings, currentTrack, weather, weatherError, 
                 />
               )
               if (w === 'track') return (
-                <TrackOverlay key="track" track={currentTrack!} settings={displaySettings} embedded />
+                <TrackOverlay key="track" track={currentTrack!} positionMs={positionMs} settings={displaySettings} embedded />
               )
               return null
             })}
@@ -351,7 +353,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; settings: DisplaySettings; embedded?: boolean }) {
+function TrackOverlay({ track, positionMs, settings, embedded }: { track: TrackInfo; positionMs: number; settings: DisplaySettings; embedded?: boolean }) {
   const { trackPosition, trackFont, trackFontSize, trackColor, trackBgColor, trackBgOpacity } = settings
 
   const posStyle: React.CSSProperties = embedded ? {} : {
@@ -361,6 +363,10 @@ function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; setting
     left:   trackPosition.endsWith('left')     ? 20 : undefined,
     right:  trackPosition.endsWith('right')    ? 20 : undefined,
   }
+
+  const progressPct = track.duration > 0
+    ? Math.min(100, (positionMs / track.duration) * 100)
+    : 0
 
   return (
     <div style={{
@@ -381,6 +387,10 @@ function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; setting
     }}>
       <div style={{ fontSize: trackFontSize * 0.65, opacity: 0.8, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artists}</div>
       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.name}</div>
+      {/* Progress bar — bleeds to pill edges via negative margin, clipped by overflow:hidden */}
+      <div style={{ margin: '6px -14px -8px', height: 3, background: hexToRgba(trackColor, 0.2) }}>
+        <div style={{ height: '100%', width: `${progressPct}%`, background: trackColor, transition: 'width 0.5s linear' }} />
+      </div>
     </div>
   )
 }
