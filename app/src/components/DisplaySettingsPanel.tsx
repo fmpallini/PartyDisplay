@@ -84,7 +84,7 @@ export function readDisplaySettings(): DisplaySettings {
     batteryPosition:      safeEnum(localStorage.getItem('pd_battery_position'),      TRACK_POSITION_VALUES,    'top-right'),
     trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
     trackFont:            localStorage.getItem('pd_track_font') ?? 'system-ui',
-    trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         14),
+    trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         18),
     trackPosition:        safeEnum(localStorage.getItem('pd_track_position'),        TRACK_POSITION_VALUES,    'top-left'),
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',

@@ -46,7 +46,9 @@ export function useDisplaySync(
       })
       if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
       setTransitioning(true)
-      transitionTimerRef.current = setTimeout(() => setTransitioning(false), durationRef.current)
+      // +50 ms buffer: ensures the CSS out-animation fully completes before
+      // React removes the previous photo element from the DOM.
+      transitionTimerRef.current = setTimeout(() => setTransitioning(false), durationRef.current + 50)
     })
     return () => {
       unlisten.then(fn => fn())

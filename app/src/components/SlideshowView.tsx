@@ -42,7 +42,7 @@ export function SlideshowView({ photos, transitionEffect, transitionDurationMs, 
       {/* Previous photo — animates out */}
       {previousPhoto && transitioning && (
         <img
-          key={`prev-${previousPhoto}-${Date.now()}`}
+          key={`prev-${previousPhoto}`}
           src={toAssetUrl(previousPhoto)}
           style={{
             ...photoStyle,
