@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import { open } from '@tauri-apps/plugin-shell'
 
 interface Props {
@@ -39,6 +40,9 @@ const CREDITS = [
 
 export function HelpPanel({ onClose }: Props) {
   const [creditsOpen, setCreditsOpen] = useState(false)
+  const [version, setVersion] = useState('')
+
+  useEffect(() => { getVersion().then(setVersion).catch(() => {}) }, [])
 
   function handleReset() {
     const ok = window.confirm(
@@ -72,7 +76,10 @@ export function HelpPanel({ onClose }: Props) {
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ color: '#1db954', fontWeight: 700, fontSize: 15 }}>Party Display</span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+            <span style={{ color: '#1db954', fontWeight: 700, fontSize: 15 }}>Party Display</span>
+            {version && <span style={{ color: '#444', fontSize: 11 }}>v{version}</span>}
+          </span>
           <button
             onClick={onClose}
             style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
