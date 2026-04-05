@@ -3,6 +3,30 @@
 
 use serde::Serialize;
 
+#[derive(Serialize)]
+pub struct IpLocation {
+    pub lat:     f64,
+    pub lon:     f64,
+    pub city:    String,
+    pub country: String,
+}
+
+#[tauri::command]
+pub async fn get_ip_location() -> Result<IpLocation, String> {
+    let resp = reqwest::get("http://ip-api.com/json/")
+        .await
+        .map_err(|e| e.to_string())?;
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    if json["status"].as_str() != Some("success") {
+        return Err(format!("ip geolocation: {}", json["message"].as_str().unwrap_or("unknown")));
+    }
+    let lat     = json["lat"]    .as_f64() .ok_or("missing lat")?;
+    let lon     = json["lon"]    .as_f64() .ok_or("missing lon")?;
+    let city    = json["city"]   .as_str() .ok_or("missing city")?   .to_string();
+    let country = json["country"].as_str() .ok_or("missing country")?.to_string();
+    Ok(IpLocation { lat, lon, city, country })
+}
+
 #[derive(Serialize, Clone)]
 pub struct BatteryStatus {
     pub level:     u8,   // 0–100, or 255 = unknown

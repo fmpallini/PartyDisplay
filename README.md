@@ -159,7 +159,7 @@ Before writing a single line of production code, three validation spikes were ru
 └─────────────────────────────────────────┘
 ```
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ipapi.co
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
 
 ---
 
@@ -297,7 +297,7 @@ All four corner widgets support independent corner positioning and stack gracefu
 | [Spotify Web API](https://developer.spotify.com/documentation/web-api) | Playback state, volume, device info |
 | [LRCLIB](https://lrclib.net) | Free, open synchronized lyrics API — no auth required |
 | [Open-Meteo](https://open-meteo.com) | Free weather forecast API — no API key required |
-| [ipapi.co](https://ipapi.co) | IP-based geolocation for weather auto-detect |
+| [ip-api.com](https://ip-api.com) | IP-based geolocation for weather auto-detect |
 | [cpal](https://github.com/RustAudio/cpal) | Cross-platform audio I/O — WASAPI loopback capture |
 | [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time spectrum analysis |
 | [keyring-rs](https://github.com/hwchen/keyring-rs) | Secure credential storage via Windows Credential Store |

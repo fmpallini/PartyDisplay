@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 
 export interface WeatherData {
   locationName: string
@@ -23,19 +24,9 @@ async function resolveLocation(city: string, signal: AbortSignal): Promise<{ lat
       console.warn('[useWeather] geocoding failed, falling back to IP:', err)
     }
   }
-  // IP geolocation fallback
-  const res = await fetch('https://ipapi.co/json/', { signal })
-  if (!res.ok) throw new Error(`ip geolocation HTTP ${res.status}`)
-  const json = await res.json()
-  if (json.error) throw new Error(`ip geolocation error: ${json.reason}`)
-  const lat = json.latitude
-  const lon = json.longitude
-  const city2 = json.city
-  const country = json.country_name
-  if (typeof lat !== 'number' || typeof lon !== 'number' || !city2 || !country) {
-    throw new Error('ip geolocation response missing required fields')
-  }
-  return { lat, lon, name: `${city2}, ${country}` }
+  // IP geolocation fallback — done via Rust backend to avoid CORS restrictions
+  const loc = await invoke<{ lat: number; lon: number; city: string; country: string }>('get_ip_location')
+  return { lat: loc.lat, lon: loc.lon, name: `${loc.city}, ${loc.country}` }
 }
 
 async function fetchWeatherData(

@@ -29,7 +29,7 @@ const CREDITS = [
   { name: 'Spotify Web API',           url: 'https://developer.spotify.com/documentation/web-api', role: 'Playback state, volume, device info' },
   { name: 'LRCLIB',                    url: 'https://lrclib.net',                       role: 'Free synchronized lyrics API' },
   { name: 'Open-Meteo',                url: 'https://open-meteo.com',                   role: 'Free weather forecast API' },
-  { name: 'ipapi.co',                  url: 'https://ipapi.co',                         role: 'IP-based location for weather auto-detect' },
+  { name: 'ip-api.com',                 url: 'https://ip-api.com',                       role: 'IP-based location for weather auto-detect' },
   { name: 'cpal',                      url: 'https://github.com/RustAudio/cpal',        role: 'Cross-platform audio I/O (WASAPI loopback)' },
   { name: 'RustFFT',                   url: 'https://github.com/ejmahler/RustFFT',      role: 'FFT for real-time spectrum analysis' },
   { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },

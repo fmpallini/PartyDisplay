@@ -217,6 +217,7 @@ fn main() {
             window_manager::toggle_display_fullscreen,
             window_manager::exit_display_fullscreen,
             system::get_battery_status,
+            system::get_ip_location,
             relaunch,
         ])
         .setup(|app| {
