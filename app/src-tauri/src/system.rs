@@ -13,6 +13,9 @@ pub struct IpLocation {
 
 #[tauri::command]
 pub async fn get_ip_location() -> Result<IpLocation, String> {
+    // NOTE: ip-api.com only supports HTTPS on paid plans; the free tier requires plain HTTP.
+    // The response contains approximate location (city/country) derived from IP — not sensitive
+    // enough to warrant a paid upgrade, but worth revisiting if a free HTTPS provider emerges.
     let resp = reqwest::get("http://ip-api.com/json/")
         .await
         .map_err(|e| e.to_string())?;

@@ -22,8 +22,9 @@ pub fn start_audio_capture(app: tauri::AppHandle) -> Result<(), String> {
         return Ok(()); // Already running — ignore duplicate invocation.
     }
     std::thread::spawn(move || {
-        if let Err(e) = run_loopback(app) {
+        if let Err(e) = run_loopback(app.clone()) {
             eprintln!("Loopback error: {e}");
+            let _ = app.emit("audio-capture-error", e.to_string());
         }
         // Reset so a future reconnect can restart capture if the stream dies.
         CAPTURE_RUNNING.store(false, Ordering::SeqCst);
@@ -73,7 +74,7 @@ fn run_loopback(app: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error +
     let stream = device.build_input_stream::<f32, _, _>(
         &stream_config,
         move |data: &[f32], _| {
-            let mut buf = buf_ref.lock().unwrap();
+            let mut buf = buf_ref.lock().unwrap_or_else(|e| e.into_inner());
             for chunk in data.chunks(channels.max(1)) {
                 buf.push(chunk.iter().sum::<f32>() / chunk.len() as f32);
             }

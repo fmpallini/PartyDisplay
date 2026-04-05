@@ -39,10 +39,13 @@ async function fetchWeatherData(
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`weather fetch HTTP ${res.status}`)
   const json = await res.json()
+  const temperature = json.current?.temperature_2m
+  const weatherCode = json.current?.weather_code
+  if (temperature === undefined || temperature === null) throw new Error('Missing temperature in weather response')
   return {
     locationName: name,
-    temperature: json.current.temperature_2m,
-    weatherCode: json.current.weather_code,
+    temperature,
+    weatherCode: weatherCode ?? 0,
   }
 }
 
