@@ -142,7 +142,9 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
             "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
             body.len(), body
         );
-        let _ = stream.write_all(response.as_bytes());
+        if let Err(e) = stream.write_all(response.as_bytes()) {
+            eprintln!("OAuth response write error: {e}");
+        }
 
         #[derive(serde::Serialize, Clone)]
         struct OAuthPayload { code: String, state: String }
@@ -211,9 +213,11 @@ fn main() {
             window_manager::load_display_state,
             window_manager::open_display_window,
             window_manager::close_display_window,
+            window_manager::set_display_fullscreen,
             window_manager::toggle_display_fullscreen,
             window_manager::exit_display_fullscreen,
             system::get_battery_status,
+            system::get_ip_location,
             relaunch,
         ])
         .setup(|app| {

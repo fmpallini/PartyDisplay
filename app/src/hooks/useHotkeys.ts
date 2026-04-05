@@ -10,14 +10,29 @@ interface Handlers {
   onToggleBattery?:         () => void
   onTogglePhotoCounter?:    () => void
   onToggleClockWeather?:    () => void
+  onToggleLyrics?:          () => void
+  onMusicPrev?:             () => void
+  onMusicToggle?:           () => void
+  onMusicNext?:             () => void
+  onVolumeUp?:              () => void
+  onVolumeDown?:            () => void
 }
 
-export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather }: Handlers) {
+export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics, onMusicPrev, onMusicToggle, onMusicNext, onVolumeUp, onVolumeDown }: Handlers) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       // Don't steal keys when the user is typing in a form element
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // Numpad music controls (use e.code to distinguish from number row)
+      switch (e.code) {
+        case 'Numpad4':        e.preventDefault(); onMusicPrev?.();   return
+        case 'Numpad5':        e.preventDefault(); onMusicToggle?.(); return
+        case 'Numpad6':        e.preventDefault(); onMusicNext?.();   return
+        case 'NumpadAdd':      e.preventDefault(); onVolumeUp?.();    return
+        case 'NumpadSubtract': e.preventDefault(); onVolumeDown?.();  return
+      }
 
       switch (e.key) {
         case 'ArrowRight':  e.preventDefault(); onNext();                    break
@@ -29,9 +44,10 @@ export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, on
         case 'b': case 'B': e.preventDefault(); onToggleBattery?.();         break
         case 'p': case 'P': e.preventDefault(); onTogglePhotoCounter?.();    break
         case 'c': case 'C': e.preventDefault(); onToggleClockWeather?.();    break
+        case 'l': case 'L': e.preventDefault(); onToggleLyrics?.();          break
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather])
+  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics, onMusicPrev, onMusicToggle, onMusicNext, onVolumeUp, onVolumeDown])
 }

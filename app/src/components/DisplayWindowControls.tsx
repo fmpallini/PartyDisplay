@@ -37,27 +37,21 @@ export function DisplayWindowControls() {
         </label>
       </div>
 
-      {/* Open / Close / Re-apply row */}
+      {/* Open / Close row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {!isOpen ? (
           <button onClick={() => openWindow()} style={{ ...btnBase, background: '#1db954', color: '#000', fontWeight: 700 }}>
             Open Display
           </button>
         ) : (
-          <>
-            <button onClick={closeWindow} style={{ ...btnBase, background: '#2a2a2a', color: '#aaa', border: '1px solid #333' }}>
-              Close Display
-            </button>
-            <button onClick={() => openWindow()} style={{ ...btnBase, background: 'transparent', color: '#666', border: '1px solid #2a2a2a', fontSize: 11 }}>
-              Re-apply
-            </button>
-          </>
+          <button onClick={closeWindow} style={{ ...btnBase, background: '#2a2a2a', color: '#aaa', border: '1px solid #333' }}>
+            Close Display
+          </button>
         )}
       </div>
 
       {/* Status hints */}
       {monitors.length === 0 && <p style={hint}>Detecting monitors…</p>}
-      {monitors.length === 1 && <p style={hint}>1 monitor — double-click display window to toggle fullscreen</p>}
       {error && <p style={{ ...hint, color: '#e74c3c' }}>{error}</p>}
     </div>
   )

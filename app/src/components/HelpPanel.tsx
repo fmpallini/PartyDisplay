@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-shell'
 
@@ -13,12 +14,32 @@ const HOTKEYS = [
   { key: 'B',         action: 'Toggle battery'            },
   { key: 'P',         action: 'Toggle photo counter'      },
   { key: 'C',         action: 'Toggle clock & weather'    },
+  { key: 'L',         action: 'Toggle lyrics'             },
   { key: 'F',         action: 'Toggle fullscreen'         },
   { key: 'Esc',       action: 'Exit fullscreen'           },
   { key: 'Dbl-click', action: 'Toggle fullscreen'         },
+  { key: 'Num 4 / 6', action: 'Previous / next track'    },
+  { key: 'Num 5',     action: 'Play / pause music'        },
+  { key: 'Num + / −', action: 'Volume up / down'          },
+]
+
+const CREDITS = [
+  { name: 'Tauri v2',                  url: 'https://tauri.app',                        role: 'Desktop app framework (Rust + WebView2)' },
+  { name: 'Spotify Web Playback SDK',  url: 'https://developer.spotify.com/documentation/web-playback-sdk', role: 'Spotify Connect device + playback' },
+  { name: 'Spotify Web API',           url: 'https://developer.spotify.com/documentation/web-api', role: 'Playback state, volume, device info' },
+  { name: 'LRCLIB',                    url: 'https://lrclib.net',                       role: 'Free synchronized lyrics API' },
+  { name: 'Open-Meteo',                url: 'https://open-meteo.com',                   role: 'Free weather forecast API' },
+  { name: 'ip-api.com',                 url: 'https://ip-api.com',                       role: 'IP-based location for weather auto-detect' },
+  { name: 'cpal',                      url: 'https://github.com/RustAudio/cpal',        role: 'Cross-platform audio I/O (WASAPI loopback)' },
+  { name: 'RustFFT',                   url: 'https://github.com/ejmahler/RustFFT',      role: 'FFT for real-time spectrum analysis' },
+  { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },
+  { name: 'React',                     url: 'https://react.dev',                        role: 'UI framework' },
+  { name: 'Vite',                      url: 'https://vitejs.dev',                       role: 'Frontend build tool' },
 ]
 
 export function HelpPanel({ onClose }: Props) {
+  const [creditsOpen, setCreditsOpen] = useState(false)
+
   function handleReset() {
     const ok = window.confirm(
       'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then restart the app.'
@@ -120,6 +141,44 @@ export function HelpPanel({ onClose }: Props) {
           <p style={{ margin: '5px 0 0', fontSize: 10, color: '#444', lineHeight: 1.4 }}>
             Clears all saved settings and Spotify credentials, then relaunches the app.
           </p>
+        </div>
+
+        {/* Divider */}
+        <div style={{ borderTop: '1px solid #242424' }} />
+
+        {/* Credits — collapsible */}
+        <div>
+          <button
+            onClick={() => setCreditsOpen(o => !o)}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 5, width: '100%',
+            }}
+          >
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#555' }}>
+              Built with
+            </span>
+            <span style={{ fontSize: 10, color: '#444', marginLeft: 'auto', transition: 'transform 0.2s', display: 'inline-block', transform: creditsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+          </button>
+          {creditsOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+              {CREDITS.map(({ name, url, role }) => (
+                <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <button
+                    onClick={() => open(url).catch(console.error)}
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      color: '#1db954', fontSize: 12, textAlign: 'left', fontFamily: 'inherit',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {name}
+                  </button>
+                  <span style={{ fontSize: 11, color: '#555' }}>{role}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -8,7 +8,58 @@
 
 Party Display is a desktop application that registers as a **Spotify Connect device** and shows a fullscreen photo slideshow on a projector or TV, synchronized to the music playing. Think of it as a smart jukebox backdrop — your photos, your playlist, your party.
 
-The app is being built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK** for device registration and audio, **WASAPI loopback** (via Rust) for real-time spectrum visualization, and the **Spotify Audio Analysis API** for beat-synchronized photo transitions.
+The app is built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK** for device registration and playback, **WASAPI loopback** (via Rust) for real-time spectrum visualization, and **LRCLIB** for synchronized lyrics display.
+
+---
+
+## Building from source
+
+### Prerequisites
+
+| Requirement | Version | Notes |
+|---|---|---|
+| [Rust](https://rustup.rs) | stable | Install via rustup |
+| [Node.js](https://nodejs.org) | 18+ | npm included |
+| Windows 10/11 | — | WASAPI loopback is Windows-only |
+| [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) | — | Pre-installed on Windows 11; download for Windows 10 |
+
+### 1. Create a Spotify app
+
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new app
+2. In the app settings, add this redirect URI:
+   ```
+   http://127.0.0.1:7357/callback
+   ```
+3. Copy your **Client ID**
+
+### 2. Configure the environment
+
+Create a file at `app/.env.local`:
+
+```
+VITE_SPOTIFY_CLIENT_ID=your_client_id_here
+```
+
+> This file is gitignored and never committed. It is the only configuration required.
+
+### 3. Install dependencies and run
+
+```bash
+cd app
+npm install
+npm run tauri dev
+```
+
+### 4. Build for release
+
+```bash
+cd app
+npm run tauri build
+```
+
+The output binary will be at `app/src-tauri/target/release/party-display.exe`.
+
+> **Note:** The first Rust build takes several minutes — subsequent builds are incremental.
 
 ---
 
@@ -42,7 +93,7 @@ The agent workflow followed the **superpowers skill suite** — `writing-plans` 
 
 Before writing a single line of production code, three validation spikes were run to answer hard questions about the tech stack.
 
-### Spike 1 — Electron + castlabs Widevine (`spike/` — first attempt)
+### Spike 1 — Electron + castlabs Widevine (first attempt)
 
 **Question:** Can the Spotify Web Playback SDK run inside Electron?
 
@@ -56,7 +107,7 @@ Before writing a single line of production code, three validation spikes were ru
 
 ---
 
-### Spike 2 — Browser (Node.js HTTPS + Chrome) (`spike/`)
+### Spike 2 — Browser (Node.js HTTPS + Chrome)
 
 **Question:** Does the SDK work properly in a real browser?
 
@@ -69,7 +120,7 @@ Before writing a single line of production code, three validation spikes were ru
 
 ---
 
-### Spike 3 — Tauri v2 (`spike-tauri/`) ✅
+### Spike 3 — Tauri v2 ✅
 
 **Question:** Does Tauri's WebView2 satisfy Spotify's Widevine DRM? Can Rust capture system audio via WASAPI loopback?
 
@@ -80,13 +131,9 @@ Before writing a single line of production code, three validation spikes were ru
 
 **Decision:** Tauri v2 on Windows is the confirmed foundation.
 
-![Spike 3 — Tauri v2 running on Windows](spike-tauri/spike_tauri_windows.png)
-
-*Live capture: Spotify SDK connected, WASAPI loopback active, spectrum canvas animating — FFT sum 753 non-zero on first run.*
-
 ---
 
-## Architecture (Phase 2)
+## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -105,7 +152,6 @@ Before writing a single line of production code, three validation spikes were ru
 │  │           Rust Backend             │ │
 │  │                                    │ │
 │  │  WASAPI loopback → FFT → events    │ │
-│  │  Spotify Audio Analysis API        │ │
 │  │  OAuth PKCE + token refresh        │ │
 │  │  Slideshow engine (folder watch)   │ │
 │  │  IPC channels (typed)              │ │
@@ -113,7 +159,7 @@ Before writing a single line of production code, three validation spikes were ru
 └─────────────────────────────────────────┘
 ```
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · rustfft · Spotify Web Playback SDK · Spotify Web API
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
 
 ---
 
@@ -121,11 +167,17 @@ Before writing a single line of production code, three validation spikes were ru
 
 ```
 vcup2/
-├── spike/              # Spike 2: browser validation (Node.js + Chrome)
-├── spike-tauri/        # Spike 3: Tauri v2 validation ✅ (confirmed stack)
-├── docs/
-│   └── superpowers/
-│       └── plans/      # Agent-generated implementation plans
+├── app/                        # Production app (Tauri v2)
+│   ├── src/                    # React + TypeScript frontend
+│   │   ├── components/         # UI components
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── lib/                # Spotify auth helpers
+│   │   └── windows/            # Control panel + display window
+│   ├── src-tauri/              # Rust backend
+│   │   └── src/                # main, audio, auth, slideshow, system, window_manager
+│   ├── .env.local              # ← YOU CREATE THIS (gitignored)
+│   └── package.json
+├── CLAUDE.md                   # Notes for Claude Code (version bump instructions etc.)
 └── README.md
 ```
 
@@ -136,70 +188,73 @@ vcup2/
 - [x] Spike 1 — Electron (abandoned)
 - [x] Spike 2 — Browser (validated SDK + found FFT limitation)
 - [x] Spike 3 — Tauri v2 (validated full stack) ✅
-- [x] Phase 2 — Full app implementation (**v0.5 Beta**)
+- [x] Phase 2 — Full app implementation (**v0.6.0**)
 
 ---
 
-## v0.5 Beta — Current state
-
-The app is functional and in daily use. All core features are implemented. Below is a full feature inventory as of this release.
+## v0.6.0 — Current features
 
 ### Spotify integration
 
 - Registers as a **Spotify Connect device** via the Web Playback SDK running inside WebView2
-- Full **OAuth PKCE** flow — browser opens for auth, redirect is caught by a single-instance deep-link handler, tokens stored in the Windows credential store (keyring)
+- Full **OAuth PKCE** flow — browser opens for auth, redirect is caught by a loopback HTTP server on `127.0.0.1:7357`, tokens stored in the Windows credential store (keyring)
 - Automatic **token refresh** — sessions survive app restarts without re-auth
+- On connect, syncs the current Spotify session volume to the control panel slider
 - **Now playing** card: album art, track name, artist, progress bar with seek
 - Transport controls: play/pause, previous, next
 - **Volume** slider with live feedback; volume changes emitted to the display window as toast notifications
 
 ### Photo slideshow
 
-- Folder picker — watches a local folder for images (JPEG/PNG/WebP/GIF)
+- Folder picker — watches a local folder for images (JPEG/PNG/WebP/GIF/BMP/TIFF)
 - Optional **recursive subfolder** scan
 - **Play order**: alphabetical (with resume-from-last across restarts) or shuffle
 - Configurable **fixed display time** per photo (seconds)
-- **8 transition effects**: fade, slide left/right/up/down, zoom in/out, blur — plus a **random** mode that picks a different effect each advance
+- **8 transition effects**: fade, slide left/right/up/down, zoom in/out, blur — plus a **random** mode
 - Configurable **transition duration**
 - **Image fit**: fill (cover/crop) or letterbox (contain)
-- **Keyboard hotkeys** on the display window: `→`/`←` next/prev, `Space` pause/resume, `F` fullscreen, `S` spectrum, `T` track overlay, `B` battery
 
 ### Display window
 
 - Runs in a separate window — intended for a second monitor, projector or TV
-- **Fullscreen** toggle via double-click or Escape to exit
+- **Fullscreen** toggle via double-click or `F`; `Esc` to exit
 - Window position and fullscreen state **persisted** across restarts
 - Position **validated against available monitors** on restore — repositioned to primary if the saved monitor is gone
 - **Screensaver / sleep blocked** via `SetThreadExecutionState` while the display window is open
-- Close button in control panel stays in sync even if the user closes the display window manually
 
 ### Spectrum analyser overlay
 
 - Real-time **WASAPI loopback** audio capture (Rust — no driver install needed)
-- **64-bin FFT** with logarithmic frequency mapping (40 Hz – 16 kHz) — eliminates the empty high-frequency bins that linear mapping produces
-- Exponential smoothing with **fast attack / slow decay** for a polished, flicker-free look
-- Two render styles: **bars** or **lines** (filled gradient area + stroke)
-- Six colour themes: Energy (green→red), Cyan, Fire, White, Rainbow, Purple
-- Configurable **height** as % of screen (default 10%) — true overlay, photo uses full screen underneath
-- Toggled with the `S` hotkey
-- A small **audio indicator** strip is also shown in the control panel Music card
+- **64-bin FFT** with logarithmic frequency mapping (40 Hz – 16 kHz)
+- Exponential smoothing with fast attack / slow decay for a polished look
+- Two render styles: **bars** or **lines**
+- Six colour themes: Energy, Cyan, Fire, White, Rainbow, Purple
+- Configurable height as % of screen; toggled with `S`
 
-### Track overlay
+### Lyrics
 
-- Optional **"artist — title" overlay** on the display window, toggled with `T`
-- Configurable: font family, font size, corner position (top/bottom × left/right), text colour, background colour, background opacity
-- Artist name shown smaller above the track title
+- Synchronized lyrics fetched from **LRCLIB** (free, no API key)
+- **Overlay mode**: 3-line karaoke display (previous / current / next line) — center or lower-third
+- **Split view mode**: photo on one side, full lyrics panel on the other (40/60 split, left or right)
+- Split panel auto-scrolls to keep the current line centered with fade edges
+- Falls back to static plain-text display if only unsynced lyrics are available
+- Toggled with `L`
 
-### Battery widget
+### Corner widgets
 
-- SVG battery icon in the top-right corner of the display window
-- **5-step colour scale**: green → yellow-green → yellow → orange → red
-- Lightning bolt overlay when charging; plug icon on desktops with no battery
-- Configurable size; can be disabled
+All four corner widgets support independent corner positioning and stack gracefully when assigned to the same corner:
+
+- **Track overlay** (`T`) — artist + title pill, configurable font, size, colour, background opacity
+- **Clock & weather** (`C`) — live clock (12h/24h) with current temperature and WMO weather icon; city auto-detected by IP or manually configured; powered by Open-Meteo
+- **Battery** (`B`) — vertical phone-style SVG icon with 5-step colour scale; AC/charging indicator; configurable size
+
+### Photo counter overlay
+
+- `x / y` counter at top-center of the display window, toggled with `P`
 
 ### Song & volume toasts
 
-- **Song changed toast**: album art + track name slides in when the track changes, auto-dismisses
+- **Song changed toast**: album art + track name slides in on track change, auto-dismisses
 - **Volume changed toast**: compact level indicator on volume change
 - Configurable display duration and scale
 
@@ -208,16 +263,7 @@ The app is functional and in daily use. All core features are implemented. Below
 - Card-based layout with sticky header and vertical scroll
 - **Cards**: Music, Slideshow, Display Window, Display Settings (collapsible)
 - All display settings live-synced to the display window without restart
-
-### Help panel
-
-- `?` button in the header opens a modal with: app description, GitHub link, hotkeys reference table
-- **Reset button**: clears all `localStorage` settings + Spotify credentials from the credential store, then relaunches the app — useful for diagnosing unknown issues
-
-### App icon
-
-- Custom icon: gold treble clef on a dark purple/navy gradient canvas with a gold painting frame and colourful paint-splash accents
-- All platform sizes generated (Windows ICO, macOS ICNS, iOS, Android)
+- `?` help button: hotkeys reference, credits, reset option
 
 ---
 
@@ -231,8 +277,33 @@ The app is functional and in daily use. All core features are implemented. Below
 | `S` | Toggle spectrum analyser |
 | `T` | Toggle track overlay |
 | `B` | Toggle battery icon |
+| `P` | Toggle photo counter |
+| `C` | Toggle clock & weather |
+| `L` | Toggle lyrics |
 | `Esc` | Exit fullscreen |
 | Double-click | Toggle fullscreen |
+| `Num 4` / `Num 6` | Previous / next Spotify track |
+| `Num 5` | Play / pause Spotify |
+| `Num +` / `Num −` | Volume up / down |
+
+---
+
+## Credits & open-source dependencies
+
+| Name | Role |
+|---|---|
+| [Tauri v2](https://tauri.app) | Desktop app framework (Rust + WebView2) |
+| [Spotify Web Playback SDK](https://developer.spotify.com/documentation/web-playback-sdk) | Spotify Connect device registration and audio playback |
+| [Spotify Web API](https://developer.spotify.com/documentation/web-api) | Playback state, volume, device info |
+| [LRCLIB](https://lrclib.net) | Free, open synchronized lyrics API — no auth required |
+| [Open-Meteo](https://open-meteo.com) | Free weather forecast API — no API key required |
+| [ip-api.com](https://ip-api.com) | IP-based geolocation for weather auto-detect |
+| [cpal](https://github.com/RustAudio/cpal) | Cross-platform audio I/O — WASAPI loopback capture |
+| [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time spectrum analysis |
+| [keyring-rs](https://github.com/hwchen/keyring-rs) | Secure credential storage via Windows Credential Store |
+| [React](https://react.dev) | UI framework |
+| [Vite](https://vitejs.dev) | Frontend build tooling |
+| [TypeScript](https://www.typescriptlang.org) | Type-safe JavaScript |
 
 ---
 

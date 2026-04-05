@@ -15,13 +15,18 @@ import { readDisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import { useWeather } from '../../hooks/useWeather'
 import { ClockWeatherWidget } from '../../components/ClockWeatherWidget'
+import { useLyrics } from '../../hooks/useLyrics'
+import { LyricsOverlay } from '../../components/LyricsOverlay'
+import { LyricsSplitPanel } from '../../components/LyricsSplitPanel'
 
-interface TrackInfo { name: string; artists: string }
+interface TrackInfo { name: string; artists: string; id: string; duration: number; albumArt: string }
 
 export default function DisplayWindow() {
   const { photos } = usePhotoLibrary({ order: 'shuffle', recursive: false })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
-  const [currentTrack, setCurrentTrack] = useState<TrackInfo | null>(null)
+  const [currentTrack,    setCurrentTrack]    = useState<TrackInfo | null>(null)
+  const [positionMs,      setPositionMs]      = useState(0)
+  const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
   const bins    = useFftData()
   const battery = useBattery()
@@ -35,13 +40,22 @@ export default function DisplayWindow() {
     return () => window.removeEventListener('resize', handler)
   }, [])
 
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
   function handleDoubleClick() {
-    invoke('toggle_display_fullscreen').catch(console.error)
+    const next = !isFullscreen
+    setIsFullscreen(next)
+    invoke('set_display_fullscreen', { fullscreen: next }).catch(console.error)
+    emit('fullscreen-changed', { fullscreen: next }).catch(console.error)
   }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') invoke('exit_display_fullscreen').catch(console.error)
+      if (e.key === 'Escape') {
+        setIsFullscreen(false)
+        invoke('exit_display_fullscreen').catch(console.error)
+        emit('fullscreen-changed', { fullscreen: false }).catch(console.error)
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -55,10 +69,36 @@ export default function DisplayWindow() {
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
-  // Track current song for overlay
+  // Track current song + initial position for overlay and lyrics
   useEffect(() => {
-    const unlisten = listen<TrackInfo>('track-changed', ({ payload }) => {
-      setCurrentTrack(payload)
+    const unlisten = listen<TrackInfo & { positionMs: number }>('track-changed', ({ payload }) => {
+      setCurrentTrack({ name: payload.name, artists: payload.artists, id: payload.id, duration: payload.duration, albumArt: payload.albumArt ?? '' })
+      setPositionMs(payload.positionMs ?? 0)
+    })
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
+  // Clear track overlay and lyrics when user logs out
+  useEffect(() => {
+    const unlisten = listen('track-cleared', () => {
+      setCurrentTrack(null)
+      setPositionMs(0)
+    })
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
+  // Playback position tick from control panel (every ~500 ms)
+  useEffect(() => {
+    const unlisten = listen<{ positionMs: number; paused: boolean }>('playback-tick', ({ payload }) => {
+      setPositionMs(payload.positionMs)
+    })
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
+  // Slideshow pause state from control panel
+  useEffect(() => {
+    const unlisten = listen<{ paused: boolean }>('slideshow-state', ({ payload }) => {
+      setSlideshowPaused(payload.paused)
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
@@ -77,28 +117,40 @@ export default function DisplayWindow() {
     onTogglePause:        () => emit('display-hotkey', { action: 'pause'      }).catch(console.error),
     onToggleSpectrum:     () => emit('display-hotkey', { action: 'spectrum'   }).catch(console.error),
     onToggleTrackOverlay: () => emit('display-hotkey', { action: 'track'      }).catch(console.error),
-    onToggleFullscreen:   () => invoke('toggle_display_fullscreen').catch(console.error),
+    onToggleFullscreen:   () => {
+      const next = !isFullscreen
+      setIsFullscreen(next)
+      invoke('set_display_fullscreen', { fullscreen: next }).catch(console.error)
+      emit('fullscreen-changed', { fullscreen: next }).catch(console.error)
+    },
     onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
     onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
     onToggleClockWeather: () => emit('display-hotkey', { action: 'clock'      }).catch(console.error),
+    onToggleLyrics:       () => emit('display-hotkey', { action: 'lyrics'       }).catch(console.error),
+    onMusicPrev:          () => emit('display-hotkey', { action: 'music-prev'   }).catch(console.error),
+    onMusicToggle:        () => emit('display-hotkey', { action: 'music-toggle' }).catch(console.error),
+    onMusicNext:          () => emit('display-hotkey', { action: 'music-next'   }).catch(console.error),
+    onVolumeUp:           () => emit('display-hotkey', { action: 'vol-up'       }).catch(console.error),
+    onVolumeDown:         () => emit('display-hotkey', { action: 'vol-down'     }).catch(console.error),
   })
+
+  const lyrics = useLyrics(currentTrack, positionMs)
 
   const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
 
-  return (
-    // position: relative so absolutely-positioned overlays anchor to this div
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }} onDoubleClick={handleDoubleClick}>
+  // Split mode: show photo on one side and lyrics panel on the other
+  const isSplitMode = displaySettings.lyricsVisible && displaySettings.lyricsSplit
 
-      {/* Photo fills the entire screen — spectrum overlays on top, never displaces this */}
+  // The photo+overlays pane — used in both normal and split layouts
+  const photoPaneContent = (isSplit: boolean) => (
+    <>
       <SlideshowView
         photos={photos}
         transitionEffect={displaySettings.transitionEffect}
         transitionDurationMs={displaySettings.transitionDurationMs}
         imageFit={displaySettings.imageFit}
+        fillParent={isSplit}
       />
-
-      <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
-      <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
 
       {displaySettings.spectrumVisible && (
         <div style={{
@@ -119,22 +171,89 @@ export default function DisplayWindow() {
         <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
       )}
 
+      {!isSplit && displaySettings.lyricsVisible && lyrics.status !== 'not_found' && lyrics.status !== 'error' && lyrics.status !== 'idle' && (
+        <LyricsOverlay
+          lines={lyrics.lines}
+          currentIndex={lyrics.currentIndex}
+          status={lyrics.status}
+          settings={displaySettings}
+        />
+      )}
+
       <CornerOverlays
         displaySettings={displaySettings}
         currentTrack={currentTrack}
+        positionMs={positionMs}
         weather={weather}
         weatherError={weatherError}
         battery={battery}
       />
+
+      {slideshowPaused && (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none', zIndex: 50,
+        }}>
+          <span style={{
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontSize: 28, fontWeight: 700, letterSpacing: 4,
+            color: 'rgba(255,255,255,0.85)',
+            textTransform: 'uppercase',
+            textShadow: '0 2px 16px rgba(0,0,0,0.8)',
+            background: 'rgba(0,0,0,0.45)',
+            padding: '10px 28px', borderRadius: 10,
+          }}>
+            Paused
+          </span>
+        </div>
+      )}
+    </>
+  )
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }} onDoubleClick={handleDoubleClick}>
+      <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
+      <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
+
+      {isSplitMode ? (
+        // ── Split layout ──────────────────────────────────────────────────
+        <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+          {displaySettings.lyricsSplitSide === 'right' ? (
+            <>
+              <div style={{ position: 'relative', flex: 1, height: '100%', overflow: 'hidden' }}>
+                {photoPaneContent(true)}
+              </div>
+              <div style={{ width: '40%', height: '100%', flexShrink: 0 }}>
+                <LyricsSplitPanel lines={lyrics.lines} currentIndex={lyrics.currentIndex} status={lyrics.status} settings={displaySettings} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ width: '40%', height: '100%', flexShrink: 0 }}>
+                <LyricsSplitPanel lines={lyrics.lines} currentIndex={lyrics.currentIndex} status={lyrics.status} settings={displaySettings} />
+              </div>
+              <div style={{ position: 'relative', flex: 1, height: '100%', overflow: 'hidden' }}>
+                {photoPaneContent(true)}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        // ── Normal full-screen layout ─────────────────────────────────────
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {photoPaneContent(false)}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Corner overlays (battery + track + clock, with collision stacking) ────────
 
-function CornerOverlays({ displaySettings, currentTrack, weather, weatherError, battery }: {
+function CornerOverlays({ displaySettings, currentTrack, positionMs, weather, weatherError, battery }: {
   displaySettings: DisplaySettings
   currentTrack: TrackInfo | null
+  positionMs: number
   weather: import('../../hooks/useWeather').WeatherData | null
   weatherError: string | null
   battery: BatteryStatus
@@ -186,7 +305,7 @@ function CornerOverlays({ displaySettings, currentTrack, weather, weatherError, 
                 />
               )
               if (w === 'track') return (
-                <TrackOverlay key="track" track={currentTrack!} settings={displaySettings} embedded />
+                <TrackOverlay key="track" track={currentTrack!} positionMs={positionMs} settings={displaySettings} embedded />
               )
               return null
             })}
@@ -234,7 +353,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; settings: DisplaySettings; embedded?: boolean }) {
+function TrackOverlay({ track, positionMs, settings, embedded }: { track: TrackInfo; positionMs: number; settings: DisplaySettings; embedded?: boolean }) {
   const { trackPosition, trackFont, trackFontSize, trackColor, trackBgColor, trackBgOpacity } = settings
 
   const posStyle: React.CSSProperties = embedded ? {} : {
@@ -244,6 +363,10 @@ function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; setting
     left:   trackPosition.endsWith('left')     ? 20 : undefined,
     right:  trackPosition.endsWith('right')    ? 20 : undefined,
   }
+
+  const progressPct = track.duration > 0
+    ? Math.min(100, (positionMs / track.duration) * 100)
+    : 0
 
   return (
     <div style={{
@@ -264,6 +387,10 @@ function TrackOverlay({ track, settings, embedded }: { track: TrackInfo; setting
     }}>
       <div style={{ fontSize: trackFontSize * 0.65, opacity: 0.8, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artists}</div>
       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.name}</div>
+      {/* Progress bar — bleeds to pill edges via negative margin, clipped by overflow:hidden */}
+      <div style={{ margin: '6px -14px -8px', height: 3, background: hexToRgba(trackColor, 0.2) }}>
+        <div style={{ height: '100%', width: `${progressPct}%`, background: trackColor, transition: 'width 0.5s linear' }} />
+      </div>
     </div>
   )
 }

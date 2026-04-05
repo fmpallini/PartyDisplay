@@ -59,7 +59,7 @@ export function SongToast({ displayMs, zoom }: Props) {
           style={{ width: 52, height: 52, borderRadius: 6, flexShrink: 0, objectFit: 'cover' }}
         />
       )}
-      <div style={{ overflow: 'hidden' }}>
+      <div style={{ overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         <div style={{
           color: '#fff', fontWeight: 700, fontSize: 14,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',

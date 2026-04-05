@@ -1,0 +1,2 @@
+If the user asks you to do a **release** or a **build**, read the full procedure at:
+[`docs/docs for release/RELEASE_GUIDELINES.md`](docs/docs%20for%20release/RELEASE_GUIDELINES.md) and follow it exactly.

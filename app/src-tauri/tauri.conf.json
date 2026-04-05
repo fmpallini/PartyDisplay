@@ -1,6 +1,6 @@
 {
   "productName": "Party Display",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "identifier": "com.partydisplay.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -31,7 +31,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://i.scdn.co data:; frame-src https://sdk.scdn.co; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://ipapi.co; font-src 'self'; object-src 'none'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://asset.localhost https://i.scdn.co data:; frame-src https://sdk.scdn.co; connect-src 'self' ipc: http://ipc.localhost https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://lrclib.net; font-src 'self'; object-src 'none'",
+      "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
         "scope": [

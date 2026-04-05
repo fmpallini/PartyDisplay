@@ -1,4 +1,5 @@
 import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
+import { safeNum } from '../lib/utils'
 
 export type { SpectrumTheme, SpectrumStyle }
 
@@ -44,36 +45,62 @@ export interface DisplaySettings {
   clockWeatherTimeFormat: '12h' | '24h'
   clockWeatherTempUnit:   'celsius' | 'fahrenheit'
   clockWeatherCity:       string
+  lyricsVisible:          boolean
+  lyricsSize:             number
+  lyricsOpacity:          number
+  lyricsPosition:         'center' | 'lower-third'
+  lyricsSplit:            boolean
+  lyricsSplitSide:        'left' | 'right'
 }
+
+function safeEnum<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback
+}
+
+const TRANSITION_EFFECT_VALUES = ['fade','slide-left','slide-right','slide-up','slide-down','zoom-in','zoom-out','blur','random'] as const
+const IMAGE_FIT_VALUES          = ['cover', 'contain'] as const
+const SPECTRUM_STYLE_VALUES     = ['bars', 'lines'] as const
+const SPECTRUM_THEME_VALUES     = ['energy', 'cyan', 'fire', 'white', 'rainbow', 'purple'] as const
+const TRACK_POSITION_VALUES     = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
+const TIME_FORMAT_VALUES        = ['12h', '24h'] as const
+const TEMP_UNIT_VALUES          = ['celsius', 'fahrenheit'] as const
+const LYRICS_POSITION_VALUES    = ['center', 'lower-third'] as const
+const LYRICS_SIDE_VALUES        = ['left', 'right'] as const
 
 export function readDisplaySettings(): DisplaySettings {
   return {
-    toastDurationMs:      Number(localStorage.getItem('pd_toast_duration_ms')      ?? '5000'),
-    songZoom:             Number(localStorage.getItem('pd_song_toast_zoom')         ?? '1.7'),
-    volumeZoom:           Number(localStorage.getItem('pd_volume_toast_zoom')       ?? '1.7'),
-    transitionEffect:     (localStorage.getItem('pd_transition_effect') as TransitionEffect) ?? 'random',
-    transitionDurationMs: Number(localStorage.getItem('pd_transition_duration_ms') ?? '500'),
-    imageFit:             (localStorage.getItem('pd_image_fit') as ImageFit)         ?? 'contain',
+    toastDurationMs:      safeNum(localStorage.getItem('pd_toast_duration_ms'),      5000),
+    songZoom:             safeNum(localStorage.getItem('pd_song_toast_zoom'),         1.7),
+    volumeZoom:           safeNum(localStorage.getItem('pd_volume_toast_zoom'),       1.7),
+    transitionEffect:     safeEnum(localStorage.getItem('pd_transition_effect'),     TRANSITION_EFFECT_VALUES, 'random'),
+    transitionDurationMs: safeNum(localStorage.getItem('pd_transition_duration_ms'), 500),
+    imageFit:             safeEnum(localStorage.getItem('pd_image_fit'),             IMAGE_FIT_VALUES,         'contain'),
     spectrumVisible:      localStorage.getItem('pd_spectrum_visible') === 'true',
-    spectrumStyle:        (localStorage.getItem('pd_spectrum_style') as SpectrumStyle) ?? 'bars',
-    spectrumTheme:        (localStorage.getItem('pd_spectrum_theme') as SpectrumTheme) ?? 'energy',
-    spectrumHeightPct:    Number(localStorage.getItem('pd_spectrum_height_pct') ?? '10'),
+    spectrumStyle:        safeEnum(localStorage.getItem('pd_spectrum_style'),        SPECTRUM_STYLE_VALUES,    'bars'),
+    spectrumTheme:        safeEnum(localStorage.getItem('pd_spectrum_theme'),        SPECTRUM_THEME_VALUES,    'energy'),
+    spectrumHeightPct:    safeNum(localStorage.getItem('pd_spectrum_height_pct'),     10),
     batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
-    batterySize:          Number(localStorage.getItem('pd_battery_size') ?? '36'),
-    batteryPosition:      (localStorage.getItem('pd_battery_position') as TrackPosition) ?? 'top-right',
+    batterySize:          safeNum(localStorage.getItem('pd_battery_size'),            36),
+    batteryPosition:      safeEnum(localStorage.getItem('pd_battery_position'),      TRACK_POSITION_VALUES,    'top-right'),
     trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
     trackFont:            localStorage.getItem('pd_track_font') ?? 'system-ui',
-    trackFontSize:        Number(localStorage.getItem('pd_track_font_size') ?? '14'),
-    trackPosition:        (localStorage.getItem('pd_track_position') as TrackPosition) ?? 'top-left',
+    trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         18),
+    trackPosition:        safeEnum(localStorage.getItem('pd_track_position'),        TRACK_POSITION_VALUES,    'top-left'),
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
-    trackBgOpacity:       Number(localStorage.getItem('pd_track_bg_opacity') ?? '0.5'),
+    trackBgOpacity:       safeNum(localStorage.getItem('pd_track_bg_opacity'),        0.5),
     photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
     clockWeatherVisible:    localStorage.getItem('pd_cw_visible') !== 'false',
-    clockWeatherPosition:   (localStorage.getItem('pd_cw_position') as TrackPosition) ?? 'bottom-left',
-    clockWeatherTimeFormat: (localStorage.getItem('pd_cw_time_format') as '12h' | '24h') ?? '24h',
-    clockWeatherTempUnit:   (localStorage.getItem('pd_cw_temp_unit') as 'celsius' | 'fahrenheit') ?? 'celsius',
+    clockWeatherPosition:   safeEnum(localStorage.getItem('pd_cw_position'),         TRACK_POSITION_VALUES,    'bottom-left'),
+    clockWeatherTimeFormat: safeEnum(localStorage.getItem('pd_cw_time_format'),      TIME_FORMAT_VALUES,       '24h'),
+    clockWeatherTempUnit:   safeEnum(localStorage.getItem('pd_cw_temp_unit'),        TEMP_UNIT_VALUES,         'celsius'),
     clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
+    lyricsVisible:          localStorage.getItem('pd_lyrics_visible') === 'true',
+    lyricsSize:             safeNum(localStorage.getItem('pd_lyrics_size'),    32),
+    lyricsOpacity:          safeNum(localStorage.getItem('pd_lyrics_opacity'), 0.9),
+    lyricsPosition:         safeEnum(localStorage.getItem('pd_lyrics_position'),     LYRICS_POSITION_VALUES,   'lower-third'),
+    lyricsSplit:            localStorage.getItem('pd_lyrics_split') === 'true',
+    lyricsSplitSide:        safeEnum(localStorage.getItem('pd_lyrics_split_side'),   LYRICS_SIDE_VALUES,       'right'),
   }
 }
 
@@ -427,6 +454,71 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           />
         </div>
       </div>
+
+      {/* ── Lyrics ────────────────────────────────────────────────────────── */}
+      <p style={subHead}>Lyrics <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(L to toggle)</span></p>
+
+      <label style={{ ...checkRow, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.lyricsVisible}
+          onChange={e => set({ lyricsVisible: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Show on display
+      </label>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+        <div>
+          <span style={fieldLabel}>Position</span>
+          <select value={settings.lyricsPosition}
+            onChange={e => set({ lyricsPosition: e.target.value as 'center' | 'lower-third' })}
+            style={selectInput}>
+            <option value="lower-third">Lower third</option>
+            <option value="center">Center</option>
+          </select>
+        </div>
+        <div>
+          <span style={fieldLabel}>Font size</span>
+          <label style={inlineRow}>
+            <input type="number" min={16} max={72} step={2}
+              value={settings.lyricsSize}
+              onChange={e => set({ lyricsSize: Math.min(72, Math.max(16, n(e.target.value))) })}
+              style={numInput}
+            /> px
+          </label>
+        </div>
+        <div>
+          <span style={fieldLabel}>Opacity</span>
+          <label style={inlineRow}>
+            <input type="number" min={0.1} max={1} step={0.05}
+              value={settings.lyricsOpacity}
+              onChange={e => set({ lyricsOpacity: Math.min(1, Math.max(0.1, n(e.target.value))) })}
+              style={numInput}
+            />
+          </label>
+        </div>
+      </div>
+
+      <label style={{ ...checkRow, marginTop: 8, marginBottom: 8 }}>
+        <input type="checkbox" checked={settings.lyricsSplit}
+          onChange={e => set({ lyricsSplit: e.target.checked })}
+          style={{ accentColor: '#1db954', cursor: 'pointer' }}
+        />
+        Split view (photo + lyrics side by side)
+      </label>
+
+      {settings.lyricsSplit && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+          <div>
+            <span style={fieldLabel}>Lyrics side</span>
+            <select value={settings.lyricsSplitSide}
+              onChange={e => set({ lyricsSplitSide: e.target.value as 'left' | 'right' })}
+              style={selectInput}>
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </select>
+          </div>
+        </div>
+      )}
 
     </div>
   )

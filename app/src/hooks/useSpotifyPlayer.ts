@@ -94,7 +94,7 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
             id:       t.id,
             name:     t.name,
             artists:  t.artists.map(a => a.name).join(', '),
-            albumArt: t.album.images[0]?.url ?? '',
+            albumArt: t.album?.images?.[0]?.url ?? '',
             duration: (t as any).duration_ms ?? 0,
           },
         }))

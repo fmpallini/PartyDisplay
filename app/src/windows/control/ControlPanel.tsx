@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { safeNum } from '../../lib/utils'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
@@ -76,9 +77,9 @@ const pauseBtn = (paused: boolean): React.CSSProperties => ({
 
 function readSlideshowConfig(): SlideshowConfig {
   return {
-    fixedSec:   Number(localStorage.getItem('pd_slideshow_fixed_sec') ?? DEFAULT_SLIDESHOW_CONFIG.fixedSec),
+    fixedSec:   safeNum(localStorage.getItem('pd_slideshow_fixed_sec'), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
     order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
-    subfolders: localStorage.getItem('pd_subfolder') === 'true',
+    subfolders: localStorage.getItem('pd_subfolder') !== null ? localStorage.getItem('pd_subfolder') === 'true' : DEFAULT_SLIDESHOW_CONFIG.subfolders,
   }
 }
 
@@ -93,6 +94,13 @@ export default function ControlPanel() {
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
+
+  // Notify display window whenever slideshow pause state changes (skip initial mount)
+  const slideshowMountedRef = useRef(false)
+  useEffect(() => {
+    if (!slideshowMountedRef.current) { slideshowMountedRef.current = true; return }
+    emit('slideshow-state', { paused: slideshowPaused }).catch(() => {})
+  }, [slideshowPaused])
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [helpOpen, setHelpOpen]               = useState(false)
 
@@ -125,6 +133,12 @@ export default function ControlPanel() {
     localStorage.setItem('pd_cw_time_format',          displaySettings.clockWeatherTimeFormat)
     localStorage.setItem('pd_cw_temp_unit',            displaySettings.clockWeatherTempUnit)
     localStorage.setItem('pd_cw_city',                 displaySettings.clockWeatherCity)
+    localStorage.setItem('pd_lyrics_visible',          String(displaySettings.lyricsVisible))
+    localStorage.setItem('pd_lyrics_size',             String(displaySettings.lyricsSize))
+    localStorage.setItem('pd_lyrics_opacity',          String(displaySettings.lyricsOpacity))
+    localStorage.setItem('pd_lyrics_position',         displaySettings.lyricsPosition)
+    localStorage.setItem('pd_lyrics_split',            String(displaySettings.lyricsSplit))
+    localStorage.setItem('pd_lyrics_split_side',       displaySettings.lyricsSplitSide)
     emit('display-settings-changed', displaySettings).catch(console.error)
   }, [displaySettings])
 
@@ -187,9 +201,22 @@ export default function ControlPanel() {
   const prevTrackIdRef = useRef<string | null>(null)
   useEffect(() => {
     const track = player.track
+    if (!track && prevTrackIdRef.current !== null) {
+      prevTrackIdRef.current = null
+      emit('track-cleared', {}).catch(console.error)
+      return
+    }
     if (track && track.id !== prevTrackIdRef.current) {
       prevTrackIdRef.current = track.id
-      emit('track-changed', { name: track.name, artists: track.artists, albumArt: track.albumArt }).catch(console.error)
+      emit('track-changed', {
+        name:      track.name,
+        artists:   track.artists,
+        albumArt:  track.albumArt,
+        id:        track.id,
+        duration:  track.duration,
+        positionMs: player.positionMs,
+        paused:    player.paused,
+      }).catch(console.error)
     }
   }, [player.track?.id])
 
@@ -200,6 +227,14 @@ export default function ControlPanel() {
       emit('volume-changed', { volume: player.volume }).catch(console.error)
     }
   }, [player.volume])
+
+  const prevTickRef = useRef({ positionMs: -1, paused: true })
+  useEffect(() => {
+    const prev = prevTickRef.current
+    if (prev.positionMs === player.positionMs && prev.paused === player.paused) return
+    prevTickRef.current = { positionMs: player.positionMs, paused: player.paused }
+    emit('playback-tick', { positionMs: player.positionMs, paused: player.paused }).catch(() => {})
+  }, [player.positionMs, player.paused])
 
   // ── Slideshow interval ────────────────────────────────────────────────────
   useEffect(() => {
@@ -234,7 +269,17 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, clockWeatherVisible: !s.clockWeatherVisible }))
   }, [])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather })
+  const toggleLyrics = useCallback(() => {
+    setDisplaySettings(s => ({ ...s, lyricsVisible: !s.lyricsVisible }))
+  }, [])
+
+  const musicNext   = useCallback(() => { player.nextTrack()  }, [player.nextTrack])
+  const musicPrev   = useCallback(() => { player.prevTrack()  }, [player.prevTrack])
+  const musicToggle = useCallback(() => { player.togglePlay() }, [player.togglePlay])
+  const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
+  const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
+
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -246,9 +291,15 @@ export default function ControlPanel() {
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
       if (payload.action === 'clock')    toggleClockWeather()
+      if (payload.action === 'lyrics')        toggleLyrics()
+      if (payload.action === 'music-next')    musicNext()
+      if (payload.action === 'music-prev')    musicPrev()
+      if (payload.action === 'music-toggle')  musicToggle()
+      if (payload.action === 'vol-up')        volumeUp()
+      if (payload.action === 'vol-down')      volumeDown()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather])
+  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // ── Render ────────────────────────────────────────────────────────────────
   const hasErrors = !!(authError || player.error || captureError)
@@ -393,7 +444,7 @@ export default function ControlPanel() {
           )}
           {!settingsOpen && (
             <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
-              Toasts · Transitions · Spectrum · Battery · Track
+              Toasts · Transitions · Spectrum · Battery · Track · Clock · Lyrics
             </p>
           )}
         </Card>

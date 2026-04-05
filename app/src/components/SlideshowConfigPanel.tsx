@@ -6,8 +6,8 @@ export interface SlideshowConfig {
 
 export const DEFAULT_SLIDESHOW_CONFIG: SlideshowConfig = {
   fixedSec:   5,
-  order:      'shuffle',
-  subfolders: false,
+  order:      'alpha',
+  subfolders: true,
 }
 
 interface Props {
