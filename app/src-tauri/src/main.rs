@@ -2,6 +2,7 @@
 
 mod auth;
 mod audio;
+mod local_audio;
 mod slideshow;
 mod system;
 mod window_manager;
@@ -218,6 +219,7 @@ fn main() {
             window_manager::exit_display_fullscreen,
             system::get_battery_status,
             system::get_ip_location,
+            local_audio::scan_audio_folder,
             relaunch,
         ])
         .setup(|app| {
