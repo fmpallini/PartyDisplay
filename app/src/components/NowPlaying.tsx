@@ -12,7 +12,7 @@ export default function NowPlaying({ track, paused }: Props) {
       )}
       <div>
         <p style={{ margin: 0, fontWeight: 'bold', color: '#eee', fontSize: 14 }}>
-          {paused ? '⏸' : '▶'} {track.name}
+          {track.name}
         </p>
         <p style={{ margin: 0, color: '#aaa', fontSize: 12 }}>{track.artists}</p>
       </div>
