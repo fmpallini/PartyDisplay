@@ -1,31 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 
-export interface TrackInfo {
-  id:       string
-  name:     string
-  artists:  string
-  albumArt: string
-  duration: number  // ms
-}
-
-export interface PlayerState {
-  ready:      boolean
-  deviceId:   string | null
-  track:      TrackInfo | null
-  paused:     boolean
-  positionMs: number
-  volume:     number   // 0–1
-  error:      string | null
-}
-
-export interface PlayerControls {
-  togglePlay: () => void
-  nextTrack:  () => void
-  prevTrack:  () => void
-  seek:       (ms: number) => void
-  setVolume:  (v: number) => void
-}
+export type { TrackInfo, PlayerState, PlayerControls } from '../lib/player-types'
+import type { PlayerState, PlayerControls } from '../lib/player-types'
 
 export function useSpotifyPlayer(accessToken: string | null): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>({

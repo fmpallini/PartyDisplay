@@ -2,7 +2,7 @@ import type { TrackInfo } from '../hooks/useSpotifyPlayer'
 
 interface Props { track: TrackInfo | null; paused: boolean }
 
-export default function NowPlaying({ track, paused }: Props) {
+export default function NowPlaying({ track, paused: _paused }: Props) {
   if (!track) return <p style={{ color: '#666', fontSize: 13 }}>No track playing — open Spotify and select this device.</p>
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { TrackInfo } from './useSpotifyPlayer'
+import type { TrackInfo } from '../lib/player-types'
 
 export interface LyricLine {
   timeMs: number
