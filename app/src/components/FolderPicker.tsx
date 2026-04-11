@@ -1,14 +1,16 @@
 import { open } from '@tauri-apps/plugin-dialog'
 
 interface Props {
-  folder:     string | null
-  photoCount: number
-  onPick:     (folder: string) => void
+  folder:       string | null
+  photoCount:   number
+  onPick:       (folder: string) => void
+  itemLabel?:   string   // default: 'photo'
+  dialogTitle?: string   // default: 'Select photo folder'
 }
 
-export function FolderPicker({ folder, photoCount, onPick }: Props) {
+export function FolderPicker({ folder, photoCount, onPick, itemLabel = 'photo', dialogTitle = 'Select photo folder' }: Props) {
   async function handleClick() {
-    const selected = await open({ directory: true, multiple: false, title: 'Select photo folder' })
+    const selected = await open({ directory: true, multiple: false, title: dialogTitle })
     if (typeof selected === 'string' && selected) onPick(selected)
   }
 
@@ -25,7 +27,7 @@ export function FolderPicker({ folder, photoCount, onPick }: Props) {
         </button>
         {folder && (
           <span style={{ color: '#1db954', fontWeight: 600, fontSize: 12 }}>
-            {photoCount} photo{photoCount !== 1 ? 's' : ''}
+            {photoCount} {itemLabel}{photoCount !== 1 ? 's' : ''}
           </span>
         )}
       </div>
