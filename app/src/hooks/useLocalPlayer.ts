@@ -1,21 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { parseBlob } from 'music-metadata'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
-
-/** Convert an absolute file path to a Tauri asset:// URL. */
-function pathToAssetUrl(filePath: string): string {
-  return (
-    'asset://localhost/' +
-    filePath
-      .replace(/\\/g, '/')
-      .split('/')
-      .map((seg, i) =>
-        // Preserve Windows drive letter (e.g. "C:") as-is; encode everything else
-        i === 0 && /^[a-zA-Z]:$/.test(seg) ? seg : encodeURIComponent(seg)
-      )
-      .join('/')
-  )
-}
 
 /** Extract the filename without extension from a path. Used as a title fallback. */
 function stemFromPath(filePath: string): string {
@@ -54,7 +40,7 @@ export function useLocalPlayer(
     const i = ((idx % playlist.length) + playlist.length) % playlist.length
     indexRef.current = i
     const path = playlist[i]
-    audioRef.current.src = pathToAssetUrl(path)
+    audioRef.current.src = convertFileSrc(path)
     audioRef.current.load()
     if (autoPlay) audioRef.current.play().catch(() => {})
   }, [playlist])
@@ -65,7 +51,7 @@ export function useLocalPlayer(
 
     const onLoadedMetadata = async () => {
       const path = playlist[indexRef.current]  // read via closure — playlist is stable per render
-      const url  = pathToAssetUrl(path)
+      const url  = convertFileSrc(path)
 
       let name     = stemFromPath(path)
       let artists  = ''

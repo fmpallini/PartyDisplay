@@ -201,8 +201,8 @@ Whatever Chromium/WebView2 can decode natively:
 |---|---|---|
 | `pd_audio_source` | `'spotify'`, `'local'` | `'spotify'` |
 | `pd_local_audio_folder` | path string | — |
-| `pd_local_audio_order` | `'alpha'`, `'shuffle'` | `'alpha'` |
-| `pd_local_audio_recursive` | `'true'`, `'false'` | `'false'` |
+| `pd_local_audio_order` | `'alpha'`, `'shuffle'` | `'shuffle'` |
+| `pd_local_audio_recursive` | `'true'`, `'false'` | `'true'` |
 
 ---
 
