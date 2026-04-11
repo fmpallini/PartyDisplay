@@ -26,6 +26,7 @@ export default function DisplayWindow() {
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [currentTrack,    setCurrentTrack]    = useState<TrackInfo | null>(null)
   const [positionMs,      setPositionMs]      = useState(0)
+  const [isPaused,        setIsPaused]        = useState(false)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
   const bins    = useFftData()
@@ -91,6 +92,7 @@ export default function DisplayWindow() {
   useEffect(() => {
     const unlisten = listen<{ positionMs: number; paused: boolean }>('playback-tick', ({ payload }) => {
       setPositionMs(payload.positionMs)
+      setIsPaused(payload.paused)
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
@@ -305,7 +307,7 @@ function CornerOverlays({ displaySettings, currentTrack, positionMs, weather, we
                 />
               )
               if (w === 'track') return (
-                <TrackOverlay key="track" track={currentTrack!} positionMs={positionMs} settings={displaySettings} embedded />
+                <TrackOverlay key="track" track={currentTrack!} positionMs={positionMs} paused={isPaused} settings={displaySettings} embedded />
               )
               return null
             })}
@@ -353,7 +355,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function TrackOverlay({ track, positionMs, settings, embedded }: { track: TrackInfo; positionMs: number; settings: DisplaySettings; embedded?: boolean }) {
+function TrackOverlay({ track, positionMs, paused, settings, embedded }: { track: TrackInfo; positionMs: number; paused?: boolean; settings: DisplaySettings; embedded?: boolean }) {
   const { trackPosition, trackFont, trackFontSize, trackColor, trackBgColor, trackBgOpacity } = settings
 
   const posStyle: React.CSSProperties = embedded ? {} : {
@@ -386,7 +388,10 @@ function TrackOverlay({ track, positionMs, settings, embedded }: { track: TrackI
       overflow: 'hidden',
     }}>
       <div style={{ fontSize: trackFontSize * 0.65, opacity: 0.8, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artists}</div>
-      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.name}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+        {paused && <span style={{ flexShrink: 0 }}>⏸</span>}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.name}</span>
+      </div>
       {/* Progress bar — bleeds to pill edges via negative margin, clipped by overflow:hidden */}
       <div style={{ margin: '6px -14px -8px', height: 3, background: hexToRgba(trackColor, 0.2) }}>
         <div style={{ height: '100%', width: `${progressPct}%`, background: trackColor, transition: 'width 0.5s linear' }} />
