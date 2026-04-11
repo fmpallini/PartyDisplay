@@ -31,7 +31,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://asset.localhost https://i.scdn.co data:; frame-src https://sdk.scdn.co; connect-src 'self' ipc: http://ipc.localhost https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://lrclib.net; font-src 'self'; object-src 'none'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://asset.localhost https://i.scdn.co data:; media-src 'self' http://asset.localhost; frame-src https://sdk.scdn.co; connect-src 'self' ipc: http://ipc.localhost https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://lrclib.net; font-src 'self'; object-src 'none'",
       "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
@@ -39,7 +39,14 @@
           "**/*.jpg",  "**/*.jpeg", "**/*.png",  "**/*.gif",
           "**/*.webp", "**/*.bmp",  "**/*.tiff", "**/*.tif",
           "**/*.JPG",  "**/*.JPEG", "**/*.PNG",  "**/*.GIF",
-          "**/*.WEBP", "**/*.BMP",  "**/*.TIFF", "**/*.TIF"
+          "**/*.WEBP", "**/*.BMP",  "**/*.TIFF", "**/*.TIF",
+          "**/*.mp3",  "**/*.MP3",
+          "**/*.flac", "**/*.FLAC",
+          "**/*.wav",  "**/*.WAV",
+          "**/*.ogg",  "**/*.OGG",
+          "**/*.m4a",  "**/*.M4A",
+          "**/*.aac",  "**/*.AAC",
+          "**/*.opus", "**/*.OPUS"
         ]
       }
     }
