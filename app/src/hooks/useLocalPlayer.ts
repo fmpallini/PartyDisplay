@@ -121,10 +121,7 @@ export function useLocalPlayer(
         `message="${err?.message ?? 'unknown'}" — skipping to next track`
       )
       setState(s => ({ ...s, error: `Skipped: ${stemFromPath(path)}` }))
-      const nextIdx = indexRef.current + 1
-      if (nextIdx < playlist.length) {
-        loadIndex(nextIdx, activeRef.current)
-      }
+      loadIndex(indexRef.current + 1, activeRef.current)
     }
 
     audio.addEventListener('loadedmetadata', onLoadedMetadata)
