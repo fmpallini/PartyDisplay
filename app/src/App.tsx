@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import ControlPanel from './windows/control/ControlPanel'
 import DisplayWindow from './windows/display/DisplayWindow'
@@ -51,6 +53,24 @@ export default function App() {
 
   useEffect(() => {
     setLabel(getCurrentWebviewWindow().label)
+  }, [])
+
+  // --reset flag: Rust cleared the keyring before launch; we clear localStorage here.
+  useEffect(() => {
+    invoke<boolean>('consume_reset_flag').then(needsReset => {
+      if (needsReset) localStorage.clear()
+    })
+
+    // Single-instance: another process was launched with --reset while we're running.
+    // Rust already cleared the keyring via the single-instance callback; we clear
+    // localStorage and relaunch so the app starts fresh.
+    const unlistenPromise = listen('reset-requested', () => {
+      localStorage.clear()
+      invoke('clear_tokens').catch(console.error)
+      invoke('relaunch').catch(console.error)
+    })
+
+    return () => { unlistenPromise.then(fn => fn()) }
   }, [])
 
   if (CLIENT_ID_MISSING) return <MissingClientIdError />

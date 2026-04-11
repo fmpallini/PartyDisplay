@@ -27,7 +27,8 @@ fn html_escape(s: &str) -> String {
 }
 
 pub struct AppState {
-    pub device_id: Mutex<Option<String>>,
+    pub device_id:       Mutex<Option<String>>,
+    pub reset_requested: Mutex<bool>,
 }
 
 #[tauri::command]
@@ -171,21 +172,48 @@ fn relaunch(app: tauri::AppHandle) {
     app.restart();
 }
 
+/// Returns true (and clears the flag) if the app was launched with --reset.
+/// The frontend calls this once on startup to decide whether to wipe localStorage.
+#[tauri::command]
+fn consume_reset_flag(state: tauri::State<AppState>) -> bool {
+    let mut flag = state.reset_requested.lock().unwrap();
+    let was_set = *flag;
+    *flag = false;
+    was_set
+}
+
 fn main() {
+    // Handle --reset before building the Tauri app so the keyring is cleared
+    // even before the WebView initialises.
+    let cli_args: Vec<String> = std::env::args().collect();
+    let reset_on_start = cli_args.contains(&"--reset".to_string());
+    if reset_on_start {
+        let _ = auth::clear_tokens();
+    }
+
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
-        .manage(AppState { device_id: Mutex::new(None) })
+        .manage(AppState {
+            device_id:       Mutex::new(None),
+            reset_requested: Mutex::new(reset_on_start),
+        })
         .manage(Arc::clone(&slideshow_state))
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
         // and forward it to the running instance instead of opening a new window.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            use tauri::Emitter;
+            // If the already-running instance is asked to reset, emit an event so
+            // the frontend can clear localStorage and relaunch.
+            if args.contains(&"--reset".to_string()) {
+                let _ = app.emit("reset-requested", ());
+                return;
+            }
             // The OS launches a second process with the party-display://callback URL
             // as a command-line arg. single-instance blocks that process and delivers
             // the args here. We must re-emit the deep-link event ourselves because
             // tauri-plugin-deep-link only processes args at its own startup — it never
             // sees the second process's args unless we forward them.
-            use tauri::Emitter;
             let urls: Vec<String> = args.iter()
                 .filter(|a| a.starts_with("party-display://"))
                 .cloned()
@@ -221,6 +249,7 @@ fn main() {
             system::get_ip_location,
             local_audio::scan_audio_folder,
             relaunch,
+            consume_reset_flag,
         ])
         .setup(|app| {
             #[cfg(desktop)]
