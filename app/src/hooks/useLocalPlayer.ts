@@ -27,10 +27,11 @@ export function useLocalPlayer(
 ): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>(IDLE_STATE)
 
-  const audioRef    = useRef<HTMLAudioElement>(new Audio())
-  const indexRef    = useRef(0)
-  const activeRef   = useRef(active)
-  const albumArtRef = useRef<string>('')  // tracks the current object URL so we can revoke it
+  const audioRef      = useRef<HTMLAudioElement>(new Audio())
+  const indexRef      = useRef(0)
+  const activeRef     = useRef(active)
+  const albumArtRef   = useRef<string>('')  // tracks the current object URL so we can revoke it
+  const wasPlayingRef = useRef(false)       // play state captured when going inactive
 
   activeRef.current = active
 
@@ -141,10 +142,13 @@ export function useLocalPlayer(
 
   // ── Pause / resume when active flag changes ───────────────────────────────
   useEffect(() => {
-    if (active && audioRef.current.src) {
-      audioRef.current.play().catch(() => {})
-    } else if (!active) {
+    if (!active) {
+      // Snapshot play state before pausing so we can restore it on return.
+      wasPlayingRef.current = !audioRef.current.paused
       audioRef.current.pause()
+    } else if (audioRef.current.src && wasPlayingRef.current) {
+      // Only resume if it was actually playing before we went inactive.
+      audioRef.current.play().catch(() => {})
     }
   }, [active])
 
