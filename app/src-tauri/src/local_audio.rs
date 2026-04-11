@@ -8,7 +8,7 @@ const AUDIO_EXTENSIONS: &[&str] = &[
 fn is_audio_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .map(|e| AUDIO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
+        .map(|e| AUDIO_EXTENSIONS.iter().any(|&ext| e.eq_ignore_ascii_case(ext)))
         .unwrap_or(false)
 }
 
@@ -55,9 +55,15 @@ mod tests {
     use std::fs::{self, File};
     use std::io::Write;
 
+    fn unique_test_dir(suffix: &str) -> std::path::PathBuf {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().subsec_nanos();
+        std::env::temp_dir().join(format!("pd_test_{}_{}", suffix, ts))
+    }
+
     #[test]
     fn test_scan_returns_sorted_audio_files() {
-        let dir = std::env::temp_dir().join("pd_test_audio");
+        let dir = unique_test_dir("audio");
         fs::create_dir_all(&dir).unwrap();
         for name in &["charlie.mp3", "alpha.flac", "bravo.wav"] {
             File::create(dir.join(name)).unwrap().write_all(b"").unwrap();
@@ -76,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_scan_recursive() {
-        let dir = std::env::temp_dir().join("pd_test_audio_rec");
+        let dir = unique_test_dir("audio_rec");
         let sub = dir.join("sub");
         fs::create_dir_all(&sub).unwrap();
         File::create(dir.join("root.mp3")).unwrap().write_all(b"").unwrap();
@@ -90,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_scan_nonrecursive_excludes_subdirs() {
-        let dir = std::env::temp_dir().join("pd_test_audio_norec");
+        let dir = unique_test_dir("audio_norec");
         let sub = dir.join("sub");
         fs::create_dir_all(&sub).unwrap();
         File::create(dir.join("root.mp3")).unwrap().write_all(b"").unwrap();
@@ -110,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_scan_case_insensitive_extensions() {
-        let dir = std::env::temp_dir().join("pd_test_audio_case");
+        let dir = unique_test_dir("audio_case");
         fs::create_dir_all(&dir).unwrap();
         File::create(dir.join("track.MP3")).unwrap().write_all(b"").unwrap();
         File::create(dir.join("track.Flac")).unwrap().write_all(b"").unwrap();
