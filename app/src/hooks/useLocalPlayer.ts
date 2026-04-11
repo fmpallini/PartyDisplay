@@ -84,7 +84,7 @@ export function useLocalPlayer(
         if (pic) {
           // Revoke previous object URL to avoid memory leaks
           if (albumArtRef.current) URL.revokeObjectURL(albumArtRef.current)
-          const picBlob = new Blob([pic.data.buffer as ArrayBuffer], { type: pic.format })
+          const picBlob = new Blob([pic.data.slice()], { type: pic.format })
           albumArt = URL.createObjectURL(picBlob)
           albumArtRef.current = albumArt
         }
