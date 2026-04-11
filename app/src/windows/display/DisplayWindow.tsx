@@ -186,6 +186,7 @@ export default function DisplayWindow() {
         displaySettings={displaySettings}
         currentTrack={currentTrack}
         positionMs={positionMs}
+        isPaused={isPaused}
         weather={weather}
         weatherError={weatherError}
         battery={battery}
@@ -252,10 +253,11 @@ export default function DisplayWindow() {
 
 // ── Corner overlays (battery + track + clock, with collision stacking) ────────
 
-function CornerOverlays({ displaySettings, currentTrack, positionMs, weather, weatherError, battery }: {
+function CornerOverlays({ displaySettings, currentTrack, positionMs, isPaused, weather, weatherError, battery }: {
   displaySettings: DisplaySettings
   currentTrack: TrackInfo | null
   positionMs: number
+  isPaused: boolean
   weather: import('../../hooks/useWeather').WeatherData | null
   weatherError: string | null
   battery: BatteryStatus
@@ -356,7 +358,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 function TrackOverlay({ track, positionMs, paused, settings, embedded }: { track: TrackInfo; positionMs: number; paused?: boolean; settings: DisplaySettings; embedded?: boolean }) {
-  const { trackPosition, trackFont, trackFontSize, trackColor, trackBgColor, trackBgOpacity } = settings
+  const { trackPosition, trackFontSize, trackColor, trackBgColor, trackBgOpacity } = settings
 
   const posStyle: React.CSSProperties = embedded ? {} : {
     position: 'absolute',
@@ -379,7 +381,7 @@ function TrackOverlay({ track, positionMs, paused, settings, embedded }: { track
       borderRadius: 6,
       background: hexToRgba(trackBgColor, trackBgOpacity),
       color: trackColor,
-      fontFamily: trackFont,
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
       fontSize: trackFontSize,
       fontWeight: 600,
       lineHeight: 1.3,

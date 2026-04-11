@@ -121,7 +121,6 @@ export default function ControlPanel() {
     localStorage.setItem('pd_battery_size',            String(displaySettings.batterySize))
     localStorage.setItem('pd_battery_position',        displaySettings.batteryPosition)
     localStorage.setItem('pd_track_overlay_visible',   String(displaySettings.trackOverlayVisible))
-    localStorage.setItem('pd_track_font',              displaySettings.trackFont)
     localStorage.setItem('pd_track_font_size',         String(displaySettings.trackFontSize))
     localStorage.setItem('pd_track_position',          displaySettings.trackPosition)
     localStorage.setItem('pd_track_color',             displaySettings.trackColor)
@@ -329,7 +328,6 @@ export default function ControlPanel() {
                      justifyContent: 'center', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
             title="Help"
           >?</button>
-          <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
         </div>
       </div>
 
@@ -353,10 +351,10 @@ export default function ControlPanel() {
         )}
 
         {/* ── Music card ──────────────────────────────────────────────── */}
-        <Card label="Music">
+        <Card label="Music" right={<LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />}>
           {!authenticated ? (
             <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-              Connect Spotify using the button above.
+              Connect Spotify to get started.
             </p>
           ) : !player.ready ? (
             <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
@@ -380,9 +378,6 @@ export default function ControlPanel() {
 
               {/* Volume + audio indicator row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#555', fontSize: 11, width: 12, flexShrink: 0 }}>
-                  {player.volume === 0 ? '0' : player.volume < 0.4 ? '–' : '+'}
-                </span>
                 <input
                   type="range" min={0} max={1} step={0.02}
                   value={player.volume}
