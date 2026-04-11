@@ -326,14 +326,24 @@ export default function ControlPanel() {
     return () => { unlisten.then(fn => fn()) }
   }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
-  // Pause Spotify when user switches to Local Files
+  // Track local play state via ref so the source-switch effect can read it
+  // without re-running on every pause/play event.
+  const localPausedRef = useRef(localPlayer.paused)
+  localPausedRef.current = localPlayer.paused
+
+  // Pause/resume symmetrically on source switch:
+  //   → Local Files : pause Spotify if it was playing
+  //   → Spotify     : resume Spotify if local was playing
   useEffect(() => {
     if (source === 'local' && !spotifyPlayer.paused) {
       spotifyPlayer.togglePlay()
     }
+    if (source === 'spotify' && !localPausedRef.current) {
+      spotifyPlayer.togglePlay()
+    }
     localStorage.setItem('pd_audio_source', source)
-  // Intentionally omit spotifyPlayer.* — this effect must only fire on source
-  // change, not on every Spotify pause/play event.
+  // Intentionally omit spotifyPlayer.* and localPausedRef — this effect must
+  // only fire on source change, not on every pause/play event.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
