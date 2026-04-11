@@ -325,13 +325,15 @@ export default function ControlPanel() {
       spotifyPlayer.togglePlay()
     }
     localStorage.setItem('pd_audio_source', source)
+  // Intentionally omit spotifyPlayer.* — this effect must only fire on source
+  // change, not on every Spotify pause/play event.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
-  function setLocalFolder(folder: string) {
+  const setLocalFolder = useCallback((folder: string) => {
     setLocalFolderState(folder)
     localStorage.setItem('pd_local_audio_folder', folder)
-  }
+  }, [])
 
   useEffect(() => {
     if (!localFolder) return
