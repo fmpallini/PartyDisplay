@@ -400,7 +400,7 @@ export default function ControlPanel() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {authError          && <ErrBanner>Auth: {authError}</ErrBanner>}
             {spotifyPlayer.error && <ErrBanner>Spotify: {spotifyPlayer.error}</ErrBanner>}
-            {localPlayer.error   && <ErrBanner>Player: {localPlayer.error}</ErrBanner>}
+            {localPlayer.error   && <ErrBanner>Local: {localPlayer.error}</ErrBanner>}
             {captureError        && <ErrBanner>Capture: {captureError}</ErrBanner>}
           </div>
         )}
@@ -522,23 +522,25 @@ export default function ControlPanel() {
                   No audio files found in this folder.
                 </p>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type="range" min={0} max={1} step={0.02}
-                  value={localPlayer.volume}
-                  onChange={e => localPlayer.setVolume(Number(e.target.value))}
-                  style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
-                />
-                <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
-                  {Math.round(localPlayer.volume * 100)}%
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <SpectrumCanvas bins={bins} height={22}
-                    renderStyle={displaySettings.spectrumStyle}
-                    theme={displaySettings.spectrumTheme}
+              {localFolder && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="range" min={0} max={1} step={0.02}
+                    value={localPlayer.volume}
+                    onChange={e => localPlayer.setVolume(Number(e.target.value))}
+                    style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
                   />
+                  <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
+                    {Math.round(localPlayer.volume * 100)}%
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <SpectrumCanvas bins={bins} height={22}
+                      renderStyle={displaySettings.spectrumStyle}
+                      theme={displaySettings.spectrumTheme}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </Card>
