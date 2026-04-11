@@ -16,9 +16,11 @@ import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
+import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto } from '../../hooks/useDisplaySync'
+import { shuffle } from '../../lib/utils'
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
 
@@ -87,13 +89,32 @@ function readSlideshowConfig(): SlideshowConfig {
 
 export default function ControlPanel() {
   const { authenticated, loading, accessToken, error: authError, login, logout } = useAuth()
-  const player  = useSpotifyPlayer(authenticated ? accessToken : null)
-  const bins    = useFftData()
   const [captureError, setCaptureError]       = useState<string | null>(null)
   const [config, setConfigState]              = useState<SlideshowConfig>(readSlideshowConfig)
-  const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
+  const [settingsOpen, setSettingsOpen]       = useState(false)
+  const [helpOpen, setHelpOpen]               = useState(false)
+
+  const [source, setSource] = useState<'spotify' | 'local'>(
+    () => (localStorage.getItem('pd_audio_source') as 'spotify' | 'local') ?? 'spotify'
+  )
+  const [localFolder,    setLocalFolderState] = useState<string | null>(
+    () => localStorage.getItem('pd_local_audio_folder')
+  )
+  const [localOrder,     setLocalOrder]     = useState<'alpha' | 'shuffle'>(
+    () => (localStorage.getItem('pd_local_audio_order') as 'alpha' | 'shuffle') ?? 'shuffle'
+  )
+  const [localRecursive, setLocalRecursive] = useState<boolean>(
+    () => localStorage.getItem('pd_local_audio_recursive') !== 'false'
+  )
+  const [localPlaylist,  setLocalPlaylist]  = useState<string[]>([])
+
+  const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
+  const localPlayer   = useLocalPlayer(localPlaylist, source === 'local')
+  const player        = source === 'spotify' ? spotifyPlayer : localPlayer
+  const bins    = useFftData()
+  const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
 
   // Notify display window whenever slideshow pause state changes (skip initial mount)
   const slideshowMountedRef = useRef(false)
@@ -101,8 +122,6 @@ export default function ControlPanel() {
     if (!slideshowMountedRef.current) { slideshowMountedRef.current = true; return }
     emit('slideshow-state', { paused: slideshowPaused }).catch(() => {})
   }, [slideshowPaused])
-  const [settingsOpen, setSettingsOpen]       = useState(false)
-  const [helpOpen, setHelpOpen]               = useState(false)
 
   // Persist display settings to localStorage and propagate to display window
   // whenever they change — including via hotkeys, regardless of panel visibility.
@@ -300,7 +319,36 @@ export default function ControlPanel() {
     return () => { unlisten.then(fn => fn()) }
   }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
+  // Pause Spotify when user switches to Local Files
+  useEffect(() => {
+    if (source === 'local' && !spotifyPlayer.paused) {
+      spotifyPlayer.togglePlay()
+    }
+    localStorage.setItem('pd_audio_source', source)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source])
+
+  function setLocalFolder(folder: string) {
+    setLocalFolderState(folder)
+    localStorage.setItem('pd_local_audio_folder', folder)
+  }
+
+  useEffect(() => {
+    if (!localFolder) return
+    localStorage.setItem('pd_local_audio_order',     localOrder)
+    localStorage.setItem('pd_local_audio_recursive', String(localRecursive))
+    invoke<string[]>('scan_audio_folder', { path: localFolder, recursive: localRecursive })
+      .then(paths => {
+        setLocalPlaylist(localOrder === 'shuffle' ? shuffle(paths) : paths)
+      })
+      .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
+  }, [localFolder, localOrder, localRecursive])
+
   // ── Render ────────────────────────────────────────────────────────────────
+  // These setters are wired to Task-7 UI; reference them here to satisfy
+  // noUnusedLocals until the JSX is added.
+  void setSource; void setLocalOrder; void setLocalRecursive; void setLocalFolder
+
   const hasErrors = !!(authError || player.error || captureError)
 
   return (
