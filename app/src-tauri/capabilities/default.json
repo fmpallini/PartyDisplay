@@ -5,7 +5,7 @@
   "windows": ["control", "display"],
   "permissions": [
     "core:default",
-    "shell:default",
+    "shell:allow-open",
     "deep-link:default",
     "dialog:default"
   ]

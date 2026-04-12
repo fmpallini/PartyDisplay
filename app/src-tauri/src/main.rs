@@ -206,6 +206,9 @@ fn main() {
             // If the already-running instance is asked to reset, emit an event so
             // the frontend can clear localStorage and relaunch.
             if args.contains(&"--reset".to_string()) {
+                // Clear keyring here (same as the early-startup path) so tokens
+                // are wiped even if the frontend event handler fails.
+                let _ = auth::clear_tokens();
                 let _ = app.emit("reset-requested", ());
                 return;
             }

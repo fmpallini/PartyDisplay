@@ -27,10 +27,11 @@ export function useLocalPlayer(
 ): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>(IDLE_STATE)
 
-  const audioRef    = useRef<HTMLAudioElement>(new Audio())
-  const indexRef    = useRef(0)
-  const activeRef   = useRef(active)
-  const albumArtRef = useRef<string>('')  // tracks the current object URL so we can revoke it
+  const audioRef     = useRef<HTMLAudioElement>(new Audio())
+  const indexRef     = useRef(0)
+  const activeRef    = useRef(active)
+  const albumArtRef  = useRef<string>('')  // tracks the current object URL so we can revoke it
+  const skipCountRef = useRef(0)           // consecutive load errors; reset on successful metadata
 
   activeRef.current = active
 
@@ -78,6 +79,7 @@ export function useLocalPlayer(
         console.warn('[useLocalPlayer] metadata parse failed for', path, err)
       }
 
+      skipCountRef.current = 0  // successful load — reset error streak
       setState(s => ({
         ...s,
         ready: true,
@@ -107,6 +109,14 @@ export function useLocalPlayer(
         `[useLocalPlayer] error on "${path}" — code=${err?.code ?? '?'} ` +
         `message="${err?.message ?? 'unknown'}" — skipping to next track`
       )
+      skipCountRef.current += 1
+      if (skipCountRef.current >= playlist.length) {
+        // Every track in the playlist has errored — stop trying.
+        console.error('[useLocalPlayer] all tracks failed, giving up')
+        skipCountRef.current = 0
+        setState(s => ({ ...s, ready: false, error: 'All tracks failed to load' }))
+        return
+      }
       setState(s => ({ ...s, error: `Skipped: ${stemFromPath(path)}` }))
       loadIndex(indexRef.current + 1, activeRef.current)
     }
@@ -133,6 +143,7 @@ export function useLocalPlayer(
 
   // ── Load first track when playlist changes ────────────────────────────────
   useEffect(() => {
+    skipCountRef.current = 0  // new playlist — reset error streak
     if (playlist.length === 0) {
       audioRef.current.pause()
       audioRef.current.src = ''   // prevent stale error events firing into an empty playlist
