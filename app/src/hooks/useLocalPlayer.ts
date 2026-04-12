@@ -3,6 +3,14 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { parseBlob } from 'music-metadata'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
 
+export interface PlaylistItem {
+  path:       string       // absolute file path or http:// URL
+  title?:     string       // pre-fetched title (skips music-metadata fetch when present)
+  artist?:    string
+  albumArt?:  string       // URL or object URL
+  durationMs?: number
+}
+
 /** Extract the filename without extension from a path. Used as a title fallback. */
 function stemFromPath(filePath: string): string {
   const base = filePath.split(/[/\\]/).pop() ?? filePath
@@ -22,7 +30,7 @@ const IDLE_STATE: PlayerState = {
  * @param active    When false the hook pauses audio and idles (Spotify is active).
  */
 export function useLocalPlayer(
-  playlist: string[],
+  playlist: PlaylistItem[],
   active: boolean,
 ): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>(IDLE_STATE)
@@ -40,8 +48,10 @@ export function useLocalPlayer(
     if (playlist.length === 0) return
     const i = ((idx % playlist.length) + playlist.length) % playlist.length
     indexRef.current = i
-    const path = playlist[i]
-    audioRef.current.src = convertFileSrc(path)
+    const item = playlist[i]
+    audioRef.current.src = item.path.startsWith('http')
+      ? item.path
+      : convertFileSrc(item.path)
     audioRef.current.load()
     if (autoPlay) audioRef.current.play().catch(() => {})
   }, [playlist])
@@ -51,39 +61,57 @@ export function useLocalPlayer(
     const audio = audioRef.current
 
     const onLoadedMetadata = async () => {
-      const path = playlist[indexRef.current]  // read via closure — playlist is stable per render
-      const url  = convertFileSrc(path)
+      const item = playlist[indexRef.current]
+      if (!item) return
+      const duration = audio.duration * 1000
 
-      let name     = stemFromPath(path)
+      // DLNA items carry pre-fetched metadata — skip the music-metadata fetch
+      if (item.title !== undefined) {
+        skipCountRef.current = 0
+        setState(s => ({
+          ...s,
+          ready: true,
+          track: {
+            id:       item.path,
+            name:     item.title!,
+            artists:  item.artist ?? '',
+            albumArt: item.albumArt ?? '',
+            duration,
+          },
+          positionMs: 0,
+          error: null,
+        }))
+        return
+      }
+
+      // Local file — parse embedded metadata from the audio blob
+      const url = convertFileSrc(item.path)
+      let name     = stemFromPath(item.path)
       let artists  = ''
       let albumArt = ''
-      const duration = audio.duration * 1000
 
       try {
         const response = await fetch(url)
         const blob     = await response.blob()
         const meta     = await parseBlob(blob)
-
         if (meta.common.title)  name    = meta.common.title
         if (meta.common.artist) artists = meta.common.artist
-
         const pic = meta.common.picture?.[0]
         if (pic) {
-          // Revoke previous object URL to avoid memory leaks
           if (albumArtRef.current) URL.revokeObjectURL(albumArtRef.current)
           const picBlob = new Blob([pic.data.slice()], { type: pic.format })
           albumArt = URL.createObjectURL(picBlob)
           albumArtRef.current = albumArt
         }
       } catch (err) {
-        console.warn('[useLocalPlayer] metadata parse failed for', path, err)
+        console.warn('[useLocalPlayer] metadata parse failed for', item.path, err)
       }
 
-      skipCountRef.current = 0  // successful load — reset error streak
+      skipCountRef.current = 0
       setState(s => ({
         ...s,
         ready: true,
-        track: { id: path, name, artists, albumArt, duration },
+        track: { id: item.path, name, artists, albumArt, duration },
         positionMs: 0,
         error: null,
       }))
@@ -102,22 +130,21 @@ export function useLocalPlayer(
     }
 
     const onError = () => {
-      const path = playlist[indexRef.current]
-      if (!path) return   // playlist became empty; nothing to skip to
-      const err  = audio.error
+      const item = playlist[indexRef.current]
+      if (!item) return
+      const err = audio.error
       console.error(
-        `[useLocalPlayer] error on "${path}" — code=${err?.code ?? '?'} ` +
+        `[useLocalPlayer] error on "${item.path}" — code=${err?.code ?? '?'} ` +
         `message="${err?.message ?? 'unknown'}" — skipping to next track`
       )
       skipCountRef.current += 1
       if (skipCountRef.current >= playlist.length) {
-        // Every track in the playlist has errored — stop trying.
         console.error('[useLocalPlayer] all tracks failed, giving up')
         skipCountRef.current = 0
         setState(s => ({ ...s, ready: false, error: 'All tracks failed to load' }))
         return
       }
-      setState(s => ({ ...s, error: `Skipped: ${stemFromPath(path)}` }))
+      setState(s => ({ ...s, error: `Skipped: ${stemFromPath(item.path)}` }))
       loadIndex(indexRef.current + 1, activeRef.current)
     }
 

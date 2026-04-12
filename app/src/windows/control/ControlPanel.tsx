@@ -17,6 +17,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
+import type { PlaylistItem } from '../../hooks/useLocalPlayer'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto, clearPhotos } from '../../hooks/useDisplaySync'
@@ -115,7 +116,7 @@ export default function ControlPanel() {
   const [localRecursive, setLocalRecursive] = useState<boolean>(
     () => localStorage.getItem('pd_local_audio_recursive') !== 'false'
   )
-  const [localPlaylist,  setLocalPlaylist]  = useState<string[]>([])
+  const [localPlaylist,  setLocalPlaylist]  = useState<PlaylistItem[]>([])
 
   const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
   const localPlayer   = useLocalPlayer(localPlaylist, source === 'local')
@@ -350,7 +351,8 @@ export default function ControlPanel() {
     localStorage.setItem('pd_local_audio_recursive', String(localRecursive))
     invoke<string[]>('scan_audio_folder', { path: localFolder, recursive: localRecursive })
       .then(paths => {
-        setLocalPlaylist(localOrder === 'shuffle' ? shuffle(paths) : paths)
+        const ordered = localOrder === 'shuffle' ? shuffle(paths) : paths
+        setLocalPlaylist(ordered.map(path => ({ path })))
       })
       .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
   }, [localFolder, localOrder, localRecursive])
