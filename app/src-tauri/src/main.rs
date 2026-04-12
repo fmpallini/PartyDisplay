@@ -2,6 +2,7 @@
 
 mod auth;
 mod audio;
+mod dlna;
 mod local_audio;
 mod slideshow;
 mod system;
@@ -241,6 +242,7 @@ fn main() {
             system::get_battery_status,
             system::get_ip_location,
             local_audio::scan_audio_folder,
+            dlna::dlna_discover,
             relaunch,
             clear_webview_data,
         ])
