@@ -150,6 +150,10 @@ export function useLocalPlayer(
       setState(IDLE_STATE)
       return
     }
+    // The listener-effect cleanup pauses the audio element before re-registering
+    // listeners, so the onPause handler never fires and state.paused stays stale.
+    // Sync it here: a new playlist always starts paused until the user presses play.
+    setState(s => ({ ...s, paused: true }))
     loadIndex(0, false)   // load but don't auto-play; user must press play or switch source
   }, [playlist, loadIndex])
 
