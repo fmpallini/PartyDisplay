@@ -101,6 +101,7 @@ export function useLocalPlayer(
 
     const onError = () => {
       const path = playlist[indexRef.current]
+      if (!path) return   // playlist became empty; nothing to skip to
       const err  = audio.error
       console.error(
         `[useLocalPlayer] error on "${path}" — code=${err?.code ?? '?'} ` +
@@ -133,6 +134,8 @@ export function useLocalPlayer(
   // ── Load first track when playlist changes ────────────────────────────────
   useEffect(() => {
     if (playlist.length === 0) {
+      audioRef.current.pause()
+      audioRef.current.src = ''   // prevent stale error events firing into an empty playlist
       setState(IDLE_STATE)
       return
     }
