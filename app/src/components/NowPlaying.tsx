@@ -1,8 +1,8 @@
-import type { TrackInfo } from '../hooks/useSpotifyPlayer'
+import type { TrackInfo } from '../lib/player-types'
 
 interface Props { track: TrackInfo | null; paused: boolean }
 
-export default function NowPlaying({ track, paused }: Props) {
+export default function NowPlaying({ track, paused: _paused }: Props) {
   if (!track) return <p style={{ color: '#666', fontSize: 13 }}>No track playing — open Spotify and select this device.</p>
 
   return (
@@ -12,7 +12,7 @@ export default function NowPlaying({ track, paused }: Props) {
       )}
       <div>
         <p style={{ margin: 0, fontWeight: 'bold', color: '#eee', fontSize: 14 }}>
-          {paused ? '⏸' : '▶'} {track.name}
+          {track.name}
         </p>
         <p style={{ margin: 0, color: '#aaa', fontSize: 12 }}>{track.artists}</p>
       </div>

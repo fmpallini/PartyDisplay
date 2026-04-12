@@ -56,10 +56,26 @@ export function useDisplaySync(
     }
   }, [])
 
+  // Clear photo when the folder is empty or changed to one with no images
+  useEffect(() => {
+    const unlisten = listen('photos-cleared', () => {
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
+      setCurrentPhoto(null)
+      setPreviousPhoto(null)
+      setTransitioning(false)
+    })
+    return () => { unlisten.then(fn => fn()) }
+  }, [])
+
   return { currentPhoto, previousPhoto, transitioning, activeEffect }
 }
 
 // Call this from the control window to push the next photo to the display
 export async function advancePhoto(photo: string, index: number, total: number) {
   await emit('photo-advance', { photo, index, total })
+}
+
+// Call this when the folder changes to one with no photos
+export async function clearPhotos() {
+  await emit('photos-cleared', {})
 }

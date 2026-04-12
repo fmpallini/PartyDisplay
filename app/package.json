@@ -1,6 +1,6 @@
 {
   "name": "party-display",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,8 +10,9 @@
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-deep-link": "^2",
-    "@tauri-apps/plugin-shell": "^2",
     "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-shell": "^2",
+    "music-metadata": "^11.12.3",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -19,8 +20,8 @@
     "@tauri-apps/cli": "^2",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^4",
     "typescript": "^5",
-    "vite": "^5",
-    "@vitejs/plugin-react": "^4"
+    "vite": "^5"
   }
 }

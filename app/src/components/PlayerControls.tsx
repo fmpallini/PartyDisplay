@@ -1,4 +1,4 @@
-import type { TrackInfo } from '../hooks/useSpotifyPlayer'
+import type { TrackInfo } from '../lib/player-types'
 
 interface Props {
   track:      TrackInfo | null

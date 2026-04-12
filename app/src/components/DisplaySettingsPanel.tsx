@@ -33,7 +33,6 @@ export interface DisplaySettings {
   batterySize:          number
   batteryPosition:      TrackPosition
   trackOverlayVisible:  boolean
-  trackFont:            string
   trackFontSize:        number
   trackPosition:        TrackPosition
   trackColor:           string
@@ -83,7 +82,6 @@ export function readDisplaySettings(): DisplaySettings {
     batterySize:          safeNum(localStorage.getItem('pd_battery_size'),            36),
     batteryPosition:      safeEnum(localStorage.getItem('pd_battery_position'),      TRACK_POSITION_VALUES,    'top-right'),
     trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
-    trackFont:            localStorage.getItem('pd_track_font') ?? 'system-ui',
     trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         18),
     trackPosition:        safeEnum(localStorage.getItem('pd_track_position'),        TRACK_POSITION_VALUES,    'top-left'),
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
@@ -147,7 +145,7 @@ const inlineRow: React.CSSProperties = {
 
 const subHead: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2,
-  color: '#555', margin: '6px 0 4px',
+  color: '#555', margin: '18px 0 4px',
 }
 
 const checkRow: React.CSSProperties = {
@@ -329,17 +327,6 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
       </label>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-        <div>
-          <span style={fieldLabel}>Font</span>
-          <select value={settings.trackFont} onChange={e => set({ trackFont: e.target.value })} style={selectInput}>
-            <option value="system-ui">System UI</option>
-            <option value="Arial, sans-serif">Arial</option>
-            <option value="Georgia, serif">Georgia</option>
-            <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
-            <option value="Impact, sans-serif">Impact</option>
-            <option value="'Courier New', monospace">Courier</option>
-          </select>
-        </div>
         <div>
           <span style={fieldLabel}>Font size</span>
           <label style={inlineRow}>

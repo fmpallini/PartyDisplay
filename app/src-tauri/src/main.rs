@@ -2,6 +2,7 @@
 
 mod auth;
 mod audio;
+mod local_audio;
 mod slideshow;
 mod system;
 mod window_manager;
@@ -170,21 +171,42 @@ fn relaunch(app: tauri::AppHandle) {
     app.restart();
 }
 
+/// Delete the WebView2 user-data folder so that localStorage and other
+/// browser-side storage is wiped on the next launch.
+/// Used by both the --reset CLI flag and the UI reset button.
+#[tauri::command]
+fn clear_webview_data() {
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let _ = std::fs::remove_dir_all(
+            std::path::Path::new(&local).join("com.partydisplay.app")
+        );
+    }
+}
+
 fn main() {
+    // Handle --reset: clear all saved state and exit. The user relaunches manually.
+    let cli_args: Vec<String> = std::env::args().collect();
+    if cli_args.contains(&"--reset".to_string()) {
+        let _ = auth::clear_tokens();
+        clear_webview_data();
+    }
+
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
-        .manage(AppState { device_id: Mutex::new(None) })
+        .manage(AppState {
+            device_id: Mutex::new(None),
+        })
         .manage(Arc::clone(&slideshow_state))
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
         // and forward it to the running instance instead of opening a new window.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            use tauri::Emitter;
             // The OS launches a second process with the party-display://callback URL
             // as a command-line arg. single-instance blocks that process and delivers
             // the args here. We must re-emit the deep-link event ourselves because
             // tauri-plugin-deep-link only processes args at its own startup — it never
             // sees the second process's args unless we forward them.
-            use tauri::Emitter;
             let urls: Vec<String> = args.iter()
                 .filter(|a| a.starts_with("party-display://"))
                 .cloned()
@@ -218,7 +240,9 @@ fn main() {
             window_manager::exit_display_fullscreen,
             system::get_battery_status,
             system::get_ip_location,
+            local_audio::scan_audio_folder,
             relaunch,
+            clear_webview_data,
         ])
         .setup(|app| {
             #[cfg(desktop)]

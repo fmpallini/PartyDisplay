@@ -6,7 +6,7 @@
 
 ## What is this?
 
-![Party Display v0.6.0](docs/docs%20for%20release/sample%20image.png)
+![Party Display v0.6.1](docs/docs%20for%20release/sample%20image.png)
 
 Party Display is a desktop application that registers as a **Spotify Connect device** and shows a fullscreen photo slideshow on a projector or TV, synchronized to the music playing. Think of it as a smart jukebox backdrop — your photos, your playlist, your party.
 
@@ -93,45 +93,11 @@ The agent workflow followed the **superpowers skill suite** — `writing-plans` 
 
 ## The spikes
 
-Before writing a single line of production code, three validation spikes were run to answer hard questions about the tech stack.
+Three validation spikes were run before writing any production code. The first attempt used Electron with the castlabs Widevine CDM: device registration worked, but every track failed with a DRM error at the license renewal boundary and auto-skipped. The Spotify Web Playback SDK also sandboxes audio inside a cross-origin iframe, making any `AudioContext` tap from the parent page impossible — ruling out browser-native FFT entirely. The second spike ran the SDK directly in Chrome: DRM worked flawlessly (Chrome ships a native Widevine CDM), confirming that Electron's non-native CDM was the culprit. However the iframe audio limitation persisted, and Spotify rejects plain `http://localhost` OAuth redirect URIs as insecure — a desktop wrapper was still needed. The third spike tested Tauri v2 on Windows: WebView2 (Edge's Chromium engine) carries a fully compatible Widevine CDM, playback was clean, and Rust's `cpal` + WASAPI loopback successfully captured system audio output and fed a real-time FFT to the frontend.
 
-### Spike 1 — Electron + castlabs Widevine (first attempt)
+**Confirmed stack:** Tauri v2 on Windows, with WASAPI loopback for spectrum analysis.
 
-**Question:** Can the Spotify Web Playback SDK run inside Electron?
-
-**Findings:**
-- Device registration worked
-- Audio played — but every track failed with a `playback_error` at ~1 second, then auto-skipped
-- Root cause: the castlabs Electron Widevine CDM was rejected by Spotify's license server at the DRM renewal boundary
-- The Web Audio FFT tap also failed — the SDK sandboxes audio inside a **cross-origin iframe**, making `AudioContext` access impossible from the parent page
-
-**Decision:** Drop Electron.
-
----
-
-### Spike 2 — Browser (Node.js HTTPS + Chrome)
-
-**Question:** Does the SDK work properly in a real browser?
-
-**Findings:**
-- Playback was flawless — zero skipping, no DRM errors (Chrome's native Widevine is fully compatible)
-- Confirmed the cross-origin iframe limitation: Chrome's Web Audio Inspector showed **"No Web Audio API usage detected"** while music played
-- OAuth PKCE redirect to `https://localhost` was blocked by Spotify ("redirect_uri: Insecure") — a known Spotify quirk around loopback URIs
-
-**Decision:** Browser runtime is valid, but needs a desktop wrapper for OAuth and the audio tap problem needs a different solution.
-
----
-
-### Spike 3 — Tauri v2 ✅
-
-**Question:** Does Tauri's WebView2 satisfy Spotify's Widevine DRM? Can Rust capture system audio via WASAPI loopback?
-
-**Findings:**
-- **WebView2 + Widevine:** Device registered instantly, music played with zero skipping. WebView2 (Edge's Chromium engine) ships a native, fully compatible Widevine CDM.
-- **WASAPI loopback:** `cpal 0.15` + `rustfft 6` successfully captured system audio output, ran FFT, and streamed 64 frequency bins to the frontend via Tauri events. FFT sum: **753 non-zero** on first run.
-- Live spectrum canvas animated in real time while Spotify played.
-
-**Decision:** Tauri v2 on Windows is the confirmed foundation.
+The main limitation inherited from this exploration is that the spectrum analyser taps the Windows audio output mix — not the SDK's internal audio graph. This works well in practice but means the visualiser reacts to all system audio, not exclusively to Spotify.
 
 ---
 
@@ -156,10 +122,13 @@ Before writing a single line of production code, three validation spikes were ru
 │  │  WASAPI loopback → FFT → events    │ │
 │  │  OAuth PKCE + token refresh        │ │
 │  │  Slideshow engine (folder watch)   │ │
-│  │  IPC channels (typed)              │ │
+│  │  Typed IPC channels (commands +    │ │
+│  │  events between windows)           │ │
 │  └────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
 ```
+
+The two WebView2 windows are independent renderer processes that communicate through the Rust backend via Tauri IPC commands and broadcast events. The control panel owns the Spotify SDK instance and forwards playback state to the display window; the display window is purely a consumer — it renders but issues no Spotify API calls of its own.
 
 **Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
 
@@ -169,124 +138,36 @@ Before writing a single line of production code, three validation spikes were ru
 
 ```
 vcup2/
-├── app/                        # Production app (Tauri v2)
+├── app/                        # Tauri v2 application
 │   ├── src/                    # React + TypeScript frontend
-│   │   ├── components/         # UI components
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── lib/                # Spotify auth helpers
-│   │   └── windows/            # Control panel + display window
+│   │   ├── components/         # UI components (toasts, overlays, widgets, panels)
+│   │   ├── hooks/              # Custom React hooks (player, lyrics, weather, FFT…)
+│   │   ├── lib/                # IPC helpers, Spotify auth, shared utilities
+│   │   └── windows/            # Entry points: control panel + display window
 │   ├── src-tauri/              # Rust backend
-│   │   └── src/                # main, audio, auth, slideshow, system, window_manager
+│   │   └── src/                # main · auth · audio · slideshow · system · window_manager
 │   ├── .env.local              # ← YOU CREATE THIS (gitignored)
 │   └── package.json
-├── CLAUDE.md                   # Notes for Claude Code (version bump instructions etc.)
+├── docs/
+│   └── docs for release/       # README.txt, LICENSE.txt, sample screenshot
+├── release/                    # Built release zips (gitignored)
+├── CLAUDE.md                   # AI agent instructions (release procedure, conventions)
 └── README.md
 ```
 
 ---
 
-## Status
+## Key features
 
-- [x] Spike 1 — Electron (abandoned)
-- [x] Spike 2 — Browser (validated SDK + found FFT limitation)
-- [x] Spike 3 — Tauri v2 (validated full stack) ✅
-- [x] Phase 2 — Full app implementation (**v0.6.0**)
-
----
-
-## v0.6.0 — Current features
-
-### Spotify integration
-
-- Registers as a **Spotify Connect device** via the Web Playback SDK running inside WebView2
-- Full **OAuth PKCE** flow — browser opens for auth, redirect is caught by a loopback HTTP server on `127.0.0.1:7357`, tokens stored in the Windows credential store (keyring)
-- Automatic **token refresh** — sessions survive app restarts without re-auth
-- On connect, syncs the current Spotify session volume to the control panel slider
-- **Now playing** card: album art, track name, artist, progress bar with seek
-- Transport controls: play/pause, previous, next
-- **Volume** slider with live feedback; volume changes emitted to the display window as toast notifications
-
-### Photo slideshow
-
-- Folder picker — watches a local folder for images (JPEG/PNG/WebP/GIF/BMP/TIFF)
-- Optional **recursive subfolder** scan
-- **Play order**: alphabetical (with resume-from-last across restarts) or shuffle
-- Configurable **fixed display time** per photo (seconds)
-- **8 transition effects**: fade, slide left/right/up/down, zoom in/out, blur — plus a **random** mode
-- Configurable **transition duration**
-- **Image fit**: fill (cover/crop) or letterbox (contain)
-
-### Display window
-
-- Runs in a separate window — intended for a second monitor, projector or TV
-- **Fullscreen** toggle via double-click or `F`; `Esc` to exit
-- Window position and fullscreen state **persisted** across restarts
-- Position **validated against available monitors** on restore — repositioned to primary if the saved monitor is gone
-- **Screensaver / sleep blocked** via `SetThreadExecutionState` while the display window is open
-
-### Spectrum analyser overlay
-
-- Real-time **WASAPI loopback** audio capture (Rust — no driver install needed)
-- **64-bin FFT** with logarithmic frequency mapping (40 Hz – 16 kHz)
-- Exponential smoothing with fast attack / slow decay for a polished look
-- Two render styles: **bars** or **lines**
-- Six colour themes: Energy, Cyan, Fire, White, Rainbow, Purple
-- Configurable height as % of screen; toggled with `S`
-
-### Lyrics
-
-- Synchronized lyrics fetched from **LRCLIB** (free, no API key)
-- **Overlay mode**: 3-line karaoke display (previous / current / next line) — center or lower-third
-- **Split view mode**: photo on one side, full lyrics panel on the other (40/60 split, left or right)
-- Split panel auto-scrolls to keep the current line centered with fade edges
-- Falls back to static plain-text display if only unsynced lyrics are available
-- Toggled with `L`
-
-### Corner widgets
-
-All four corner widgets support independent corner positioning and stack gracefully when assigned to the same corner:
-
-- **Track overlay** (`T`) — artist + title pill, configurable font, size, colour, background opacity
-- **Clock & weather** (`C`) — live clock (12h/24h) with current temperature and WMO weather icon; city auto-detected by IP or manually configured; powered by Open-Meteo
-- **Battery** (`B`) — vertical phone-style SVG icon with 5-step colour scale; AC/charging indicator; configurable size
-
-### Photo counter overlay
-
-- `x / y` counter at top-center of the display window, toggled with `P`
-
-### Song & volume toasts
-
-- **Song changed toast**: album art + track name slides in on track change, auto-dismisses
-- **Volume changed toast**: compact level indicator on volume change
-- Configurable display duration and scale
-
-### Control panel
-
-- Card-based layout with sticky header and vertical scroll
-- **Cards**: Music, Slideshow, Display Window, Display Settings (collapsible)
-- All display settings live-synced to the display window without restart
-- `?` help button: hotkeys reference, credits, reset option
-
----
-
-## Hotkeys (display window)
-
-| Key | Action |
-|---|---|
-| `→` / `←` | Next / previous photo |
-| `Space` | Pause / resume slideshow |
-| `F` | Toggle fullscreen |
-| `S` | Toggle spectrum analyser |
-| `T` | Toggle track overlay |
-| `B` | Toggle battery icon |
-| `P` | Toggle photo counter |
-| `C` | Toggle clock & weather |
-| `L` | Toggle lyrics |
-| `Esc` | Exit fullscreen |
-| Double-click | Toggle fullscreen |
-| `Num 4` / `Num 6` | Previous / next Spotify track |
-| `Num 5` | Play / pause Spotify |
-| `Num +` / `Num −` | Volume up / down |
+- **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts
+- **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
+- **Photo slideshow** — watches a local folder (with optional recursive scan) for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
+- **Real-time spectrum analyser** — WASAPI loopback capture in Rust (no driver install), 64-bin FFT, bars or lines render style, six colour themes, configurable height
+- **Synchronized lyrics** — fetched from LRCLIB (no API key); overlay mode (3-line karaoke) or split-view mode (full scrolling panel alongside the photo); falls back to static text when sync data is unavailable
+- **Corner widgets** — track overlay (artist + title + progress), clock & weather (Open-Meteo, auto-detected or manual city), battery indicator; all four corners supported with graceful stacking
+- **Song & volume toasts** — brief on-screen notifications on track change and volume adjustment, with configurable duration and scale
+- **Display window** — designed for a second monitor, projector, or TV; fullscreen toggle, position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
+- **Live settings sync** — all display settings update instantly on the display window without restart; control panel card layout with collapsible sections
 
 ---
 

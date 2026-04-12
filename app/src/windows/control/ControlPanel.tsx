@@ -16,9 +16,11 @@ import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
+import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
-import { advancePhoto } from '../../hooks/useDisplaySync'
+import { advancePhoto, clearPhotos } from '../../hooks/useDisplaySync'
+import { shuffle } from '../../lib/utils'
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
 
@@ -72,6 +74,13 @@ const pauseBtn = (paused: boolean): React.CSSProperties => ({
   borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
   fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
 })
+const sourcePill = (active: boolean): React.CSSProperties => ({
+  background:   active ? '#1db95418' : 'none',
+  border:       `1px solid ${active ? '#1db95444' : '#2a2a2a'}`,
+  color:        active ? '#1db954' : '#555',
+  borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
+  fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+})
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -87,13 +96,32 @@ function readSlideshowConfig(): SlideshowConfig {
 
 export default function ControlPanel() {
   const { authenticated, loading, accessToken, error: authError, login, logout } = useAuth()
-  const player  = useSpotifyPlayer(authenticated ? accessToken : null)
-  const bins    = useFftData()
   const [captureError, setCaptureError]       = useState<string | null>(null)
   const [config, setConfigState]              = useState<SlideshowConfig>(readSlideshowConfig)
-  const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
+  const [settingsOpen, setSettingsOpen]       = useState(false)
+  const [helpOpen, setHelpOpen]               = useState(false)
+
+  const [source, setSource] = useState<'spotify' | 'local'>(
+    () => (localStorage.getItem('pd_audio_source') as 'spotify' | 'local') ?? 'spotify'
+  )
+  const [localFolder,    setLocalFolderState] = useState<string | null>(
+    () => localStorage.getItem('pd_local_audio_folder')
+  )
+  const [localOrder,     setLocalOrder]     = useState<'alpha' | 'shuffle'>(
+    () => (localStorage.getItem('pd_local_audio_order') as 'alpha' | 'shuffle') ?? 'shuffle'
+  )
+  const [localRecursive, setLocalRecursive] = useState<boolean>(
+    () => localStorage.getItem('pd_local_audio_recursive') !== 'false'
+  )
+  const [localPlaylist,  setLocalPlaylist]  = useState<string[]>([])
+
+  const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
+  const localPlayer   = useLocalPlayer(localPlaylist, source === 'local')
+  const player        = source === 'spotify' ? spotifyPlayer : localPlayer
+  const bins    = useFftData()
+  const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
 
   // Notify display window whenever slideshow pause state changes (skip initial mount)
   const slideshowMountedRef = useRef(false)
@@ -101,8 +129,6 @@ export default function ControlPanel() {
     if (!slideshowMountedRef.current) { slideshowMountedRef.current = true; return }
     emit('slideshow-state', { paused: slideshowPaused }).catch(() => {})
   }, [slideshowPaused])
-  const [settingsOpen, setSettingsOpen]       = useState(false)
-  const [helpOpen, setHelpOpen]               = useState(false)
 
   // Persist display settings to localStorage and propagate to display window
   // whenever they change — including via hotkeys, regardless of panel visibility.
@@ -121,7 +147,6 @@ export default function ControlPanel() {
     localStorage.setItem('pd_battery_size',            String(displaySettings.batterySize))
     localStorage.setItem('pd_battery_position',        displaySettings.batteryPosition)
     localStorage.setItem('pd_track_overlay_visible',   String(displaySettings.trackOverlayVisible))
-    localStorage.setItem('pd_track_font',              displaySettings.trackFont)
     localStorage.setItem('pd_track_font_size',         String(displaySettings.trackFontSize))
     localStorage.setItem('pd_track_position',          displaySettings.trackPosition)
     localStorage.setItem('pd_track_color',             displaySettings.trackColor)
@@ -181,7 +206,10 @@ export default function ControlPanel() {
   const togglePause = useCallback(() => setSlideshowPaused(p => !p), [])
 
   useEffect(() => {
-    if (library.photos.length === 0) return
+    if (library.photos.length === 0) {
+      clearPhotos().catch(console.error)
+      return
+    }
     const startIdx = library.initialPhoto ? Math.max(0, library.photos.indexOf(library.initialPhoto)) : 0
     showAt(startIdx)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -301,8 +329,35 @@ export default function ControlPanel() {
     return () => { unlisten.then(fn => fn()) }
   }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
+  // Pause the outgoing player on source switch; user controls resume from there.
+  useEffect(() => {
+    if (source === 'local' && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    // Local player pauses automatically via its own active-flag effect.
+    localStorage.setItem('pd_audio_source', source)
+  // Intentionally omit spotifyPlayer.* — this effect must only fire on source
+  // change, not on every Spotify pause/play event.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source])
+
+  const setLocalFolder = useCallback((folder: string) => {
+    setLocalFolderState(folder)
+    localStorage.setItem('pd_local_audio_folder', folder)
+  }, [])
+
+  useEffect(() => {
+    if (!localFolder) return
+    localStorage.setItem('pd_local_audio_order',     localOrder)
+    localStorage.setItem('pd_local_audio_recursive', String(localRecursive))
+    invoke<string[]>('scan_audio_folder', { path: localFolder, recursive: localRecursive })
+      .then(paths => {
+        setLocalPlaylist(localOrder === 'shuffle' ? shuffle(paths) : paths)
+      })
+      .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
+  }, [localFolder, localOrder, localRecursive])
+
   // ── Render ────────────────────────────────────────────────────────────────
-  const hasErrors = !!(authError || player.error || captureError)
+
+  const hasErrors = !!(authError || spotifyPlayer.error || localPlayer.error || captureError)
 
   return (
     <div style={{
@@ -329,7 +384,6 @@ export default function ControlPanel() {
                      justifyContent: 'center', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
             title="Help"
           >?</button>
-          <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
         </div>
       </div>
 
@@ -346,60 +400,149 @@ export default function ControlPanel() {
         {/* Error banners */}
         {hasErrors && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {authError    && <ErrBanner>Auth: {authError}</ErrBanner>}
-            {player.error && <ErrBanner>Player: {player.error}</ErrBanner>}
-            {captureError && <ErrBanner>Capture: {captureError}</ErrBanner>}
+            {authError          && <ErrBanner>Auth: {authError}</ErrBanner>}
+            {spotifyPlayer.error && <ErrBanner>Spotify: {spotifyPlayer.error}</ErrBanner>}
+            {localPlayer.error   && <ErrBanner>Local: {localPlayer.error}</ErrBanner>}
+            {captureError        && <ErrBanner>Capture: {captureError}</ErrBanner>}
           </div>
         )}
 
         {/* ── Music card ──────────────────────────────────────────────── */}
-        <Card label="Music">
-          {!authenticated ? (
-            <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-              Connect Spotify using the button above.
-            </p>
-          ) : !player.ready ? (
-            <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-              Waiting for Spotify device…
-            </p>
-          ) : (
-            <>
-              <NowPlaying track={player.track} paused={player.paused} />
+        <Card
+          label="Music"
+          right={source === 'spotify'
+            ? <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
+            : undefined
+          }
+        >
+          {/* Source picker */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+            <button style={sourcePill(source === 'spotify')} onClick={() => setSource('spotify')}>Spotify</button>
+            <button style={sourcePill(source === 'local')}   onClick={() => setSource('local')}>Local Files</button>
+          </div>
 
-              {player.track && (
-                <PlayerControls
-                  track={player.track}
-                  paused={player.paused}
-                  positionMs={player.positionMs}
-                  togglePlay={player.togglePlay}
-                  nextTrack={player.nextTrack}
-                  prevTrack={player.prevTrack}
-                  seek={player.seek}
-                />
-              )}
-
-              {/* Volume + audio indicator row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#555', fontSize: 11, width: 12, flexShrink: 0 }}>
-                  {player.volume === 0 ? '0' : player.volume < 0.4 ? '–' : '+'}
-                </span>
-                <input
-                  type="range" min={0} max={1} step={0.02}
-                  value={player.volume}
-                  onChange={e => player.setVolume(Number(e.target.value))}
-                  style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
-                />
-                <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
-                  {Math.round(player.volume * 100)}%
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <SpectrumCanvas
-                    bins={bins} height={22}
-                    renderStyle={displaySettings.spectrumStyle}
-                    theme={displaySettings.spectrumTheme}
+          {source === 'spotify' ? (
+            /* ── Spotify ── */
+            !authenticated ? (
+              <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+                Connect Spotify to get started.
+              </p>
+            ) : !spotifyPlayer.ready ? (
+              <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+                Waiting for Spotify device…
+              </p>
+            ) : (
+              <>
+                <NowPlaying track={spotifyPlayer.track} paused={spotifyPlayer.paused} />
+                {spotifyPlayer.track && (
+                  <PlayerControls
+                    track={spotifyPlayer.track}
+                    paused={spotifyPlayer.paused}
+                    positionMs={spotifyPlayer.positionMs}
+                    togglePlay={spotifyPlayer.togglePlay}
+                    nextTrack={spotifyPlayer.nextTrack}
+                    prevTrack={spotifyPlayer.prevTrack}
+                    seek={spotifyPlayer.seek}
                   />
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="range" min={0} max={1} step={0.02}
+                    value={spotifyPlayer.volume}
+                    onChange={e => spotifyPlayer.setVolume(Number(e.target.value))}
+                    style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
+                  />
+                  <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
+                    {Math.round(spotifyPlayer.volume * 100)}%
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <SpectrumCanvas bins={bins} height={22}
+                      renderStyle={displaySettings.spectrumStyle}
+                      theme={displaySettings.spectrumTheme}
+                    />
+                  </div>
                 </div>
+              </>
+            )
+          ) : (
+            /* ── Local Files ── */
+            <>
+              <FolderPicker
+                folder={localFolder}
+                photoCount={localPlaylist.length}
+                onPick={setLocalFolder}
+                itemLabel="track"
+                dialogTitle="Select audio folder"
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: '#aaa' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                  <input
+                    type="radio" name="local-order" value="alpha"
+                    checked={localOrder === 'alpha'}
+                    onChange={() => setLocalOrder('alpha')}
+                    style={{ accentColor: '#1db954' }}
+                  /> Alphabetical
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                  <input
+                    type="radio" name="local-order" value="shuffle"
+                    checked={localOrder === 'shuffle'}
+                    onChange={() => setLocalOrder('shuffle')}
+                    style={{ accentColor: '#1db954' }}
+                  /> Shuffle
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={localRecursive}
+                    onChange={e => setLocalRecursive(e.target.checked)}
+                    style={{ accentColor: '#1db954' }}
+                  /> Subfolders
+                </label>
               </div>
+              {localPlayer.track && (
+                <>
+                  <NowPlaying track={localPlayer.track} paused={localPlayer.paused} />
+                  <PlayerControls
+                    track={localPlayer.track}
+                    paused={localPlayer.paused}
+                    positionMs={localPlayer.positionMs}
+                    togglePlay={localPlayer.togglePlay}
+                    nextTrack={localPlayer.nextTrack}
+                    prevTrack={localPlayer.prevTrack}
+                    seek={localPlayer.seek}
+                  />
+                </>
+              )}
+              {!localFolder && (
+                <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+                  Pick a folder to start playing.
+                </p>
+              )}
+              {localFolder && localPlaylist.length === 0 && (
+                <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+                  No audio files found in this folder.
+                </p>
+              )}
+              {localFolder && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="range" min={0} max={1} step={0.02}
+                    value={localPlayer.volume}
+                    onChange={e => localPlayer.setVolume(Number(e.target.value))}
+                    style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
+                  />
+                  <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
+                    {Math.round(localPlayer.volume * 100)}%
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <SpectrumCanvas bins={bins} height={22}
+                      renderStyle={displaySettings.spectrumStyle}
+                      theme={displaySettings.spectrumTheme}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           )}
         </Card>

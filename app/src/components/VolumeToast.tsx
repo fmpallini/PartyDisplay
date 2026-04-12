@@ -61,7 +61,7 @@ export function VolumeToast({ displayMs, zoom }: Props) {
             borderRadius: 2, transition: 'width 0.15s ease',
           }} />
         </div>
-        <div style={{ color: '#aaa', fontSize: 12 }}>{pct}%</div>
+        <div style={{ color: '#aaa', fontSize: 12, fontFamily: 'system-ui, -apple-system, sans-serif' }}>{pct}%</div>
       </div>
     </div>
   )
