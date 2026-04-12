@@ -52,8 +52,16 @@ HOW TO RUN
   - Now playing card: album art, track name, artist, progress bar + seek
   - Transport controls: play/pause, previous, next, volume
 
+ LOCAL FILES
+  - Play audio files from a local folder through the built-in HTML5 player
+  - Supported formats: MP3, FLAC, WAV, OGG, M4A, AAC, OPUS
+  - Optional recursive subfolder scan
+  - Play order: alphabetical or shuffle
+  - Reads embedded metadata (title, artist, album art) from file tags
+
  PHOTO SLIDESHOW
-  - Watches a local folder for images (JPEG/PNG/WebP/GIF/BMP/TIFF)
+  - Watches a local folder for images
+  - Supported formats: JPEG, PNG, WebP, GIF, BMP, TIFF
   - Optional recursive subfolder scan
   - Play order: alphabetical or shuffle
   - Configurable display time per photo
