@@ -29,6 +29,14 @@ pub struct DlnaBrowseResult {
     pub items:      Vec<DlnaItem>,
 }
 
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+     .replace('<', "&lt;")
+     .replace('>', "&gt;")
+     .replace('"', "&quot;")
+     .replace('\'', "&apos;")
+}
+
 fn parse_duration(s: &str) -> Option<u64> {
     // Format: H:MM:SS.mmm  or  H:MM:SS
     let parts: Vec<&str> = s.splitn(3, ':').collect();
@@ -148,6 +156,58 @@ pub async fn dlna_discover() -> Vec<DlnaServer> {
         Err(e) => eprintln!("[dlna] discovery error: {e}"),
     }
     servers
+}
+
+/// ContentDirectory Browse(BrowseDirectChildren) via UPnP SOAP.
+/// Use container_id = "0" for the root container (DLNA spec).
+/// Returns parsed containers and items; returns Err on network/SOAP failure.
+#[tauri::command]
+pub async fn dlna_browse(location: String, container_id: String) -> Result<DlnaBrowseResult, String> {
+    use tokio::time::{timeout, Duration};
+
+    let safe_id = xml_escape(&container_id);
+
+    timeout(Duration::from_secs(10), async move {
+        let url = location
+            .parse::<rupnp::http::Uri>()
+            .map_err(|e| format!("Invalid location URL: {e}"))?;
+
+        let device = rupnp::Device::from_url(url)
+            .await
+            .map_err(|e| format!("Could not reach device: {e}"))?;
+
+        let urn = "urn:schemas-upnp-org:service:ContentDirectory:1"
+            .parse::<rupnp::ssdp::URN>()
+            .map_err(|e| format!("Bad URN: {e}"))?;
+
+        let service = device
+            .find_service(&urn)
+            .ok_or_else(|| "ContentDirectory service not found on device".to_string())?;
+
+        // Build the inner SOAP payload fragment (rupnp wraps it in the full envelope)
+        let payload = format!(
+            "<ObjectID>{safe_id}</ObjectID>\
+             <BrowseFlag>BrowseDirectChildren</BrowseFlag>\
+             <Filter>*</Filter>\
+             <StartingIndex>0</StartingIndex>\
+             <RequestedCount>0</RequestedCount>\
+             <SortCriteria></SortCriteria>"
+        );
+
+        let response = service
+            .action(device.url(), "Browse", &payload)
+            .await
+            .map_err(|e| format!("Browse action failed: {e}"))?;
+
+        let didl = response
+            .get("Result")
+            .map(String::as_str)
+            .ok_or_else(|| "No Result field in Browse response".to_string())?;
+
+        Ok::<DlnaBrowseResult, String>(parse_didl_lite(didl))
+    })
+    .await
+    .map_err(|_| "Browse timed out after 10s".to_string())?
 }
 
 #[cfg(test)]

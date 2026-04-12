@@ -243,6 +243,7 @@ fn main() {
             system::get_ip_location,
             local_audio::scan_audio_folder,
             dlna::dlna_discover,
+            dlna::dlna_browse,
             relaunch,
             clear_webview_data,
         ])
