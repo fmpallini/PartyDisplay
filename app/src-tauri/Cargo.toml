@@ -19,4 +19,7 @@ rustfft    = "6"
 notify     = "6"
 tauri-plugin-dialog = "2"
 reqwest             = { version = "0.12", features = ["json"] }
+rupnp               = "1"
+roxmltree           = "0.20"
+futures             = "0.3"
 
