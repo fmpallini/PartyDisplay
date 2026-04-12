@@ -19,7 +19,7 @@ import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
-import { advancePhoto } from '../../hooks/useDisplaySync'
+import { advancePhoto, clearPhotos } from '../../hooks/useDisplaySync'
 import { shuffle } from '../../lib/utils'
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
@@ -206,7 +206,10 @@ export default function ControlPanel() {
   const togglePause = useCallback(() => setSlideshowPaused(p => !p), [])
 
   useEffect(() => {
-    if (library.photos.length === 0) return
+    if (library.photos.length === 0) {
+      clearPhotos().catch(console.error)
+      return
+    }
     const startIdx = library.initialPhoto ? Math.max(0, library.photos.indexOf(library.initialPhoto)) : 0
     showAt(startIdx)
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -112,6 +112,12 @@ export default function DisplayWindow() {
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
+  // Reset counter when folder changes to one with no photos
+  useEffect(() => {
+    const unlisten = listen('photos-cleared', () => setPhotoCounter(null))
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
+  }, [])
+
   useHotkeys({
     onNext:               () => emit('display-hotkey', { action: 'next'       }).catch(console.error),
     onPrev:               () => emit('display-hotkey', { action: 'prev'       }).catch(console.error),
