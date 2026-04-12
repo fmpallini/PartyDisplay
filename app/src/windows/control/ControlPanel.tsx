@@ -18,6 +18,7 @@ import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import type { PlaylistItem } from '../../hooks/useLocalPlayer'
+import { useDlnaBrowser } from '../../hooks/useDlnaBrowser'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto, clearPhotos } from '../../hooks/useDisplaySync'
@@ -104,8 +105,8 @@ export default function ControlPanel() {
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [helpOpen, setHelpOpen]               = useState(false)
 
-  const [source, setSource] = useState<'spotify' | 'local'>(
-    () => (localStorage.getItem('pd_audio_source') as 'spotify' | 'local') ?? 'spotify'
+  const [source, setSource] = useState<'spotify' | 'local' | 'dlna'>(
+    () => (localStorage.getItem('pd_audio_source') as 'spotify' | 'local' | 'dlna') ?? 'spotify'
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
     () => localStorage.getItem('pd_local_audio_folder')
@@ -120,7 +121,22 @@ export default function ControlPanel() {
 
   const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
   const localPlayer   = useLocalPlayer(localPlaylist, source === 'local')
-  const player        = source === 'spotify' ? spotifyPlayer : localPlayer
+
+  const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
+  const dlnaPlaylist: PlaylistItem[] = dlnaBrowserMusic.items
+    .filter(item => item.mime.startsWith('audio/'))
+    .map(item => ({
+      path:       item.url,
+      title:      item.title,
+      artist:     item.artist  ?? undefined,
+      albumArt:   item.album_art ?? undefined,
+      durationMs: item.duration_ms ?? undefined,
+    }))
+  const dlnaPlayer = useLocalPlayer(dlnaPlaylist, source === 'dlna')
+
+  const player        = source === 'spotify' ? spotifyPlayer
+                      : source === 'dlna'    ? dlnaPlayer
+                      : localPlayer
   const bins    = useFftData()
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
 
@@ -332,11 +348,8 @@ export default function ControlPanel() {
 
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
-    if (source === 'local' && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
-    // Local player pauses automatically via its own active-flag effect.
+    if ((source === 'local' || source === 'dlna') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
     localStorage.setItem('pd_audio_source', source)
-  // Intentionally omit spotifyPlayer.* — this effect must only fire on source
-  // change, not on every Spotify pause/play event.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
@@ -359,7 +372,7 @@ export default function ControlPanel() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const hasErrors = !!(authError || spotifyPlayer.error || localPlayer.error || captureError)
+  const hasErrors = !!(authError || spotifyPlayer.error || localPlayer.error || dlnaPlayer.error || captureError)
 
   return (
     <div style={{
@@ -405,6 +418,7 @@ export default function ControlPanel() {
             {authError          && <ErrBanner>Auth: {authError}</ErrBanner>}
             {spotifyPlayer.error && <ErrBanner>Spotify: {spotifyPlayer.error}</ErrBanner>}
             {localPlayer.error   && <ErrBanner>Local: {localPlayer.error}</ErrBanner>}
+            {dlnaPlayer.error    && <ErrBanner>DLNA: {dlnaPlayer.error}</ErrBanner>}
             {captureError        && <ErrBanner>Capture: {captureError}</ErrBanner>}
           </div>
         )}
@@ -421,6 +435,7 @@ export default function ControlPanel() {
           <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
             <button style={sourcePill(source === 'spotify')} onClick={() => setSource('spotify')}>Spotify</button>
             <button style={sourcePill(source === 'local')}   onClick={() => setSource('local')}>Local Files</button>
+            <button style={sourcePill(source === 'dlna')} onClick={() => setSource('dlna')}>DLNA</button>
           </div>
 
           {source === 'spotify' ? (
@@ -466,7 +481,7 @@ export default function ControlPanel() {
                 </div>
               </>
             )
-          ) : (
+          ) : source === 'local' ? (
             /* ── Local Files ── */
             <>
               <FolderPicker
@@ -544,6 +559,136 @@ export default function ControlPanel() {
                     />
                   </div>
                 </div>
+              )}
+            </>
+          ) : (
+            /* ── DLNA ── */
+            <>
+              {!dlnaBrowserMusic.server ? (
+                /* Server picker */
+                <>
+                  <button
+                    onClick={dlnaBrowserMusic.discover}
+                    disabled={dlnaBrowserMusic.discovering}
+                    style={{
+                      background: '#1db95418', border: '1px solid #1db95444', color: '#1db954',
+                      borderRadius: 4, padding: '4px 12px', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
+                    }}
+                  >
+                    {dlnaBrowserMusic.discovering ? 'Searching…' : 'Discover DLNA Servers'}
+                  </button>
+                  {!dlnaBrowserMusic.discovering && dlnaBrowserMusic.servers.length === 0 && (
+                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+                      No DLNA servers found. Press Discover to search.
+                    </p>
+                  )}
+                  {dlnaBrowserMusic.servers.map(s => (
+                    <button
+                      key={s.location}
+                      onClick={() => dlnaBrowserMusic.selectServer(s)}
+                      style={{
+                        background: 'none', border: '1px solid #2a2a2a', color: '#ccc',
+                        borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                /* Browser */
+                <>
+                  {/* Breadcrumb / back navigation */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={dlnaBrowserMusic.reset}
+                      style={{ background: 'none', border: 'none', color: '#1db954', cursor: 'pointer', fontSize: 12, padding: 0 }}
+                      title="Back to server list"
+                    >
+                      ⌂ {dlnaBrowserMusic.server.name}
+                    </button>
+                    {dlnaBrowserMusic.breadcrumb.map(c => (
+                      <span key={c.id} style={{ color: '#555', fontSize: 11 }}>/ {c.title}</span>
+                    ))}
+                    {dlnaBrowserMusic.breadcrumb.length > 0 && (
+                      <button
+                        onClick={dlnaBrowserMusic.back}
+                        style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, marginLeft: 4 }}
+                      >
+                        ← Back
+                      </button>
+                    )}
+                  </div>
+
+                  {dlnaBrowserMusic.loading && (
+                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Loading…</p>
+                  )}
+                  {dlnaBrowserMusic.error && <ErrBanner>{dlnaBrowserMusic.error}</ErrBanner>}
+
+                  {/* Subfolders */}
+                  {dlnaBrowserMusic.containers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => dlnaBrowserMusic.browse(c)}
+                      style={{
+                        background: 'none', border: '1px solid #2a2a2a', color: '#aaa',
+                        borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
+                      }}
+                    >
+                      📁 {c.title}
+                    </button>
+                  ))}
+
+                  {/* Audio item count */}
+                  {dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length > 0 && (
+                    <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
+                      {dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length} audio track(s) ready
+                    </p>
+                  )}
+
+                  {/* Empty folder message */}
+                  {!dlnaBrowserMusic.loading &&
+                    dlnaBrowserMusic.containers.length === 0 &&
+                    dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length === 0 && (
+                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
+                  )}
+
+                  {/* Now Playing for DLNA */}
+                  {dlnaPlayer.track && (
+                    <>
+                      <NowPlaying track={dlnaPlayer.track} paused={dlnaPlayer.paused} />
+                      <PlayerControls
+                        track={dlnaPlayer.track}
+                        paused={dlnaPlayer.paused}
+                        positionMs={dlnaPlayer.positionMs}
+                        togglePlay={dlnaPlayer.togglePlay}
+                        nextTrack={dlnaPlayer.nextTrack}
+                        prevTrack={dlnaPlayer.prevTrack}
+                        seek={dlnaPlayer.seek}
+                      />
+                    </>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="range" min={0} max={1} step={0.02}
+                      value={dlnaPlayer.volume}
+                      onChange={e => dlnaPlayer.setVolume(Number(e.target.value))}
+                      style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
+                      {Math.round(dlnaPlayer.volume * 100)}%
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <SpectrumCanvas bins={bins} height={22}
+                        renderStyle={displaySettings.spectrumStyle}
+                        theme={displaySettings.spectrumTheme}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </>
           )}
