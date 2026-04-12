@@ -65,15 +65,15 @@ export function useLocalPlayer(
       if (!item) return
       const duration = audio.duration * 1000
 
-      // DLNA items carry pre-fetched metadata — skip the music-metadata fetch
-      if (item.title !== undefined) {
+      // DLNA items have HTTP URLs and carry pre-fetched metadata — skip parseBlob
+      if (item.path.startsWith('http')) {
         skipCountRef.current = 0
         setState(s => ({
           ...s,
           ready: true,
           track: {
             id:       item.path,
-            name:     item.title!,
+            name:     item.title ?? stemFromPath(item.path),
             artists:  item.artist ?? '',
             albumArt: item.albumArt ?? '',
             duration,

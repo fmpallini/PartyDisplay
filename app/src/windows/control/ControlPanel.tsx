@@ -123,6 +123,16 @@ export default function ControlPanel() {
   const localPlayer   = useLocalPlayer(localPlaylist, source === 'local')
 
   const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
+
+  const [photoSource, setPhotoSourceState] = useState<'local' | 'dlna'>(
+    () => (localStorage.getItem('pd_photo_source') as 'local' | 'dlna') ?? 'local'
+  )
+  const dlnaBrowserPhotos = useDlnaBrowser('pd_dlna_photos')
+
+  function setPhotoSource(s: 'local' | 'dlna') {
+    setPhotoSourceState(s)
+    localStorage.setItem('pd_photo_source', s)
+  }
   const dlnaPlaylist: PlaylistItem[] = dlnaBrowserMusic.items
     .filter(item => item.mime.startsWith('audio/'))
     .map(item => ({
@@ -183,6 +193,30 @@ export default function ControlPanel() {
     localStorage.setItem('pd_lyrics_split_side',       displaySettings.lyricsSplitSide)
     emit('display-settings-changed', displaySettings).catch(console.error)
   }, [displaySettings])
+
+  // Emit DLNA photo URLs into the photo-list pipeline when the browsed
+  // container changes or the user switches to DLNA photo source.
+  useEffect(() => {
+    if (photoSource !== 'dlna') return
+    const photoUrls = dlnaBrowserPhotos.items
+      .filter(item => item.mime.startsWith('image/'))
+      .map(item => item.url)
+    if (photoUrls.length > 0) {
+      emit('photo-list', { paths: photoUrls }).catch(console.error)
+    } else if (dlnaBrowserPhotos.server) {
+      clearPhotos().catch(console.error)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dlnaBrowserPhotos.items, photoSource])
+
+  // When the user switches from DLNA back to local photos, re-watch the
+  // current folder so the watcher re-emits the photo-list.
+  useEffect(() => {
+    if (photoSource === 'local' && library.folder) {
+      library.setFolder(library.folder)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoSource])
 
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
@@ -703,15 +737,102 @@ export default function ControlPanel() {
             </button>
           }
         >
-          <FolderPicker
-            folder={library.folder}
-            photoCount={library.photos.length}
-            onPick={library.setFolder}
-          />
+          {photoSource === 'local' ? (
+            <FolderPicker
+              folder={library.folder}
+              photoCount={library.photos.length}
+              onPick={library.setFolder}
+            />
+          ) : (
+            /* ── DLNA photo browser ── */
+            <>
+              {!dlnaBrowserPhotos.server ? (
+                <>
+                  <button
+                    onClick={dlnaBrowserPhotos.discover}
+                    disabled={dlnaBrowserPhotos.discovering}
+                    style={{
+                      background: '#1db95418', border: '1px solid #1db95444', color: '#1db954',
+                      borderRadius: 4, padding: '4px 12px', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
+                    }}
+                  >
+                    {dlnaBrowserPhotos.discovering ? 'Searching\u2026' : 'Discover DLNA Servers'}
+                  </button>
+                  {!dlnaBrowserPhotos.discovering && dlnaBrowserPhotos.servers.length === 0 && (
+                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
+                      No DLNA servers found. Press Discover to search.
+                    </p>
+                  )}
+                  {dlnaBrowserPhotos.servers.map(s => (
+                    <button
+                      key={s.location}
+                      onClick={() => dlnaBrowserPhotos.selectServer(s)}
+                      style={{
+                        background: 'none', border: '1px solid #2a2a2a', color: '#ccc',
+                        borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={dlnaBrowserPhotos.reset}
+                      style={{ background: 'none', border: 'none', color: '#1db954', cursor: 'pointer', fontSize: 12, padding: 0 }}
+                    >
+                      \u2302 {dlnaBrowserPhotos.server.name}
+                    </button>
+                    {dlnaBrowserPhotos.breadcrumb.map(c => (
+                      <span key={c.id} style={{ color: '#555', fontSize: 11 }}>/ {c.title}</span>
+                    ))}
+                    {dlnaBrowserPhotos.breadcrumb.length > 0 && (
+                      <button
+                        onClick={dlnaBrowserPhotos.back}
+                        style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, marginLeft: 4 }}
+                      >
+                        \u2190 Back
+                      </button>
+                    )}
+                  </div>
+                  {dlnaBrowserPhotos.loading && <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Loading\u2026</p>}
+                  {dlnaBrowserPhotos.error && <ErrBanner>{dlnaBrowserPhotos.error}</ErrBanner>}
+                  {dlnaBrowserPhotos.containers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => dlnaBrowserPhotos.browse(c)}
+                      style={{
+                        background: 'none', border: '1px solid #2a2a2a', color: '#aaa',
+                        borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
+                      }}
+                    >
+                      {c.title}
+                    </button>
+                  ))}
+                  {(() => {
+                    const photoCount = dlnaBrowserPhotos.items.filter(i => i.mime.startsWith('image/')).length
+                    return photoCount > 0
+                      ? <p style={{ margin: 0, color: '#555', fontSize: 11 }}>{photoCount} photo(s) loaded</p>
+                      : (!dlnaBrowserPhotos.loading && dlnaBrowserPhotos.containers.length === 0
+                          ? <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
+                          : null)
+                  })()}
+                </>
+              )}
+            </>
+          )}
+
           <SlideshowConfigPanel
             config={config}
             onChange={setConfig}
             hasPhotos={library.photos.length > 0}
+            photoSource={photoSource}
+            onPhotoSourceChange={setPhotoSource}
           />
         </Card>
 
