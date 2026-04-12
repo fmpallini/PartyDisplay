@@ -27,8 +27,7 @@ fn html_escape(s: &str) -> String {
 }
 
 pub struct AppState {
-    pub device_id:       Mutex<Option<String>>,
-    pub reset_requested: Mutex<bool>,
+    pub device_id: Mutex<Option<String>>,
 }
 
 #[tauri::command]
@@ -168,34 +167,30 @@ fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(),
 }
 
 #[tauri::command]
-fn relaunch(app: tauri::AppHandle) {
-    app.restart();
-}
-
-/// Returns true (and clears the flag) if the app was launched with --reset.
-/// The frontend calls this once on startup to decide whether to wipe localStorage.
-#[tauri::command]
-fn consume_reset_flag(state: tauri::State<AppState>) -> bool {
-    let mut flag = state.reset_requested.lock().unwrap();
-    let was_set = *flag;
-    *flag = false;
-    was_set
+fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 fn main() {
-    // Handle --reset before building the Tauri app so the keyring is cleared
-    // even before the WebView initialises.
+    // Handle --reset: clear all saved state and exit. The user relaunches manually.
     let cli_args: Vec<String> = std::env::args().collect();
-    let reset_on_start = cli_args.contains(&"--reset".to_string());
-    if reset_on_start {
+    if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
+        // WebView2 stores its user-data (including localStorage) under
+        // %LOCALAPPDATA%\<identifier>\EBWebView — NOT %APPDATA%.
+        if let Ok(local) = std::env::var("LOCALAPPDATA") {
+            let profile = std::path::Path::new(&local).join("com.partydisplay.app");
+            if profile.exists() {
+                let _ = std::fs::remove_dir_all(&profile);
+            }
+        }
+        std::process::exit(0);
     }
 
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
         .manage(AppState {
-            device_id:       Mutex::new(None),
-            reset_requested: Mutex::new(reset_on_start),
+            device_id: Mutex::new(None),
         })
         .manage(Arc::clone(&slideshow_state))
         // single-instance MUST be registered before deep-link so it can intercept
@@ -203,15 +198,6 @@ fn main() {
         // and forward it to the running instance instead of opening a new window.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             use tauri::Emitter;
-            // If the already-running instance is asked to reset, emit an event so
-            // the frontend can clear localStorage and relaunch.
-            if args.contains(&"--reset".to_string()) {
-                // Clear keyring here (same as the early-startup path) so tokens
-                // are wiped even if the frontend event handler fails.
-                let _ = auth::clear_tokens();
-                let _ = app.emit("reset-requested", ());
-                return;
-            }
             // The OS launches a second process with the party-display://callback URL
             // as a command-line arg. single-instance blocks that process and delivers
             // the args here. We must re-emit the deep-link event ourselves because
@@ -251,8 +237,7 @@ fn main() {
             system::get_battery_status,
             system::get_ip_location,
             local_audio::scan_audio_folder,
-            relaunch,
-            consume_reset_flag,
+            exit_app,
         ])
         .setup(|app| {
             #[cfg(desktop)]

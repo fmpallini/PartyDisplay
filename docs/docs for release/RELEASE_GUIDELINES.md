@@ -38,17 +38,17 @@ cd app && npm run tauri build
 
 Use the **standalone `party-display.exe`** (not the installer) as the release artifact.
 
-### 4. Package the release zip
+### 4. Ask the user to test
+
+Do **not** proceed until the user explicitly confirms the build is good.
+
+### 5. Package the release zip
 
 Create a zip named `party-display-vX.Y.Z.zip` containing:
 - `party-display.exe` (from step 3)
 - `docs/docs for release/README.txt`
 - `docs/docs for release/LICENSE.txt`
 - Move that to the `release/` folder at the repo root.
-
-### 5. Ask the user to test
-
-Do **not** proceed until the user explicitly confirms the build is good.
 
 ### 6. Merge dev → master
 

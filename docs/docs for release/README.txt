@@ -137,12 +137,13 @@ HOW TO RUN
     enabled.
 
   Reset everything
-    Open the Help panel (? button in the control panel) and click "Reset app".
-    This clears all saved settings and tokens and restarts the app.
+    Open the Help panel (? button in the control panel) and click "Reset and close".
+    This clears all saved settings and Spotify tokens, then closes the app.
+    Relaunch it normally afterwards.
 
-    You can also reset from the command line without opening the app:
+    You can also reset from the command line:
 
       party-display.exe --reset
 
-    This clears all saved settings and Spotify credentials. If the app is
-    already running, it will reset and restart automatically.
+    This clears all saved settings and Spotify credentials, then exits.
+    Relaunch the app manually afterwards.
