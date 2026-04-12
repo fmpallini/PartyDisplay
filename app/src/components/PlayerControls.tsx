@@ -28,8 +28,6 @@ export function PlayerControls({ track, paused, positionMs, togglePlay, nextTrac
   const duration  = track?.duration ?? 0
   const remaining = Math.max(0, duration - positionMs)
 
-  if (!track) return null
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
 
@@ -41,27 +39,33 @@ export function PlayerControls({ track, paused, positionMs, togglePlay, nextTrac
         </button>
         <button style={iconBtn} onClick={nextTrack} title="Next">⏭</button>
 
-        {/* Time */}
-        <span style={{ color: '#aaa', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
-          {fmt(positionMs)}
-        </span>
-        <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13 }}>
-          &nbsp;/&nbsp;{fmt(duration)}
-        </span>
-        <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
-          -{fmt(remaining)}
-        </span>
+        {/* Time — only when track metadata is available */}
+        {track && (
+          <>
+            <span style={{ color: '#aaa', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
+              {fmt(positionMs)}
+            </span>
+            <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13 }}>
+              &nbsp;/&nbsp;{fmt(duration)}
+            </span>
+            <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
+              -{fmt(remaining)}
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Seek bar */}
-      <input
-        type="range"
-        min={0}
-        max={duration}
-        value={positionMs}
-        onChange={e => seek(Number(e.target.value))}
-        style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer' }}
-      />
+      {/* Seek bar — only when track metadata is available */}
+      {track && (
+        <input
+          type="range"
+          min={0}
+          max={duration}
+          value={positionMs}
+          onChange={e => seek(Number(e.target.value))}
+          style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer' }}
+        />
+      )}
 
     </div>
   )

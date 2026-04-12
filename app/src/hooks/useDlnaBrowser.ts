@@ -53,8 +53,8 @@ export function useDlnaBrowser(storageKey: string) {
     setError(null)
     try {
       const result = await invoke<DlnaBrowseResult>('dlna_browse', {
-        location:     loc,
-        container_id: containerId,
+        location:    loc,
+        containerId: containerId,
       })
       setContainers(result.containers)
       setItems(result.items)
@@ -77,8 +77,8 @@ export function useDlnaBrowser(storageKey: string) {
       setBreadcrumb(saved.breadcrumb)
       // Silently fall back to server picker if the server is unreachable
       invoke<DlnaBrowseResult>('dlna_browse', {
-        location:     saved.location,
-        container_id: containerId,
+        location:    saved.location,
+        containerId: containerId,
       }).then(result => {
         setContainers(result.containers)
         setItems(result.items)

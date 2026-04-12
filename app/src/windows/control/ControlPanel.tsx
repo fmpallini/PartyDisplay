@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { safeNum } from '../../lib/utils'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
@@ -133,15 +133,27 @@ export default function ControlPanel() {
     setPhotoSourceState(s)
     localStorage.setItem('pd_photo_source', s)
   }
-  const dlnaPlaylist: PlaylistItem[] = dlnaBrowserMusic.items
-    .filter(item => item.mime.startsWith('audio/'))
-    .map(item => ({
-      path:       item.url,
-      title:      item.title,
-      artist:     item.artist  ?? undefined,
-      albumArt:   item.album_art ?? undefined,
-      durationMs: item.duration_ms ?? undefined,
-    }))
+  // DLNA HTTP URLs are routed through a local proxy server (127.0.0.1:29341)
+  // so the webview can load them without CSP / WebView2 mixed-content issues.
+  // The proxy strips its own host:port from the request path and re-fetches
+  // the original URL via reqwest, forwarding Range headers for seeking.
+  const DLNA_PROXY = 'http://127.0.0.1:29341'
+  const toDlnaProxy = (url: string) => `${DLNA_PROXY}/${url.replace(/^https?:\/\//, '')}`
+
+  // Memoized so useLocalPlayer's playlist-change effect doesn't fire every render
+  const dlnaPlaylist = useMemo<PlaylistItem[]>(() =>
+    dlnaBrowserMusic.items
+      .filter(item => item.mime.startsWith('audio/'))
+      .map(item => ({
+        path:               toDlnaProxy(item.url),
+        title:              item.title,
+        artist:             item.artist    ?? undefined,
+        albumArt:           item.album_art ? toDlnaProxy(item.album_art) : undefined,
+        durationMs:         item.duration_ms ?? undefined,
+        metadataPrefetched: true,
+      })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [dlnaBrowserMusic.items])
   const dlnaPlayer = useLocalPlayer(dlnaPlaylist, source === 'dlna')
 
   const player        = source === 'spotify' ? spotifyPlayer
@@ -466,10 +478,11 @@ export default function ControlPanel() {
           }
         >
           {/* Source picker */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Source</span>
             <button style={sourcePill(source === 'spotify')} onClick={() => setSource('spotify')}>Spotify</button>
             <button style={sourcePill(source === 'local')}   onClick={() => setSource('local')}>Local Files</button>
-            <button style={sourcePill(source === 'dlna')} onClick={() => setSource('dlna')}>DLNA</button>
+            <button style={sourcePill(source === 'dlna')}    onClick={() => setSource('dlna')}>DLNA</button>
           </div>
 
           {source === 'spotify' ? (
@@ -690,10 +703,12 @@ export default function ControlPanel() {
                     <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
                   )}
 
-                  {/* Now Playing for DLNA */}
-                  {dlnaPlayer.track && (
+                  {/* Playback controls — show as soon as playlist has tracks */}
+                  {dlnaPlaylist.length > 0 && (
                     <>
-                      <NowPlaying track={dlnaPlayer.track} paused={dlnaPlayer.paused} />
+                      {dlnaPlayer.track && (
+                        <NowPlaying track={dlnaPlayer.track} paused={dlnaPlayer.paused} />
+                      )}
                       <PlayerControls
                         track={dlnaPlayer.track}
                         paused={dlnaPlayer.paused}
@@ -737,6 +752,35 @@ export default function ControlPanel() {
             </button>
           }
         >
+          {/* Source toggle — always first */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Source</span>
+            <button
+              style={{
+                background: photoSource === 'local' ? '#1db95418' : 'none',
+                border: `1px solid ${photoSource === 'local' ? '#1db95444' : '#2a2a2a'}`,
+                color: photoSource === 'local' ? '#1db954' : '#555',
+                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+              }}
+              onClick={() => setPhotoSource('local')}
+            >
+              Local Folder
+            </button>
+            <button
+              style={{
+                background: photoSource === 'dlna' ? '#1db95418' : 'none',
+                border: `1px solid ${photoSource === 'dlna' ? '#1db95444' : '#2a2a2a'}`,
+                color: photoSource === 'dlna' ? '#1db954' : '#555',
+                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+              }}
+              onClick={() => setPhotoSource('dlna')}
+            >
+              DLNA Server
+            </button>
+          </div>
+
           {photoSource === 'local' ? (
             <FolderPicker
               folder={library.folder}
@@ -785,7 +829,7 @@ export default function ControlPanel() {
                       onClick={dlnaBrowserPhotos.reset}
                       style={{ background: 'none', border: 'none', color: '#1db954', cursor: 'pointer', fontSize: 12, padding: 0 }}
                     >
-                      \u2302 {dlnaBrowserPhotos.server.name}
+                      ⌂ {dlnaBrowserPhotos.server.name}
                     </button>
                     {dlnaBrowserPhotos.breadcrumb.map(c => (
                       <span key={c.id} style={{ color: '#555', fontSize: 11 }}>/ {c.title}</span>
@@ -795,11 +839,11 @@ export default function ControlPanel() {
                         onClick={dlnaBrowserPhotos.back}
                         style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, marginLeft: 4 }}
                       >
-                        \u2190 Back
+                        ← Back
                       </button>
                     )}
                   </div>
-                  {dlnaBrowserPhotos.loading && <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Loading\u2026</p>}
+                  {dlnaBrowserPhotos.loading && <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Loading…</p>}
                   {dlnaBrowserPhotos.error && <ErrBanner>{dlnaBrowserPhotos.error}</ErrBanner>}
                   {dlnaBrowserPhotos.containers.map(c => (
                     <button
@@ -831,8 +875,6 @@ export default function ControlPanel() {
             config={config}
             onChange={setConfig}
             hasPhotos={library.photos.length > 0}
-            photoSource={photoSource}
-            onPhotoSourceChange={setPhotoSource}
           />
         </Card>
 

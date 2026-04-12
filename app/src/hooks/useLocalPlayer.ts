@@ -4,11 +4,12 @@ import { parseBlob } from 'music-metadata'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
 
 export interface PlaylistItem {
-  path:       string       // absolute file path or http:// URL
-  title?:     string       // pre-fetched title (skips music-metadata fetch when present)
-  artist?:    string
-  albumArt?:  string       // URL or object URL
-  durationMs?: number
+  path:                string   // absolute file path or http:// URL
+  title?:              string   // pre-fetched title
+  artist?:             string
+  albumArt?:           string   // URL or object URL
+  durationMs?:         number
+  metadataPrefetched?: boolean  // when true, skip music-metadata blob parse
 }
 
 /** Extract the filename without extension from a path. Used as a title fallback. */
@@ -49,7 +50,9 @@ export function useLocalPlayer(
     const i = ((idx % playlist.length) + playlist.length) % playlist.length
     indexRef.current = i
     const item = playlist[i]
-    audioRef.current.src = item.path.startsWith('http')
+    // Any path that already contains a URL scheme is used directly;
+    // bare file paths go through Tauri's asset protocol.
+    audioRef.current.src = item.path.includes('://')
       ? item.path
       : convertFileSrc(item.path)
     audioRef.current.load()
@@ -65,8 +68,8 @@ export function useLocalPlayer(
       if (!item) return
       const duration = audio.duration * 1000
 
-      // DLNA items have HTTP URLs and carry pre-fetched metadata — skip parseBlob
-      if (item.path.startsWith('http')) {
+      // Items with pre-fetched metadata (e.g. DLNA) — skip parseBlob
+      if (item.metadataPrefetched) {
         skipCountRef.current = 0
         setState(s => ({
           ...s,

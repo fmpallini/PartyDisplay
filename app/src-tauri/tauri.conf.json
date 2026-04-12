@@ -31,7 +31,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://asset.localhost https://i.scdn.co data: blob:; media-src 'self' http://asset.localhost; frame-src https://sdk.scdn.co; connect-src 'self' ipc: http://ipc.localhost http://asset.localhost https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://lrclib.net; font-src 'self'; object-src 'none'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://asset.localhost https://i.scdn.co data: blob: http://127.0.0.1:29341; media-src 'self' http://asset.localhost http://127.0.0.1:29341; frame-src https://sdk.scdn.co; connect-src 'self' ipc: http://ipc.localhost http://asset.localhost https://accounts.spotify.com https://api.spotify.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://lrclib.net; font-src 'self'; object-src 'none'",
       "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,

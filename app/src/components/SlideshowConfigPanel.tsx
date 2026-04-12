@@ -11,11 +11,9 @@ export const DEFAULT_SLIDESHOW_CONFIG: SlideshowConfig = {
 }
 
 interface Props {
-  config:              SlideshowConfig
-  onChange:            (c: SlideshowConfig) => void
-  hasPhotos:           boolean
-  photoSource:         'local' | 'dlna'
-  onPhotoSourceChange: (s: 'local' | 'dlna') => void
+  config:    SlideshowConfig
+  onChange:  (c: SlideshowConfig) => void
+  hasPhotos: boolean
 }
 
 const row: React.CSSProperties = {
@@ -27,42 +25,13 @@ const numInput: React.CSSProperties = {
   borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 13,
 }
 
-export function SlideshowConfigPanel({ config, onChange, hasPhotos, photoSource, onPhotoSourceChange }: Props) {
+export function SlideshowConfigPanel({ config, onChange, hasPhotos }: Props) {
   function set(patch: Partial<SlideshowConfig>) {
     onChange({ ...config, ...patch })
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-      {/* Photo source toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ color: '#666', fontSize: 12 }}>Source</span>
-        <button
-          style={{
-            background: photoSource === 'local' ? '#1db95418' : 'none',
-            border: `1px solid ${photoSource === 'local' ? '#1db95444' : '#2a2a2a'}`,
-            color: photoSource === 'local' ? '#1db954' : '#555',
-            borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-            fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-          }}
-          onClick={() => onPhotoSourceChange('local')}
-        >
-          Local Folder
-        </button>
-        <button
-          style={{
-            background: photoSource === 'dlna' ? '#1db95418' : 'none',
-            border: `1px solid ${photoSource === 'dlna' ? '#1db95444' : '#2a2a2a'}`,
-            color: photoSource === 'dlna' ? '#1db954' : '#555',
-            borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-            fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-          }}
-          onClick={() => onPhotoSourceChange('dlna')}
-        >
-          DLNA Server
-        </button>
-      </div>
 
       {/* Advance interval */}
       <label style={row}>
