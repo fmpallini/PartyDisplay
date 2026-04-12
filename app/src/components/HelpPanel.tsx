@@ -44,15 +44,16 @@ export function HelpPanel({ onClose }: Props) {
 
   useEffect(() => { getVersion().then(setVersion).catch(() => {}) }, [])
 
-  function handleReset() {
+  async function handleReset() {
     const ok = window.confirm(
-      'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then close the app.'
+      'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then restart the app.'
     )
     if (!ok) return
 
     localStorage.clear()
-    invoke('clear_tokens').catch(console.error)
-    invoke('exit_app').catch(console.error)
+    await invoke('clear_tokens').catch(console.error)
+    await invoke('clear_webview_data').catch(console.error)
+    await invoke('relaunch').catch(console.error)
   }
 
   return (
@@ -143,10 +144,10 @@ export function HelpPanel({ onClose }: Props) {
               cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
             }}
           >
-            Reset and close
+            Reset
           </button>
           <p style={{ margin: '5px 0 0', fontSize: 10, color: '#444', lineHeight: 1.4 }}>
-            Clears all saved settings and Spotify credentials, then closes the app.
+            Clears all saved settings and Spotify credentials, then restarts the app.
           </p>
         </div>
 

@@ -137,9 +137,8 @@ HOW TO RUN
     enabled.
 
   Reset everything
-    Open the Help panel (? button in the control panel) and click "Reset and close".
-    This clears all saved settings and Spotify tokens, then closes the app.
-    Relaunch it normally afterwards.
+    Open the Help panel (? button in the control panel) and click "Reset".
+    This clears all saved settings and Spotify tokens, then restarts the app.
 
     You can also reset from the command line:
 

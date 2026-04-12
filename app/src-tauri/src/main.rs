@@ -167,8 +167,20 @@ fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(),
 }
 
 #[tauri::command]
-fn exit_app(app: tauri::AppHandle) {
-    app.exit(0);
+fn relaunch(app: tauri::AppHandle) {
+    app.restart();
+}
+
+/// Delete the WebView2 user-data folder so that localStorage and other
+/// browser-side storage is wiped on the next launch.
+/// Used by both the --reset CLI flag and the UI reset button.
+#[tauri::command]
+fn clear_webview_data() {
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let _ = std::fs::remove_dir_all(
+            std::path::Path::new(&local).join("com.partydisplay.app")
+        );
+    }
 }
 
 fn main() {
@@ -176,15 +188,7 @@ fn main() {
     let cli_args: Vec<String> = std::env::args().collect();
     if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
-        // WebView2 stores its user-data (including localStorage) under
-        // %LOCALAPPDATA%\<identifier>\EBWebView — NOT %APPDATA%.
-        if let Ok(local) = std::env::var("LOCALAPPDATA") {
-            let profile = std::path::Path::new(&local).join("com.partydisplay.app");
-            if profile.exists() {
-                let _ = std::fs::remove_dir_all(&profile);
-            }
-        }
-        std::process::exit(0);
+        clear_webview_data();
     }
 
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
@@ -237,7 +241,8 @@ fn main() {
             system::get_battery_status,
             system::get_ip_location,
             local_audio::scan_audio_folder,
-            exit_app,
+            relaunch,
+            clear_webview_data,
         ])
         .setup(|app| {
             #[cfg(desktop)]
