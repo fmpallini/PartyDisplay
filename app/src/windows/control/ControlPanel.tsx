@@ -495,39 +495,7 @@ export default function ControlPanel() {
               <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
                 Waiting for Spotify device…
               </p>
-            ) : (
-              <>
-                <NowPlaying track={spotifyPlayer.track} paused={spotifyPlayer.paused} />
-                {spotifyPlayer.track && (
-                  <PlayerControls
-                    track={spotifyPlayer.track}
-                    paused={spotifyPlayer.paused}
-                    positionMs={spotifyPlayer.positionMs}
-                    togglePlay={spotifyPlayer.togglePlay}
-                    nextTrack={spotifyPlayer.nextTrack}
-                    prevTrack={spotifyPlayer.prevTrack}
-                    seek={spotifyPlayer.seek}
-                  />
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="range" min={0} max={1} step={0.02}
-                    value={spotifyPlayer.volume}
-                    onChange={e => spotifyPlayer.setVolume(Number(e.target.value))}
-                    style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
-                  />
-                  <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
-                    {Math.round(spotifyPlayer.volume * 100)}%
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <SpectrumCanvas bins={bins} height={22}
-                      renderStyle={displaySettings.spectrumStyle}
-                      theme={displaySettings.spectrumTheme}
-                    />
-                  </div>
-                </div>
-              </>
-            )
+            ) : null
           ) : source === 'local' ? (
             /* ── Local Files ── */
             <>
@@ -564,20 +532,6 @@ export default function ControlPanel() {
                   /> Subfolders
                 </label>
               </div>
-              {localPlayer.track && (
-                <>
-                  <NowPlaying track={localPlayer.track} paused={localPlayer.paused} />
-                  <PlayerControls
-                    track={localPlayer.track}
-                    paused={localPlayer.paused}
-                    positionMs={localPlayer.positionMs}
-                    togglePlay={localPlayer.togglePlay}
-                    nextTrack={localPlayer.nextTrack}
-                    prevTrack={localPlayer.prevTrack}
-                    seek={localPlayer.seek}
-                  />
-                </>
-              )}
               {!localFolder && (
                 <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
                   Pick a folder to start playing.
@@ -587,25 +541,6 @@ export default function ControlPanel() {
                 <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
                   No audio files found in this folder.
                 </p>
-              )}
-              {localFolder && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="range" min={0} max={1} step={0.02}
-                    value={localPlayer.volume}
-                    onChange={e => localPlayer.setVolume(Number(e.target.value))}
-                    style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
-                  />
-                  <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
-                    {Math.round(localPlayer.volume * 100)}%
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <SpectrumCanvas bins={bins} height={22}
-                      renderStyle={displaySettings.spectrumStyle}
-                      theme={displaySettings.spectrumTheme}
-                    />
-                  </div>
-                </div>
               )}
             </>
           ) : (
@@ -702,45 +637,41 @@ export default function ControlPanel() {
                     dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length === 0 && (
                     <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
                   )}
-
-                  {/* Playback controls — show as soon as playlist has tracks */}
-                  {dlnaPlaylist.length > 0 && (
-                    <>
-                      {dlnaPlayer.track && (
-                        <NowPlaying track={dlnaPlayer.track} paused={dlnaPlayer.paused} />
-                      )}
-                      <PlayerControls
-                        track={dlnaPlayer.track}
-                        paused={dlnaPlayer.paused}
-                        positionMs={dlnaPlayer.positionMs}
-                        togglePlay={dlnaPlayer.togglePlay}
-                        nextTrack={dlnaPlayer.nextTrack}
-                        prevTrack={dlnaPlayer.prevTrack}
-                        seek={dlnaPlayer.seek}
-                      />
-                    </>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="range" min={0} max={1} step={0.02}
-                      value={dlnaPlayer.volume}
-                      onChange={e => dlnaPlayer.setVolume(Number(e.target.value))}
-                      style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                    <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
-                      {Math.round(dlnaPlayer.volume * 100)}%
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <SpectrumCanvas bins={bins} height={22}
-                        renderStyle={displaySettings.spectrumStyle}
-                        theme={displaySettings.spectrumTheme}
-                      />
-                    </div>
-                  </div>
                 </>
               )}
             </>
           )}
+
+          {/* ── Zone 2: Playback — always visible ─────────────────────── */}
+          <div style={{ borderTop: '1px solid #1e1e1e', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <NowPlaying track={player.track} paused={player.paused} />
+            <PlayerControls
+              track={player.track}
+              paused={player.paused}
+              positionMs={player.positionMs}
+              togglePlay={player.togglePlay}
+              nextTrack={player.nextTrack}
+              prevTrack={player.prevTrack}
+              seek={player.seek}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="range" min={0} max={1} step={0.02}
+                value={player.volume}
+                onChange={e => player.setVolume(Number(e.target.value))}
+                style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
+              />
+              <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
+                {Math.round(player.volume * 100)}%
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SpectrumCanvas bins={bins} height={22}
+                  renderStyle={displaySettings.spectrumStyle}
+                  theme={displaySettings.spectrumTheme}
+                />
+              </div>
+            </div>
+          </div>
         </Card>
 
         {/* ── Slideshow card ──────────────────────────────────────────── */}
