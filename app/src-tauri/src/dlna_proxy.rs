@@ -42,6 +42,28 @@ pub async fn start() {
     }
 }
 
+/// Returns true only if the URL's host resolves to an RFC-1918 private address.
+/// Rejects loopback (127.x), link-local (169.254.x), and all public IPs.
+fn is_private_lan_url(url: &str) -> bool {
+    let host = match url.parse::<reqwest::Url>() {
+        Ok(u) => u.host_str().unwrap_or("").to_owned(),
+        Err(_) => return false,
+    };
+    // Strip port if present (host may be "192.168.1.1:8200")
+    let ip_str = host.split(':').next().unwrap_or("");
+    let ip: std::net::Ipv4Addr = match ip_str.parse() {
+        Ok(ip) => ip,
+        Err(_) => return false,  // hostnames not accepted — DLNA URLs are always bare IPs
+    };
+    let [a, b, c, _] = ip.octets();
+    matches!(
+        (a, b, c),
+        (10, _, _)                          // 10.0.0.0/8
+        | (172, 16..=31, _)                 // 172.16.0.0/12
+        | (192, 168, _)                     // 192.168.0.0/16
+    )
+}
+
 async fn handle(stream: tokio::net::TcpStream) {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
@@ -70,6 +92,17 @@ async fn handle(stream: tokio::net::TcpStream) {
 
     // path starts with '/', so "http:/" + path == "http://192.168.x.x:8200/..."
     let target_url = format!("http:/{path}");
+
+    // Restrict forwarding to RFC-1918 LAN addresses only.
+    // Blocks cloud-metadata endpoints (169.254.169.254) and loopback self-requests.
+    if !is_private_lan_url(&target_url) {
+        let msg = "403 target host is not a private LAN address";
+        let _ = writer.write_all(
+            format!("HTTP/1.1 403 Forbidden\r\nContent-Length: {}\r\n\r\n{}", msg.len(), msg)
+                .as_bytes(),
+        ).await;
+        return;
+    }
 
     let client = match reqwest::Client::builder().build() {
         Ok(c)  => c,
@@ -122,5 +155,48 @@ async fn handle(stream: tokio::net::TcpStream) {
                     .as_bytes(),
             ).await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_private_lan_url;
+
+    #[test]
+    fn allows_rfc1918_ranges() {
+        assert!(is_private_lan_url("http://10.0.0.1:8200/media/track.mp3"));
+        assert!(is_private_lan_url("http://10.255.255.255/x"));
+        assert!(is_private_lan_url("http://172.16.0.1/x"));
+        assert!(is_private_lan_url("http://172.31.255.255/x"));
+        assert!(is_private_lan_url("http://192.168.1.100:8200/x"));
+        assert!(is_private_lan_url("http://192.168.0.1/x"));
+    }
+
+    #[test]
+    fn blocks_loopback() {
+        assert!(!is_private_lan_url("http://127.0.0.1:7357/callback"));
+        assert!(!is_private_lan_url("http://127.0.0.1:29341/192.168.1.1/x")); // proxy self-request
+        assert!(!is_private_lan_url("http://127.1.2.3/x"));
+    }
+
+    #[test]
+    fn blocks_link_local_metadata() {
+        assert!(!is_private_lan_url("http://169.254.169.254/latest/meta-data/"));
+        assert!(!is_private_lan_url("http://169.254.0.1/x"));
+    }
+
+    #[test]
+    fn blocks_public_ips() {
+        assert!(!is_private_lan_url("http://8.8.8.8/x"));
+        assert!(!is_private_lan_url("http://1.1.1.1/x"));
+        assert!(!is_private_lan_url("http://172.32.0.1/x")); // just outside 172.16-31
+        assert!(!is_private_lan_url("http://172.15.0.1/x")); // just outside 172.16-31
+    }
+
+    #[test]
+    fn blocks_hostnames_and_malformed() {
+        assert!(!is_private_lan_url("http://nas.local/x"));
+        assert!(!is_private_lan_url("not-a-url"));
+        assert!(!is_private_lan_url(""));
     }
 }
