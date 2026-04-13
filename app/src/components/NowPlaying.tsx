@@ -3,7 +3,7 @@ import type { TrackInfo } from '../lib/player-types'
 interface Props { track: TrackInfo | null; paused: boolean }
 
 export default function NowPlaying({ track, paused: _paused }: Props) {
-  if (!track) return <p style={{ color: '#666', fontSize: 13 }}>No track playing — open Spotify and select this device.</p>
+  if (!track) return <p style={{ margin: 0, color: '#555', fontSize: 12 }}>No track</p>
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0' }}>
