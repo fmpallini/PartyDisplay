@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 
 export type { TrackInfo, PlayerState, PlayerControls } from '../lib/player-types'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
@@ -40,7 +39,6 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
 
       player.addListener('ready', ({ device_id }) => {
         setState(s => ({ ...s, ready: true, deviceId: device_id, error: null }))
-        invoke('set_device_id', { deviceId: device_id }).catch(console.error)
         // Fetch actual session volume from Spotify Web API (SDK getVolume() returns its own
         // initial value, not the real device volume the user had before connecting).
         fetch('https://api.spotify.com/v1/me/player', {
