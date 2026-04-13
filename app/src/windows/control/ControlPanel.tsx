@@ -208,7 +208,7 @@ export default function ControlPanel() {
     if (photoSource !== 'dlna') return
     const photoUrls = dlnaBrowserPhotos.items
       .filter(item => item.mime.startsWith('image/'))
-      .map(item => item.url)
+      .map(item => toDlnaProxy(item.url))
     if (photoUrls.length > 0) {
       emit('photo-list', { paths: photoUrls }).catch(console.error)
     } else if (dlnaBrowserPhotos.server) {
