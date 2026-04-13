@@ -11,9 +11,10 @@ export const DEFAULT_SLIDESHOW_CONFIG: SlideshowConfig = {
 }
 
 interface Props {
-  config:    SlideshowConfig
-  onChange:  (c: SlideshowConfig) => void
-  hasPhotos: boolean
+  config:        SlideshowConfig
+  onChange:      (c: SlideshowConfig) => void
+  hasPhotos:     boolean
+  showSubfolders?: boolean
 }
 
 const row: React.CSSProperties = {
@@ -25,7 +26,7 @@ const numInput: React.CSSProperties = {
   borderRadius: 4, padding: '4px 6px', fontFamily: 'inherit', fontSize: 13,
 }
 
-export function SlideshowConfigPanel({ config, onChange, hasPhotos }: Props) {
+export function SlideshowConfigPanel({ config, onChange, hasPhotos, showSubfolders = true }: Props) {
   function set(patch: Partial<SlideshowConfig>) {
     onChange({ ...config, ...patch })
   }
@@ -57,16 +58,18 @@ export function SlideshowConfigPanel({ config, onChange, hasPhotos }: Props) {
         </label>
       </div>
 
-      {/* Subfolders */}
-      <label style={{ ...row, cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={config.subfolders}
-          onChange={e => set({ subfolders: e.target.checked })}
-          style={{ accentColor: '#1db954' }}
-        />
-        Include subfolders
-      </label>
+      {/* Subfolders — only meaningful for local file system */}
+      {showSubfolders && (
+        <label style={{ ...row, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={config.subfolders}
+            onChange={e => set({ subfolders: e.target.checked })}
+            style={{ accentColor: '#1db954' }}
+          />
+          Include subfolders
+        </label>
+      )}
 
       {!hasPhotos && (
         <p style={{ margin: 0, color: '#444', fontSize: 11 }}>

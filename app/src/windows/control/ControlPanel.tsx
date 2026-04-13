@@ -776,6 +776,7 @@ export default function ControlPanel() {
             config={config}
             onChange={setConfig}
             hasPhotos={library.photos.length > 0}
+            showSubfolders={photoSource !== 'dlna'}
           />
         </Card>
 
