@@ -1,5 +1,8 @@
 # Party Display — Release & Build Guidelines
 
+## Pre-Work
+Validate if the user had recently run the /simplify, /security-review, and asked for a search for bugs.
+
 ## Version bumps
 
 When bumping the version, update these **4 files** and only these:
