@@ -1,13 +1,17 @@
 import type { TrackInfo } from '../lib/player-types'
 
 interface Props {
-  track:      TrackInfo | null
-  paused:     boolean
-  positionMs: number
-  togglePlay: () => void
-  nextTrack:  () => void
-  prevTrack:  () => void
-  seek:       (ms: number) => void
+  track:         TrackInfo | null
+  paused:        boolean
+  positionMs:    number
+  shuffle:       boolean
+  repeat:        boolean
+  togglePlay:    () => void
+  nextTrack:     () => void
+  prevTrack:     () => void
+  seek:          (ms: number) => void
+  toggleShuffle: () => void
+  toggleRepeat:  () => void
 }
 
 function fmt(ms: number): string {
@@ -24,20 +28,28 @@ const playBtn: React.CSSProperties = {
   ...iconBtn, fontSize: 24, color: '#1db954',
 }
 
-export function PlayerControls({ track, paused, positionMs, togglePlay, nextTrack, prevTrack, seek }: Props) {
+const modeBtn = (active: boolean): React.CSSProperties => ({
+  background: 'none', border: 'none',
+  color: active ? '#1db954' : '#444',
+  fontSize: 16, cursor: 'pointer', padding: '4px 6px', lineHeight: 1,
+})
+
+export function PlayerControls({ track, paused, positionMs, shuffle, repeat, togglePlay, nextTrack, prevTrack, seek, toggleShuffle, toggleRepeat }: Props) {
   const duration  = track?.duration ?? 0
   const remaining = Math.max(0, duration - positionMs)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
 
-      {/* Transport buttons */}
+      {/* Transport + mode buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button style={iconBtn} onClick={prevTrack} title="Previous">⏮</button>
         <button style={playBtn} onClick={togglePlay} title={paused ? 'Play' : 'Pause'}>
           {paused ? '▶' : '⏸'}
         </button>
         <button style={iconBtn} onClick={nextTrack} title="Next">⏭</button>
+        <button style={modeBtn(shuffle)} onClick={toggleShuffle} title={shuffle ? 'Shuffle on' : 'Shuffle off'}>⇄</button>
+        <button style={modeBtn(repeat)}  onClick={toggleRepeat}  title={repeat  ? 'Repeat on'  : 'Repeat off'}>↻</button>
 
         {/* Time — only when track metadata is available */}
         {track && (

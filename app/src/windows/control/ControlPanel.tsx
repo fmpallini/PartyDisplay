@@ -22,7 +22,6 @@ import { useDlnaBrowser } from '../../hooks/useDlnaBrowser'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
 import { advancePhoto, clearPhotos } from '../../hooks/useDisplaySync'
-import { shuffle } from '../../lib/utils'
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
 
@@ -111,16 +110,13 @@ export default function ControlPanel() {
   const [localFolder,    setLocalFolderState] = useState<string | null>(
     () => localStorage.getItem('pd_local_audio_folder')
   )
-  const [localOrder,     setLocalOrder]     = useState<'alpha' | 'shuffle'>(
-    () => (localStorage.getItem('pd_local_audio_order') as 'alpha' | 'shuffle') ?? 'shuffle'
-  )
   const [localRecursive, setLocalRecursive] = useState<boolean>(
     () => localStorage.getItem('pd_local_audio_recursive') !== 'false'
   )
   const [localPlaylist,  setLocalPlaylist]  = useState<PlaylistItem[]>([])
 
   const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
-  const localPlayer   = useLocalPlayer(localPlaylist, source === 'local')
+  const localPlayer   = useLocalPlayer(localPlaylist, source === 'local', 'pd_local_player')
 
   const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
 
@@ -154,7 +150,7 @@ export default function ControlPanel() {
       })),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [dlnaBrowserMusic.items])
-  const dlnaPlayer = useLocalPlayer(dlnaPlaylist, source === 'dlna')
+  const dlnaPlayer = useLocalPlayer(dlnaPlaylist, source === 'dlna', 'pd_dlna_player')
 
   const player        = source === 'spotify' ? spotifyPlayer
                       : source === 'dlna'    ? dlnaPlayer
@@ -406,15 +402,11 @@ export default function ControlPanel() {
 
   useEffect(() => {
     if (!localFolder) return
-    localStorage.setItem('pd_local_audio_order',     localOrder)
     localStorage.setItem('pd_local_audio_recursive', String(localRecursive))
     invoke<string[]>('scan_audio_folder', { path: localFolder, recursive: localRecursive })
-      .then(paths => {
-        const ordered = localOrder === 'shuffle' ? shuffle(paths) : paths
-        setLocalPlaylist(ordered.map(path => ({ path })))
-      })
+      .then(paths => setLocalPlaylist(paths.map(path => ({ path }))))
       .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
-  }, [localFolder, localOrder, localRecursive])
+  }, [localFolder, localRecursive])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -470,13 +462,7 @@ export default function ControlPanel() {
         )}
 
         {/* ── Music card ──────────────────────────────────────────────── */}
-        <Card
-          label="Music"
-          right={source === 'spotify'
-            ? <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
-            : undefined
-          }
-        >
+        <Card label="Music">
           {/* Source picker */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Source</span>
@@ -488,9 +474,7 @@ export default function ControlPanel() {
           {source === 'spotify' ? (
             /* ── Spotify ── */
             !authenticated ? (
-              <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                Connect Spotify to get started.
-              </p>
+              <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
             ) : !spotifyPlayer.ready ? (
               <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
                 Waiting for Spotify device…
@@ -499,31 +483,15 @@ export default function ControlPanel() {
           ) : source === 'local' ? (
             /* ── Local Files ── */
             <>
-              <FolderPicker
-                folder={localFolder}
-                photoCount={localPlaylist.length}
-                onPick={setLocalFolder}
-                itemLabel="track"
-                dialogTitle="Select audio folder"
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: '#aaa' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                  <input
-                    type="radio" name="local-order" value="alpha"
-                    checked={localOrder === 'alpha'}
-                    onChange={() => setLocalOrder('alpha')}
-                    style={{ accentColor: '#1db954' }}
-                  /> Alphabetical
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                  <input
-                    type="radio" name="local-order" value="shuffle"
-                    checked={localOrder === 'shuffle'}
-                    onChange={() => setLocalOrder('shuffle')}
-                    style={{ accentColor: '#1db954' }}
-                  /> Shuffle
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                <FolderPicker
+                  folder={localFolder}
+                  photoCount={localPlaylist.length}
+                  onPick={setLocalFolder}
+                  itemLabel="track"
+                  dialogTitle="Select audio folder"
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#aaa', paddingBottom: 2 }}>
                   <input
                     type="checkbox"
                     checked={localRecursive}
@@ -649,10 +617,14 @@ export default function ControlPanel() {
               track={player.track}
               paused={player.paused}
               positionMs={player.positionMs}
+              shuffle={player.shuffle}
+              repeat={player.repeat}
               togglePlay={player.togglePlay}
               nextTrack={player.nextTrack}
               prevTrack={player.prevTrack}
               seek={player.seek}
+              toggleShuffle={player.toggleShuffle}
+              toggleRepeat={player.toggleRepeat}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
