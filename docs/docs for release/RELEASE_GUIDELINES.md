@@ -57,5 +57,4 @@ Create a zip named `party-display-vX.Y.Z.zip` containing:
 ### 7. Tag the release — `vX.Y.Z`
 
 ### 8. Publish the GitHub release
-
-The zip file is the **only** asset.
+I don't have the GitHub CLI installed so just provide the instructions for doing manually.
