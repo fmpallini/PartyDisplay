@@ -6,11 +6,14 @@ import type { PlayerState, PlayerControls } from '../lib/player-types'
 
 export function useSpotifyPlayer(accessToken: string | null): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>({
-    ready: false, deviceId: null, track: null, paused: true, positionMs: 0, volume: 0.8, error: null,
+    ready: false, deviceId: null, track: null, paused: true, positionMs: 0, volume: 0.8,
+    shuffle: false, error: null,
   })
-  const playerRef  = useRef<SpotifyPlayer | null>(null)
-  const pausedRef  = useRef(true)
-  pausedRef.current = state.paused
+  const playerRef       = useRef<SpotifyPlayer | null>(null)
+  const pausedRef       = useRef(true)
+  const accessTokenRef  = useRef(accessToken)
+  pausedRef.current      = state.paused
+  accessTokenRef.current = accessToken
 
   // Real-time position ticker — increments every 500 ms while playing
   useEffect(() => {
@@ -67,6 +70,7 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
           ...s,
           paused:     playbackState.paused,
           positionMs: playbackState.position,
+          shuffle:    (playbackState as any).shuffle ?? false,
           track: {
             id:       t.id,
             name:     t.name,
@@ -125,5 +129,18 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
     setState(s => ({ ...s, volume: v }))
   }, [])
 
-  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume }
+  const toggleShuffle = useCallback(() => {
+    setState(s => {
+      const next = !s.shuffle
+      if (accessTokenRef.current) {
+        fetch(`https://api.spotify.com/v1/me/player/shuffle?state=${next}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${accessTokenRef.current}` },
+        }).catch(() => {})
+      }
+      return { ...s, shuffle: next }
+    })
+  }, [])
+
+  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
 }

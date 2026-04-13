@@ -2,6 +2,8 @@
 
 mod auth;
 mod audio;
+mod dlna;
+mod dlna_proxy;
 mod local_audio;
 mod slideshow;
 mod system;
@@ -189,6 +191,7 @@ fn main() {
     if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
         clear_webview_data();
+        std::process::exit(0);
     }
 
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
@@ -241,10 +244,14 @@ fn main() {
             system::get_battery_status,
             system::get_ip_location,
             local_audio::scan_audio_folder,
+            dlna::dlna_discover,
+            dlna::dlna_browse,
             relaunch,
             clear_webview_data,
         ])
         .setup(|app| {
+            // Start the DLNA HTTP proxy server (http://127.0.0.1:29341/...)
+            tauri::async_runtime::spawn(dlna_proxy::start());
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;

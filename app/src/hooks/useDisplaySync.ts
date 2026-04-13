@@ -38,17 +38,32 @@ export function useDisplaySync(
   // Listen for advance commands from control window
   useEffect(() => {
     const unlisten = listen<{ photo: string; index: number; total: number }>('photo-advance', ({ payload }) => {
-      const resolved = resolveEffect(effectRef.current)
-      setActiveEffect(resolved)
-      setCurrentPhoto(prev => {
-        setPreviousPhoto(prev)
-        return payload.photo
-      })
-      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
-      setTransitioning(true)
-      // +50 ms buffer: ensures the CSS out-animation fully completes before
-      // React removes the previous photo element from the DOM.
-      transitionTimerRef.current = setTimeout(() => setTransitioning(false), durationRef.current + 50)
+      const doTransition = () => {
+        const resolved = resolveEffect(effectRef.current)
+        setActiveEffect(resolved)
+        setCurrentPhoto(prev => {
+          setPreviousPhoto(prev)
+          return payload.photo
+        })
+        if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
+        setTransitioning(true)
+        // +50 ms buffer: ensures the CSS out-animation fully completes before
+        // React removes the previous photo element from the DOM.
+        transitionTimerRef.current = setTimeout(() => setTransitioning(false), durationRef.current + 50)
+      }
+
+      // HTTP photos (DLNA via proxy) must be preloaded before the transition
+      // starts — otherwise the CSS animation runs while the image is still
+      // fetching and the photo only appears at the very end of the transition.
+      // Local asset:// URLs decode from disk instantly so no preload is needed.
+      if (payload.photo.startsWith('http')) {
+        const img = new window.Image()
+        img.onload  = doTransition
+        img.onerror = doTransition  // transition anyway if the image fails
+        img.src = payload.photo
+      } else {
+        doTransition()
+      }
     })
     return () => {
       unlisten.then(fn => fn())

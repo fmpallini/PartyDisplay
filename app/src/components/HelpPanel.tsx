@@ -33,7 +33,10 @@ const CREDITS = [
   { name: 'ip-api.com',                 url: 'https://ip-api.com',                       role: 'IP-based location for weather auto-detect' },
   { name: 'cpal',                      url: 'https://github.com/RustAudio/cpal',        role: 'Cross-platform audio I/O (WASAPI loopback)' },
   { name: 'RustFFT',                   url: 'https://github.com/ejmahler/RustFFT',      role: 'FFT for real-time spectrum analysis' },
+  { name: 'rupnp',                     url: 'https://github.com/jakobhellermann/rupnp', role: 'UPnP/DLNA device discovery and browsing' },
+  { name: 'notify',                    url: 'https://github.com/notify-rs/notify',      role: 'File system watcher for photo folder' },
   { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },
+  { name: 'music-metadata',            url: 'https://github.com/borewit/music-metadata', role: 'Embedded audio tag parsing (ID3, FLAC, M4A…)' },
   { name: 'React',                     url: 'https://react.dev',                        role: 'UI framework' },
   { name: 'Vite',                      url: 'https://vitejs.dev',                       role: 'Frontend build tool' },
 ]

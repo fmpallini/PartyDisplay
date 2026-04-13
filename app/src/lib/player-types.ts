@@ -13,13 +13,15 @@ export interface PlayerState {
   paused:     boolean
   positionMs: number
   volume:     number   // 0–1
+  shuffle:    boolean
   error:      string | null
 }
 
 export interface PlayerControls {
-  togglePlay: () => void
-  nextTrack:  () => void
-  prevTrack:  () => void
-  seek:       (ms: number) => void
-  setVolume:  (v: number) => void
+  togglePlay:    () => void
+  nextTrack:     () => void
+  prevTrack:     () => void
+  seek:          (ms: number) => void
+  setVolume:     (v: number) => void
+  toggleShuffle: () => void
 }

@@ -6,7 +6,7 @@
 
 ## What is this?
 
-![Party Display v0.6.1](docs/docs%20for%20release/sample%20image.png)
+![Screenshot of Party Display at version v0.6.0](docs/docs%20for%20release/sample%20image.png)
 
 Party Display is a desktop application that registers as a **Spotify Connect device** and shows a fullscreen photo slideshow on a projector or TV, synchronized to the music playing. Think of it as a smart jukebox backdrop — your photos, your playlist, your party.
 
@@ -122,6 +122,7 @@ The main limitation inherited from this exploration is that the spectrum analyse
 │  │  WASAPI loopback → FFT → events    │ │
 │  │  OAuth PKCE + token refresh        │ │
 │  │  Slideshow engine (folder watch)   │ │
+│  │  DLNA/UPnP discovery + HTTP proxy  │ │
 │  │  Typed IPC channels (commands +    │ │
 │  │  events between windows)           │ │
 │  └────────────────────────────────────┘ │
@@ -130,7 +131,7 @@ The main limitation inherited from this exploration is that the spectrum analyse
 
 The two WebView2 windows are independent renderer processes that communicate through the Rust backend via Tauri IPC commands and broadcast events. The control panel owns the Spotify SDK instance and forwards playback state to the display window; the display window is purely a consumer — it renders but issues no Spotify API calls of its own.
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · rupnp · notify · music-metadata · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
 
 ---
 
@@ -145,7 +146,7 @@ vcup2/
 │   │   ├── lib/                # IPC helpers, Spotify auth, shared utilities
 │   │   └── windows/            # Entry points: control panel + display window
 │   ├── src-tauri/              # Rust backend
-│   │   └── src/                # main · auth · audio · slideshow · system · window_manager
+│   │   └── src/                # main · auth · audio · slideshow · system · window_manager · dlna · dlna_proxy
 │   ├── .env.local              # ← YOU CREATE THIS (gitignored)
 │   └── package.json
 ├── docs/
@@ -161,7 +162,8 @@ vcup2/
 
 - **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts
 - **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
-- **Photo slideshow** — watches a local folder (with optional recursive scan) for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
+- **DLNA / UPnP media** — discovers UPnP/DLNA servers on the local network; browse their containers directly in the control panel; stream audio tracks and photos from any DLNA server (NAS, media server, etc.) via a local HTTP proxy that handles range requests for seeking
+- **Photo slideshow** — watches a local folder or a DLNA container for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
 - **Real-time spectrum analyser** — WASAPI loopback capture in Rust (no driver install), 64-bin FFT, bars or lines render style, six colour themes, configurable height
 - **Synchronized lyrics** — fetched from LRCLIB (no API key); overlay mode (3-line karaoke) or split-view mode (full scrolling panel alongside the photo); falls back to static text when sync data is unavailable
 - **Corner widgets** — track overlay (artist + title + progress), clock & weather (Open-Meteo, auto-detected or manual city), battery indicator; all four corners supported with graceful stacking
@@ -183,7 +185,10 @@ vcup2/
 | [ip-api.com](https://ip-api.com) | IP-based geolocation for weather auto-detect |
 | [cpal](https://github.com/RustAudio/cpal) | Cross-platform audio I/O — WASAPI loopback capture |
 | [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time spectrum analysis |
+| [rupnp](https://github.com/jakobhellermann/rupnp) | UPnP/DLNA device discovery and browsing |
+| [notify](https://github.com/notify-rs/notify) | File system watcher for photo folder |
 | [keyring-rs](https://github.com/hwchen/keyring-rs) | Secure credential storage via Windows Credential Store |
+| [music-metadata](https://github.com/borewit/music-metadata) | Embedded audio tag parsing (ID3, FLAC, M4A, etc.) |
 | [React](https://react.dev) | UI framework |
 | [Vite](https://vitejs.dev) | Frontend build tooling |
 | [TypeScript](https://www.typescriptlang.org) | Type-safe JavaScript |

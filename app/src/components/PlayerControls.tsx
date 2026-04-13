@@ -1,13 +1,15 @@
 import type { TrackInfo } from '../lib/player-types'
 
 interface Props {
-  track:      TrackInfo | null
-  paused:     boolean
-  positionMs: number
-  togglePlay: () => void
-  nextTrack:  () => void
-  prevTrack:  () => void
-  seek:       (ms: number) => void
+  track:         TrackInfo | null
+  paused:        boolean
+  positionMs:    number
+  shuffle:       boolean
+  togglePlay:    () => void
+  nextTrack:     () => void
+  prevTrack:     () => void
+  seek:          (ms: number) => void
+  toggleShuffle: () => void
 }
 
 function fmt(ms: number): string {
@@ -24,44 +26,55 @@ const playBtn: React.CSSProperties = {
   ...iconBtn, fontSize: 24, color: '#1db954',
 }
 
-export function PlayerControls({ track, paused, positionMs, togglePlay, nextTrack, prevTrack, seek }: Props) {
+const modeBtn = (active: boolean): React.CSSProperties => ({
+  background: 'none', border: 'none',
+  color: active ? '#1db954' : '#444',
+  fontSize: 16, cursor: 'pointer', padding: '4px 6px', lineHeight: 1,
+})
+
+export function PlayerControls({ track, paused, positionMs, shuffle, togglePlay, nextTrack, prevTrack, seek, toggleShuffle }: Props) {
   const duration  = track?.duration ?? 0
   const remaining = Math.max(0, duration - positionMs)
-
-  if (!track) return null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
 
-      {/* Transport buttons */}
+      {/* Transport + mode buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button style={iconBtn} onClick={prevTrack} title="Previous">⏮</button>
         <button style={playBtn} onClick={togglePlay} title={paused ? 'Play' : 'Pause'}>
           {paused ? '▶' : '⏸'}
         </button>
         <button style={iconBtn} onClick={nextTrack} title="Next">⏭</button>
+        <button style={modeBtn(shuffle)} onClick={toggleShuffle} title={shuffle ? 'Shuffle on' : 'Shuffle off'}>⇄</button>
 
-        {/* Time */}
-        <span style={{ color: '#aaa', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
-          {fmt(positionMs)}
-        </span>
-        <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13 }}>
-          &nbsp;/&nbsp;{fmt(duration)}
-        </span>
-        <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
-          -{fmt(remaining)}
-        </span>
+        {/* Time — only when track metadata is available */}
+        {track && (
+          <>
+            <span style={{ color: '#aaa', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
+              {fmt(positionMs)}
+            </span>
+            <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13 }}>
+              &nbsp;/&nbsp;{fmt(duration)}
+            </span>
+            <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 13, marginLeft: 8 }}>
+              -{fmt(remaining)}
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Seek bar */}
-      <input
-        type="range"
-        min={0}
-        max={duration}
-        value={positionMs}
-        onChange={e => seek(Number(e.target.value))}
-        style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer' }}
-      />
+      {/* Seek bar — only when track metadata is available */}
+      {track && (
+        <input
+          type="range"
+          min={0}
+          max={duration}
+          value={positionMs}
+          onChange={e => seek(Number(e.target.value))}
+          style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer' }}
+        />
+      )}
 
     </div>
   )

@@ -12,6 +12,6 @@ export default function LoginButton({ authenticated, loading, onLogin, onLogout 
 }
 
 function btnStyle(bg: string, color: string): React.CSSProperties {
-  return { background: bg, color, border: 'none', padding: '10px 24px', borderRadius: 20,
-           fontWeight: 'bold', cursor: 'pointer', fontSize: 14 }
+  return { background: bg, color, border: 'none', padding: '3px 10px', borderRadius: 20,
+           fontWeight: 'bold', cursor: 'pointer', fontSize: 11 }
 }

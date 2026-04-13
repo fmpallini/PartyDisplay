@@ -17,7 +17,7 @@ export function SlideshowView({ photos, transitionEffect, transitionDurationMs, 
   const displayPhoto = currentPhoto ?? (photos.length > 0 ? photos[0] : null)
 
   function toAssetUrl(path: string): string {
-    return convertFileSrc(path)
+    return path.startsWith('http') ? path : convertFileSrc(path)
   }
 
   const durationSec = `${transitionDurationMs / 1000}s`

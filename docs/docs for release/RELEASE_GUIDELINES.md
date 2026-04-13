@@ -11,6 +11,8 @@ When bumping the version, update these **4 files** and only these:
 | `app/src-tauri/tauri.conf.json` | `"version"` | JSON string |
 | `app/src-tauri/Cargo.lock` | `version` under `name = "party-display"` | Lock file entry |
 
+Also run the "npm install" to force updating the package-lock.json correcly.
+
 ## Release procedure
 
 Follow these steps **in order** when cutting a release.
@@ -25,7 +27,7 @@ Follow these steps **in order** when cutting a release.
 ### 2. Verify docs are up to date
 
 - Check that `README.md` (repo root) reflects the current version and feature set.
-- Check that `docs/docs for release/README.txt` is consistent with the root README (build instructions, feature list, version number).
+- Check that `docs/docs for release/README.txt` is consistent with the root README (build instructions, feature list, version number) - remember not need to bump the reference in the screenshot picture since its from a previous version.
 - If either is stale, update it and commit before continuing.
 
 ### 3. Build the release binary
