@@ -1,5 +1,5 @@
 import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
-import { safeNum } from '../lib/utils'
+import { safeBool, safeNum } from '../lib/utils'
 
 export type { SpectrumTheme, SpectrumStyle }
 
@@ -74,30 +74,30 @@ export function readDisplaySettings(): DisplaySettings {
     transitionEffect:     safeEnum(localStorage.getItem('pd_transition_effect'),     TRANSITION_EFFECT_VALUES, 'random'),
     transitionDurationMs: safeNum(localStorage.getItem('pd_transition_duration_ms'), 500),
     imageFit:             safeEnum(localStorage.getItem('pd_image_fit'),             IMAGE_FIT_VALUES,         'contain'),
-    spectrumVisible:      localStorage.getItem('pd_spectrum_visible') === 'true',
+    spectrumVisible:      safeBool(localStorage.getItem('pd_spectrum_visible'), false),
     spectrumStyle:        safeEnum(localStorage.getItem('pd_spectrum_style'),        SPECTRUM_STYLE_VALUES,    'bars'),
     spectrumTheme:        safeEnum(localStorage.getItem('pd_spectrum_theme'),        SPECTRUM_THEME_VALUES,    'energy'),
     spectrumHeightPct:    safeNum(localStorage.getItem('pd_spectrum_height_pct'),     10),
-    batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
+    batteryVisible:       safeBool(localStorage.getItem('pd_battery_visible'), false),
     batterySize:          safeNum(localStorage.getItem('pd_battery_size'),            36),
     batteryPosition:      safeEnum(localStorage.getItem('pd_battery_position'),      TRACK_POSITION_VALUES,    'top-right'),
-    trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
+    trackOverlayVisible:  safeBool(localStorage.getItem('pd_track_overlay_visible'), true),
     trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         18),
     trackPosition:        safeEnum(localStorage.getItem('pd_track_position'),        TRACK_POSITION_VALUES,    'top-left'),
     trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
     trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
     trackBgOpacity:       safeNum(localStorage.getItem('pd_track_bg_opacity'),        0.5),
-    photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
-    clockWeatherVisible:    localStorage.getItem('pd_cw_visible') !== 'false',
+    photoCounterVisible:  safeBool(localStorage.getItem('pd_photo_counter_visible'), true),
+    clockWeatherVisible:    safeBool(localStorage.getItem('pd_cw_visible'), true),
     clockWeatherPosition:   safeEnum(localStorage.getItem('pd_cw_position'),         TRACK_POSITION_VALUES,    'bottom-left'),
     clockWeatherTimeFormat: safeEnum(localStorage.getItem('pd_cw_time_format'),      TIME_FORMAT_VALUES,       '24h'),
     clockWeatherTempUnit:   safeEnum(localStorage.getItem('pd_cw_temp_unit'),        TEMP_UNIT_VALUES,         'celsius'),
     clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
-    lyricsVisible:          localStorage.getItem('pd_lyrics_visible') === 'true',
+    lyricsVisible:          safeBool(localStorage.getItem('pd_lyrics_visible'), false),
     lyricsSize:             safeNum(localStorage.getItem('pd_lyrics_size'),    32),
     lyricsOpacity:          safeNum(localStorage.getItem('pd_lyrics_opacity'), 0.9),
     lyricsPosition:         safeEnum(localStorage.getItem('pd_lyrics_position'),     LYRICS_POSITION_VALUES,   'lower-third'),
-    lyricsSplit:            localStorage.getItem('pd_lyrics_split') === 'true',
+    lyricsSplit:            safeBool(localStorage.getItem('pd_lyrics_split'), false),
     lyricsSplitSide:        safeEnum(localStorage.getItem('pd_lyrics_split_side'),   LYRICS_SIDE_VALUES,       'right'),
   }
 }

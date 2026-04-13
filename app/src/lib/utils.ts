@@ -4,6 +4,11 @@ export function safeNum(raw: string | null, fallback: number): number {
   return raw !== null && !isNaN(n) ? n : fallback
 }
 
+/** Parse a localStorage string as a boolean, falling back to `fallback` if absent. */
+export function safeBool(raw: string | null, fallback: boolean): boolean {
+  return raw !== null ? raw === 'true' : fallback
+}
+
 /** Fisher-Yates shuffle — returns a new shuffled array, does not mutate the input. */
 export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]

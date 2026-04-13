@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { safeNum } from '../../lib/utils'
+import { safeBool, safeNum } from '../../lib/utils'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
@@ -89,7 +89,7 @@ function readSlideshowConfig(): SlideshowConfig {
   return {
     fixedSec:   safeNum(localStorage.getItem('pd_slideshow_fixed_sec'), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
     order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
-    subfolders: localStorage.getItem('pd_subfolder') !== null ? localStorage.getItem('pd_subfolder') === 'true' : DEFAULT_SLIDESHOW_CONFIG.subfolders,
+    subfolders: safeBool(localStorage.getItem('pd_subfolder'), DEFAULT_SLIDESHOW_CONFIG.subfolders),
   }
 }
 

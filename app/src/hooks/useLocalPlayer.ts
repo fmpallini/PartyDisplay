@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { parseBlob } from 'music-metadata'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
-import { shuffle } from '../lib/utils'
+import { safeBool, shuffle } from '../lib/utils'
 
 export interface PlaylistItem {
   path:                string   // absolute file path or http:// URL
@@ -43,12 +43,9 @@ export function useLocalPlayer(
   persistKey?: string,
 ): PlayerState & PlayerControls {
   // ── Restore persisted shuffle on first mount ──────────────────────────────
-  const initShuffle = persistKey ? (localStorage.getItem(`${persistKey}_shuffle`) ?? 'true') === 'true' : false
+  const initShuffle = persistKey ? safeBool(localStorage.getItem(`${persistKey}_shuffle`), true) : false
 
-  const [state, setState] = useState<PlayerState>({
-    ...IDLE_STATE,
-    shuffle: initShuffle,
-  })
+  const [state, setState] = useState<PlayerState>(IDLE_STATE)
 
   const audioRef     = useRef<HTMLAudioElement>(new Audio())
   const indexRef     = useRef(0)
@@ -223,7 +220,7 @@ export function useLocalPlayer(
     if (playlist.length === 0) {
       audioRef.current.pause()
       audioRef.current.src = ''   // prevent stale error events firing into an empty playlist
-      setState(s => ({ ...IDLE_STATE, shuffle: s.shuffle }))
+      setState(IDLE_STATE)
       return
     }
     // The listener-effect cleanup pauses the audio element before re-registering
