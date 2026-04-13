@@ -96,9 +96,8 @@ export function useLyrics(track: TrackInfo | null, positionMs: number): LyricsRe
       .catch(err => {
         if ((err as Error).name === 'AbortError') return
         console.error('LRCLIB fetch error:', err)
-        const result = { lines: [], status: 'error' as LyricsStatus }
-        cache.set(track.id, result)
-        setEntry(result)
+        // Don't cache errors — allow a retry the next time this track plays.
+        setEntry({ lines: [], status: 'error' })
       })
 
     return () => { controller.abort() }

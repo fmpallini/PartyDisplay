@@ -191,6 +191,7 @@ fn main() {
     if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
         clear_webview_data();
+        std::process::exit(0);
     }
 
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());

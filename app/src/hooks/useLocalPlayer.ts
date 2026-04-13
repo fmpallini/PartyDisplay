@@ -297,8 +297,8 @@ export function useLocalPlayer(
 
   const toggleShuffle = useCallback(() => {
     setShuffleOn(s => !s)
-    setState(s => ({ ...s, shuffle: !s.shuffle }))
   }, [])
 
-  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
+  // Override state.shuffle with shuffleOn — the single source of truth for shuffle state.
+  return { ...state, shuffle: shuffleOn, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
 }

@@ -123,6 +123,8 @@ async fn handle(stream: tokio::net::TcpStream) {
 
     match req.send().await {
         Ok(resp) => {
+            use futures::StreamExt;
+
             let status = resp.status().as_u16();
             let ct = resp.headers().get("content-type")
                 .and_then(|v| v.to_str().ok())
@@ -135,8 +137,6 @@ async fn handle(stream: tokio::net::TcpStream) {
             let ar = resp.headers().get("accept-ranges")
                 .and_then(|v| v.to_str().ok()).map(str::to_owned);
 
-            let body = resp.bytes().await.unwrap_or_default();
-
             let mut hdr = format!(
                 "HTTP/1.1 {status}\r\nContent-Type: {ct}\r\nAccess-Control-Allow-Origin: *\r\n"
             );
@@ -145,8 +145,16 @@ async fn handle(stream: tokio::net::TcpStream) {
             if let Some(v) = ar { hdr += &format!("Accept-Ranges: {v}\r\n"); }
             hdr += "\r\n";
 
-            let _ = writer.write_all(hdr.as_bytes()).await;
-            let _ = writer.write_all(&body).await;
+            // Write headers first, then stream body chunks as they arrive so we
+            // never buffer the entire file in memory (important for large audio files).
+            if writer.write_all(hdr.as_bytes()).await.is_err() { return; }
+            let mut stream = resp.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(bytes) => { if writer.write_all(&bytes).await.is_err() { return; } }
+                    Err(_) => return,
+                }
+            }
         }
         Err(e) => {
             let msg = e.to_string();

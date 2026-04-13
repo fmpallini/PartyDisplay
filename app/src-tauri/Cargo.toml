@@ -1,6 +1,6 @@
 [package]
 name = "party-display"
-version = "0.6.1"
+version = "0.7.0"
 edition = "2021"
 
 [build-dependencies]
@@ -18,7 +18,7 @@ cpal       = "0.15"
 rustfft    = "6"
 notify     = "6"
 tauri-plugin-dialog = "2"
-reqwest             = { version = "0.12", features = ["json"] }
+reqwest             = { version = "0.12", features = ["json", "stream"] }
 rupnp               = "1"
 roxmltree           = "0.20"
 futures             = "0.3"

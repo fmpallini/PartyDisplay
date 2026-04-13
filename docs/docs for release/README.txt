@@ -1,4 +1,4 @@
-Party Display v0.6.1 — Windows 64-bit Portable
+Party Display v0.7.0 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -59,10 +59,17 @@ HOW TO RUN
   - Play order: alphabetical or shuffle
   - Reads embedded metadata (title, artist, album art) from file tags
 
+ DLNA / UPnP
+  - Discovers UPnP/DLNA media servers on your local network
+  - Browse server containers (folders) directly in the control panel
+  - Stream audio tracks from a DLNA server (NAS, media server, etc.)
+  - Use a DLNA container as the photo slideshow source
+  - Seeking supported via HTTP range-request proxy
+
  PHOTO SLIDESHOW
-  - Watches a local folder for images
+  - Watches a local folder or DLNA container for images
   - Supported formats: JPEG, PNG, WebP, GIF, BMP, TIFF
-  - Optional recursive subfolder scan
+  - Optional recursive subfolder scan (local source)
   - Play order: alphabetical or shuffle
   - Configurable display time per photo
   - 8 transition effects: fade, slide (4 directions), zoom in/out, blur, random

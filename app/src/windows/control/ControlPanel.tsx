@@ -683,11 +683,21 @@ export default function ControlPanel() {
           </div>
 
           {photoSource === 'local' ? (
-            <FolderPicker
-              folder={library.folder}
-              photoCount={library.photos.length}
-              onPick={library.setFolder}
-            />
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+              <FolderPicker
+                folder={library.folder}
+                photoCount={library.photos.length}
+                onPick={library.setFolder}
+              />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#aaa', paddingBottom: 2 }}>
+                <input
+                  type="checkbox"
+                  checked={config.subfolders}
+                  onChange={e => setConfig({ ...config, subfolders: e.target.checked })}
+                  style={{ accentColor: '#1db954' }}
+                /> Subfolders
+              </label>
+            </div>
           ) : (
             /* ── DLNA photo browser ── */
             <>
@@ -776,7 +786,7 @@ export default function ControlPanel() {
             config={config}
             onChange={setConfig}
             hasPhotos={library.photos.length > 0}
-            showSubfolders={photoSource !== 'dlna'}
+            showSubfolders={false}
           />
         </Card>
 
