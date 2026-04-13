@@ -5,13 +5,11 @@ interface Props {
   paused:        boolean
   positionMs:    number
   shuffle:       boolean
-  repeat:        boolean
   togglePlay:    () => void
   nextTrack:     () => void
   prevTrack:     () => void
   seek:          (ms: number) => void
   toggleShuffle: () => void
-  toggleRepeat:  () => void
 }
 
 function fmt(ms: number): string {
@@ -34,7 +32,7 @@ const modeBtn = (active: boolean): React.CSSProperties => ({
   fontSize: 16, cursor: 'pointer', padding: '4px 6px', lineHeight: 1,
 })
 
-export function PlayerControls({ track, paused, positionMs, shuffle, repeat, togglePlay, nextTrack, prevTrack, seek, toggleShuffle, toggleRepeat }: Props) {
+export function PlayerControls({ track, paused, positionMs, shuffle, togglePlay, nextTrack, prevTrack, seek, toggleShuffle }: Props) {
   const duration  = track?.duration ?? 0
   const remaining = Math.max(0, duration - positionMs)
 
@@ -49,7 +47,6 @@ export function PlayerControls({ track, paused, positionMs, shuffle, repeat, tog
         </button>
         <button style={iconBtn} onClick={nextTrack} title="Next">⏭</button>
         <button style={modeBtn(shuffle)} onClick={toggleShuffle} title={shuffle ? 'Shuffle on' : 'Shuffle off'}>⇄</button>
-        <button style={modeBtn(repeat)}  onClick={toggleRepeat}  title={repeat  ? 'Repeat on'  : 'Repeat off'}>↻</button>
 
         {/* Time — only when track metadata is available */}
         {track && (

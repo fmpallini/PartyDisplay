@@ -14,7 +14,6 @@ export interface PlayerState {
   positionMs: number
   volume:     number   // 0–1
   shuffle:    boolean
-  repeat:     boolean
   error:      string | null
 }
 
@@ -25,5 +24,4 @@ export interface PlayerControls {
   seek:          (ms: number) => void
   setVolume:     (v: number) => void
   toggleShuffle: () => void
-  toggleRepeat:  () => void
 }

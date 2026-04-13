@@ -137,19 +137,19 @@ export default function ControlPanel() {
   const toDlnaProxy = (url: string) => `${DLNA_PROXY}/${url.replace(/^https?:\/\//, '')}`
 
   // Memoized so useLocalPlayer's playlist-change effect doesn't fire every render
-  const dlnaPlaylist = useMemo<PlaylistItem[]>(() =>
-    dlnaBrowserMusic.items
-      .filter(item => item.mime.startsWith('audio/'))
-      .map(item => ({
-        path:               toDlnaProxy(item.url),
-        title:              item.title,
-        artist:             item.artist    ?? undefined,
-        albumArt:           item.album_art ? toDlnaProxy(item.album_art) : undefined,
-        durationMs:         item.duration_ms ?? undefined,
-        metadataPrefetched: true,
-      })),
+  const dlnaPlaylist = useMemo<PlaylistItem[]>(() => {
+    const filtered = dlnaBrowserMusic.items.filter(item => item.mime.startsWith('audio/'))
+    console.debug(`[ControlPanel] dlnaPlaylist memo — total items=${dlnaBrowserMusic.items.length} audio items=${filtered.length} source=${source}`)
+    return filtered.map(item => ({
+      path:               toDlnaProxy(item.url),
+      title:              item.title,
+      artist:             item.artist    ?? undefined,
+      albumArt:           item.album_art ? toDlnaProxy(item.album_art) : undefined,
+      durationMs:         item.duration_ms ?? undefined,
+      metadataPrefetched: true,
+    }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [dlnaBrowserMusic.items])
+  }, [dlnaBrowserMusic.items])
   const dlnaPlayer = useLocalPlayer(dlnaPlaylist, source === 'dlna', 'pd_dlna_player')
 
   const player        = source === 'spotify' ? spotifyPlayer
@@ -618,26 +618,24 @@ export default function ControlPanel() {
               paused={player.paused}
               positionMs={player.positionMs}
               shuffle={player.shuffle}
-              repeat={player.repeat}
               togglePlay={player.togglePlay}
               nextTrack={player.nextTrack}
               prevTrack={player.prevTrack}
               seek={player.seek}
               toggleShuffle={player.toggleShuffle}
-              toggleRepeat={player.toggleRepeat}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="range" min={0} max={1} step={0.02}
                 value={player.volume}
                 onChange={e => player.setVolume(Number(e.target.value))}
-                style={{ width: 100, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
+                style={{ width: 140, accentColor: '#1db954', cursor: 'pointer', flexShrink: 0 }}
               />
               <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
                 {Math.round(player.volume * 100)}%
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <SpectrumCanvas bins={bins} height={22}
+                <SpectrumCanvas bins={bins} height={16}
                   renderStyle={displaySettings.spectrumStyle}
                   theme={displaySettings.spectrumTheme}
                 />

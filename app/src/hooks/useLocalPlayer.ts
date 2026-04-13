@@ -31,7 +31,7 @@ function shuffled<T>(arr: T[]): T[] {
 const IDLE_STATE: PlayerState = {
   ready: false, deviceId: null, track: null,
   paused: true, positionMs: 0, volume: 0.8,
-  shuffle: false, repeat: false, error: null,
+  shuffle: false, error: null,
 }
 
 /**
@@ -50,14 +50,12 @@ export function useLocalPlayer(
   active: boolean,
   persistKey?: string,
 ): PlayerState & PlayerControls {
-  // ── Restore persisted shuffle / repeat on first mount ─────────────────────
-  const initShuffle = persistKey ? localStorage.getItem(`${persistKey}_shuffle`) === 'true' : false
-  const initRepeat  = persistKey ? localStorage.getItem(`${persistKey}_repeat`)  === 'true' : false
+  // ── Restore persisted shuffle on first mount ──────────────────────────────
+  const initShuffle = persistKey ? (localStorage.getItem(`${persistKey}_shuffle`) ?? 'true') === 'true' : false
 
   const [state, setState] = useState<PlayerState>({
     ...IDLE_STATE,
     shuffle: initShuffle,
-    repeat:  initRepeat,
   })
 
   const audioRef     = useRef<HTMLAudioElement>(new Audio())
@@ -68,20 +66,13 @@ export function useLocalPlayer(
 
   activeRef.current = active
 
-  // ── Shuffle / Repeat ──────────────────────────────────────────────────────
+  // ── Shuffle ───────────────────────────────────────────────────────────────
   const [shuffleOn, setShuffleOn] = useState(initShuffle)
-  const [repeatOn,  setRepeatOn]  = useState(initRepeat)
-  const repeatOnRef = useRef(initRepeat)
-  repeatOnRef.current = repeatOn
 
-  // Persist shuffle / repeat whenever they change
+  // Persist shuffle whenever it changes
   useEffect(() => {
     if (persistKey) localStorage.setItem(`${persistKey}_shuffle`, String(shuffleOn))
   }, [shuffleOn, persistKey])
-
-  useEffect(() => {
-    if (persistKey) localStorage.setItem(`${persistKey}_repeat`, String(repeatOn))
-  }, [repeatOn, persistKey])
 
   // workingOrder maps position (0…n-1) → actual playlist index.
   // Recomputed whenever playlist reference or shuffleOn changes.
@@ -95,7 +86,11 @@ export function useLocalPlayer(
 
   // ── Load track by working-order position ─────────────────────────────────
   const loadIndex = useCallback((idx: number, autoPlay = false) => {
-    if (playlist.length === 0) return
+    console.debug(`[useLocalPlayer:${persistKey}] loadIndex called — idx=${idx} playlist.length=${playlist.length} autoPlay=${autoPlay}`)
+    if (playlist.length === 0) {
+      console.debug(`[useLocalPlayer:${persistKey}] loadIndex early-return: playlist is empty`)
+      return
+    }
     const i = ((idx % playlist.length) + playlist.length) % playlist.length
     indexRef.current = i
     if (persistKey) localStorage.setItem(`${persistKey}_index`, String(i))
@@ -103,9 +98,11 @@ export function useLocalPlayer(
     const item = playlist[actualIdx]
     // Any path that already contains a URL scheme is used directly;
     // bare file paths go through Tauri's asset protocol.
-    audioRef.current.src = item.path.includes('://')
+    const src = item.path.includes('://')
       ? item.path
       : convertFileSrc(item.path)
+    console.debug(`[useLocalPlayer:${persistKey}] loadIndex — setting audio.src to "${src.slice(0, 120)}" (autoPlay=${autoPlay})`)
+    audioRef.current.src = src
     audioRef.current.load()
     if (autoPlay) audioRef.current.play().catch(() => {})
   }, [playlist, persistKey])
@@ -113,10 +110,12 @@ export function useLocalPlayer(
   // ── Audio event listeners (set up once, stable for app lifetime) ──────────
   useEffect(() => {
     const audio = audioRef.current
+    console.debug(`[useLocalPlayer:${persistKey}] listener-effect SETUP — playlist.length=${playlist.length} audio.src="${audio.src.slice(0, 80)}"`)
 
     const onLoadedMetadata = async () => {
       const actualIdx = workingOrderRef.current[indexRef.current] ?? indexRef.current
       const item = playlist[actualIdx]
+      console.debug(`[useLocalPlayer:${persistKey}] onLoadedMetadata — index=${indexRef.current} actualIdx=${actualIdx} item="${item?.title ?? item?.path?.slice(0,60) ?? 'NONE'}" audio.src="${audio.src.slice(0,80)}"`)
       if (!item) return
       const duration = audio.duration * 1000
 
@@ -180,18 +179,13 @@ export function useLocalPlayer(
     const onPause = () => setState(s => ({ ...s, paused: true  }))
 
     const onEnded = () => {
-      const nextIdx = indexRef.current + 1
-      // Stop at end of playlist when repeat is off
-      if (!repeatOnRef.current && nextIdx >= playlist.length) {
-        setState(s => ({ ...s, paused: true }))
-        return
-      }
-      loadIndex(nextIdx, activeRef.current)
+      loadIndex(indexRef.current + 1, activeRef.current)
     }
 
     const onError = () => {
       const actualIdx = workingOrderRef.current[indexRef.current] ?? indexRef.current
       const item = playlist[actualIdx]
+      console.debug(`[useLocalPlayer:${persistKey}] onError — index=${indexRef.current} actualIdx=${actualIdx} item="${item?.title ?? 'NONE'}" audio.src="${audio.src.slice(0,80)}"`)
       if (!item) return
       const err = audio.error
       console.error(
@@ -217,6 +211,7 @@ export function useLocalPlayer(
     audio.addEventListener('error',          onError)
 
     return () => {
+      console.debug(`[useLocalPlayer:${persistKey}] listener-effect CLEANUP — audio.src="${audio.src.slice(0, 80)}"`)
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
       audio.removeEventListener('timeupdate',     onTimeUpdate)
       audio.removeEventListener('play',           onPlay)
@@ -231,11 +226,12 @@ export function useLocalPlayer(
 
   // ── Load first track when playlist changes ────────────────────────────────
   useEffect(() => {
+    console.debug(`[useLocalPlayer:${persistKey}] playlist-change effect — playlist.length=${playlist.length} active=${activeRef.current} audio.src="${audioRef.current.src.slice(0,80)}" audio.readyState=${audioRef.current.readyState}`)
     skipCountRef.current = 0  // new playlist — reset error streak
     if (playlist.length === 0) {
       audioRef.current.pause()
       audioRef.current.src = ''   // prevent stale error events firing into an empty playlist
-      setState(IDLE_STATE)
+      setState(s => ({ ...IDLE_STATE, shuffle: s.shuffle }))
       return
     }
     // The listener-effect cleanup pauses the audio element before re-registering
@@ -251,6 +247,7 @@ export function useLocalPlayer(
       const savedFp  = localStorage.getItem(`${persistKey}_fp`)
       const savedIdx = localStorage.getItem(`${persistKey}_index`)
       const currentFp = playlist[0]?.path ?? ''
+      console.debug(`[useLocalPlayer:${persistKey}] fingerprint check — savedFp="${savedFp?.slice(0,80)}" currentFp="${currentFp.slice(0,80)}" match=${savedFp === currentFp} savedIdx=${savedIdx}`)
       if (savedFp === currentFp && savedIdx !== null) {
         const parsed = parseInt(savedIdx, 10)
         if (!isNaN(parsed) && parsed > 0 && parsed < playlist.length) startIndex = parsed
@@ -259,28 +256,34 @@ export function useLocalPlayer(
       localStorage.setItem(`${persistKey}_fp`, currentFp)
     }
 
+    console.debug(`[useLocalPlayer:${persistKey}] calling loadIndex(${startIndex}, false) — audio.src before="${audioRef.current.src.slice(0,80)}"`)
     loadIndex(startIndex, false)   // load but don't auto-play; user must press play or switch source
+    console.debug(`[useLocalPlayer:${persistKey}] after loadIndex — audio.src="${audioRef.current.src.slice(0,80)}"`)
   }, [playlist, loadIndex, persistKey])
 
   // ── Pause when going inactive (user controls resume) ─────────────────────
   useEffect(() => {
+    console.debug(`[useLocalPlayer:${persistKey}] active-change effect — active=${active} audio.src="${audioRef.current.src.slice(0,80)}" audio.paused=${audioRef.current.paused}`)
     if (!active) audioRef.current.pause()
-  }, [active])
+  }, [active, persistKey])
 
   // ── Controls ──────────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
-    if (audio.paused) audio.play().catch(() => {})
+    console.debug(`[useLocalPlayer:${persistKey}] togglePlay — audio.paused=${audio.paused} audio.src="${audio.src.slice(0,80)}" audio.readyState=${audio.readyState} audio.networkState=${audio.networkState}`)
+    if (audio.paused) audio.play().catch((err) => { console.error(`[useLocalPlayer:${persistKey}] play() rejected:`, err) })
     else              audio.pause()
-  }, [])
+  }, [persistKey])
 
   const nextTrack = useCallback(() => {
+    console.debug(`[useLocalPlayer:${persistKey}] nextTrack — index=${indexRef.current} playlist.length=${playlist.length} active=${activeRef.current}`)
     loadIndex(indexRef.current + 1, activeRef.current)
-  }, [loadIndex])
+  }, [loadIndex, playlist.length, persistKey])
 
   const prevTrack = useCallback(() => {
+    console.debug(`[useLocalPlayer:${persistKey}] prevTrack — index=${indexRef.current} playlist.length=${playlist.length} active=${activeRef.current}`)
     loadIndex(indexRef.current - 1, activeRef.current)
-  }, [loadIndex])
+  }, [loadIndex, playlist.length, persistKey])
 
   const seek = useCallback((ms: number) => {
     audioRef.current.currentTime = ms / 1000
@@ -297,10 +300,5 @@ export function useLocalPlayer(
     setState(s => ({ ...s, shuffle: !s.shuffle }))
   }, [])
 
-  const toggleRepeat = useCallback(() => {
-    setRepeatOn(r => !r)
-    setState(s => ({ ...s, repeat: !s.repeat }))
-  }, [])
-
-  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle, toggleRepeat }
+  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
 }

@@ -49,6 +49,7 @@ export function useDlnaBrowser(storageKey: string) {
 
   // ── Internal: call Browse and update containers/items ──────────────────────
   const browseContainer = useCallback(async (loc: string, containerId: string) => {
+    console.debug(`[useDlnaBrowser:${storageKey}] browseContainer — loc="${loc.slice(0,80)}" containerId="${containerId}"`)
     setLoading(true)
     setError(null)
     try {
@@ -56,23 +57,27 @@ export function useDlnaBrowser(storageKey: string) {
         location:    loc,
         containerId: containerId,
       })
+      console.debug(`[useDlnaBrowser:${storageKey}] browseContainer result — containers=${result.containers.length} items=${result.items.length}`)
       setContainers(result.containers)
       setItems(result.items)
     } catch (err) {
+      console.error(`[useDlnaBrowser:${storageKey}] browseContainer error:`, err)
       setError(String(err))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [storageKey])
 
   // ── Restore persisted state on mount ───────────────────────────────────────
   useEffect(() => {
     const raw = localStorage.getItem(storageKey)
+    console.debug(`[useDlnaBrowser:${storageKey}] mount restore — raw=${raw ? 'found' : 'not found'}`)
     if (!raw) return
     try {
       const saved: PersistedState = JSON.parse(raw)
       const lastCrumb   = saved.breadcrumb[saved.breadcrumb.length - 1]
       const containerId = lastCrumb?.id ?? '0'
+      console.debug(`[useDlnaBrowser:${storageKey}] mount restore — server="${saved.name}" containerId="${containerId}" breadcrumb.length=${saved.breadcrumb.length}`)
       setServer({ name: saved.name, location: saved.location })
       setBreadcrumb(saved.breadcrumb)
       // Silently fall back to server picker if the server is unreachable
@@ -80,9 +85,11 @@ export function useDlnaBrowser(storageKey: string) {
         location:    saved.location,
         containerId: containerId,
       }).then(result => {
+        console.debug(`[useDlnaBrowser:${storageKey}] mount restore browse result — containers=${result.containers.length} items=${result.items.length}`)
         setContainers(result.containers)
         setItems(result.items)
-      }).catch(() => {
+      }).catch((err) => {
+        console.warn(`[useDlnaBrowser:${storageKey}] mount restore browse failed — clearing state:`, err)
         setServer(null)
         setBreadcrumb([])
         localStorage.removeItem(storageKey)

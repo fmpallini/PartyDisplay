@@ -7,7 +7,7 @@ import type { PlayerState, PlayerControls } from '../lib/player-types'
 export function useSpotifyPlayer(accessToken: string | null): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>({
     ready: false, deviceId: null, track: null, paused: true, positionMs: 0, volume: 0.8,
-    shuffle: false, repeat: false, error: null,
+    shuffle: false, error: null,
   })
   const playerRef       = useRef<SpotifyPlayer | null>(null)
   const pausedRef       = useRef(true)
@@ -71,7 +71,6 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
           paused:     playbackState.paused,
           positionMs: playbackState.position,
           shuffle:    (playbackState as any).shuffle ?? false,
-          repeat:     ((playbackState as any).repeat_mode ?? 0) > 0,
           track: {
             id:       t.id,
             name:     t.name,
@@ -143,18 +142,5 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
     })
   }, [])
 
-  const toggleRepeat = useCallback(() => {
-    setState(s => {
-      const next = !s.repeat
-      if (accessTokenRef.current) {
-        fetch(`https://api.spotify.com/v1/me/player/repeat?state=${next ? 'context' : 'off'}`, {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${accessTokenRef.current}` },
-        }).catch(() => {})
-      }
-      return { ...s, repeat: next }
-    })
-  }, [])
-
-  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle, toggleRepeat }
+  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
 }
