@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { shuffle } from '../lib/utils'
+import { KEYS } from '../lib/storage-keys'
 
 export interface PhotoLibraryState {
   folder:       string | null
@@ -40,7 +42,7 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   // On mount: fetch whatever the watcher already has (handles late-opening display window)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const lastFolder = localStorage.getItem('pd_last_folder')
+    const lastFolder = localStorage.getItem(KEYS.lastPhotoFolder)
     invoke<string[]>('get_photos').then(paths => {
       if (paths.length > 0) {
         if (lastFolder && !folderRef.current) folderRef.current = lastFolder
@@ -83,7 +85,7 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   const setFolder = useCallback(async (folder: string) => {
     folderRef.current = folder
     setState(s => ({ ...s, folder }))
-    localStorage.setItem('pd_last_folder', folder)
+    localStorage.setItem(KEYS.lastPhotoFolder, folder)
     await invoke('watch_folder', { path: folder, recursive })
     // initial list arrives via photo-list event
   }, [recursive])
@@ -92,7 +94,7 @@ export function usePhotoLibrary({ order, recursive }: Options) {
 }
 
 function getSavedLastPhoto(folder: string): string | null {
-  const raw = localStorage.getItem('pd_last_photo')
+  const raw = localStorage.getItem(KEYS.lastPhotoPosition)
   if (!raw) return null
   try {
     const map: Record<string, string> = JSON.parse(raw)
@@ -102,10 +104,3 @@ function getSavedLastPhoto(folder: string): string | null {
   }
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-  }
-  return arr
-}

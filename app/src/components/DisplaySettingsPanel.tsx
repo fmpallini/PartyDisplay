@@ -1,5 +1,6 @@
 import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
-import { safeBool, safeNum } from '../lib/utils'
+import { safeBool, safeEnum, safeNum } from '../lib/utils'
+import { KEYS } from '../lib/storage-keys'
 
 export type { SpectrumTheme, SpectrumStyle }
 
@@ -52,9 +53,6 @@ export interface DisplaySettings {
   lyricsSplitSide:        'left' | 'right'
 }
 
-function safeEnum<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
-  return allowed.includes(value as T) ? (value as T) : fallback
-}
 
 const TRANSITION_EFFECT_VALUES = ['fade','slide-left','slide-right','slide-up','slide-down','zoom-in','zoom-out','blur','random'] as const
 const IMAGE_FIT_VALUES          = ['cover', 'contain'] as const
@@ -68,37 +66,37 @@ const LYRICS_SIDE_VALUES        = ['left', 'right'] as const
 
 export function readDisplaySettings(): DisplaySettings {
   return {
-    toastDurationMs:      safeNum(localStorage.getItem('pd_toast_duration_ms'),      5000),
-    songZoom:             safeNum(localStorage.getItem('pd_song_toast_zoom'),         1.7),
-    volumeZoom:           safeNum(localStorage.getItem('pd_volume_toast_zoom'),       1.7),
-    transitionEffect:     safeEnum(localStorage.getItem('pd_transition_effect'),     TRANSITION_EFFECT_VALUES, 'random'),
-    transitionDurationMs: safeNum(localStorage.getItem('pd_transition_duration_ms'), 500),
-    imageFit:             safeEnum(localStorage.getItem('pd_image_fit'),             IMAGE_FIT_VALUES,         'contain'),
-    spectrumVisible:      safeBool(localStorage.getItem('pd_spectrum_visible'), false),
-    spectrumStyle:        safeEnum(localStorage.getItem('pd_spectrum_style'),        SPECTRUM_STYLE_VALUES,    'bars'),
-    spectrumTheme:        safeEnum(localStorage.getItem('pd_spectrum_theme'),        SPECTRUM_THEME_VALUES,    'energy'),
-    spectrumHeightPct:    safeNum(localStorage.getItem('pd_spectrum_height_pct'),     10),
-    batteryVisible:       safeBool(localStorage.getItem('pd_battery_visible'), false),
-    batterySize:          safeNum(localStorage.getItem('pd_battery_size'),            36),
-    batteryPosition:      safeEnum(localStorage.getItem('pd_battery_position'),      TRACK_POSITION_VALUES,    'top-right'),
-    trackOverlayVisible:  safeBool(localStorage.getItem('pd_track_overlay_visible'), true),
-    trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         18),
-    trackPosition:        safeEnum(localStorage.getItem('pd_track_position'),        TRACK_POSITION_VALUES,    'top-left'),
-    trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
-    trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
-    trackBgOpacity:       safeNum(localStorage.getItem('pd_track_bg_opacity'),        0.5),
-    photoCounterVisible:  safeBool(localStorage.getItem('pd_photo_counter_visible'), true),
-    clockWeatherVisible:    safeBool(localStorage.getItem('pd_cw_visible'), true),
-    clockWeatherPosition:   safeEnum(localStorage.getItem('pd_cw_position'),         TRACK_POSITION_VALUES,    'bottom-left'),
-    clockWeatherTimeFormat: safeEnum(localStorage.getItem('pd_cw_time_format'),      TIME_FORMAT_VALUES,       '24h'),
-    clockWeatherTempUnit:   safeEnum(localStorage.getItem('pd_cw_temp_unit'),        TEMP_UNIT_VALUES,         'celsius'),
-    clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
-    lyricsVisible:          safeBool(localStorage.getItem('pd_lyrics_visible'), false),
-    lyricsSize:             safeNum(localStorage.getItem('pd_lyrics_size'),    32),
-    lyricsOpacity:          safeNum(localStorage.getItem('pd_lyrics_opacity'), 0.9),
-    lyricsPosition:         safeEnum(localStorage.getItem('pd_lyrics_position'),     LYRICS_POSITION_VALUES,   'lower-third'),
-    lyricsSplit:            safeBool(localStorage.getItem('pd_lyrics_split'), false),
-    lyricsSplitSide:        safeEnum(localStorage.getItem('pd_lyrics_split_side'),   LYRICS_SIDE_VALUES,       'right'),
+    toastDurationMs:      safeNum(localStorage.getItem(KEYS.toastDurationMs),      5000),
+    songZoom:             safeNum(localStorage.getItem(KEYS.songToastZoom),         1.7),
+    volumeZoom:           safeNum(localStorage.getItem(KEYS.volumeToastZoom),       1.7),
+    transitionEffect:     safeEnum(localStorage.getItem(KEYS.transitionEffect),     TRANSITION_EFFECT_VALUES, 'random'),
+    transitionDurationMs: safeNum(localStorage.getItem(KEYS.transitionDurationMs), 500),
+    imageFit:             safeEnum(localStorage.getItem(KEYS.imageFit),             IMAGE_FIT_VALUES,         'contain'),
+    spectrumVisible:      safeBool(localStorage.getItem(KEYS.spectrumVisible), false),
+    spectrumStyle:        safeEnum(localStorage.getItem(KEYS.spectrumStyle),        SPECTRUM_STYLE_VALUES,    'bars'),
+    spectrumTheme:        safeEnum(localStorage.getItem(KEYS.spectrumTheme),        SPECTRUM_THEME_VALUES,    'energy'),
+    spectrumHeightPct:    safeNum(localStorage.getItem(KEYS.spectrumHeightPct),     10),
+    batteryVisible:       safeBool(localStorage.getItem(KEYS.batteryVisible), false),
+    batterySize:          safeNum(localStorage.getItem(KEYS.batterySize),            36),
+    batteryPosition:      safeEnum(localStorage.getItem(KEYS.batteryPosition),      TRACK_POSITION_VALUES,    'top-right'),
+    trackOverlayVisible:  safeBool(localStorage.getItem(KEYS.trackOverlayVisible), true),
+    trackFontSize:        safeNum(localStorage.getItem(KEYS.trackFontSize),         18),
+    trackPosition:        safeEnum(localStorage.getItem(KEYS.trackPosition),        TRACK_POSITION_VALUES,    'top-left'),
+    trackColor:           localStorage.getItem(KEYS.trackColor) ?? '#ffffff',
+    trackBgColor:         localStorage.getItem(KEYS.trackBgColor) ?? '#000000',
+    trackBgOpacity:       safeNum(localStorage.getItem(KEYS.trackBgOpacity),        0.5),
+    photoCounterVisible:  safeBool(localStorage.getItem(KEYS.photoCounterVisible), true),
+    clockWeatherVisible:    safeBool(localStorage.getItem(KEYS.cwVisible), true),
+    clockWeatherPosition:   safeEnum(localStorage.getItem(KEYS.cwPosition),         TRACK_POSITION_VALUES,    'bottom-left'),
+    clockWeatherTimeFormat: safeEnum(localStorage.getItem(KEYS.cwTimeFormat),      TIME_FORMAT_VALUES,       '24h'),
+    clockWeatherTempUnit:   safeEnum(localStorage.getItem(KEYS.cwTempUnit),         TEMP_UNIT_VALUES,         'celsius'),
+    clockWeatherCity:       localStorage.getItem(KEYS.cwCity) ?? '',
+    lyricsVisible:          safeBool(localStorage.getItem(KEYS.lyricsVisible), false),
+    lyricsSize:             safeNum(localStorage.getItem(KEYS.lyricsSize),    32),
+    lyricsOpacity:          safeNum(localStorage.getItem(KEYS.lyricsOpacity), 0.9),
+    lyricsPosition:         safeEnum(localStorage.getItem(KEYS.lyricsPosition),     LYRICS_POSITION_VALUES,   'lower-third'),
+    lyricsSplit:            safeBool(localStorage.getItem(KEYS.lyricsSplit), false),
+    lyricsSplitSide:        safeEnum(localStorage.getItem(KEYS.lyricsSplitSide),   LYRICS_SIDE_VALUES,       'right'),
   }
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { safeBool, safeNum } from '../../lib/utils'
+import { KEYS } from '../../lib/storage-keys'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
@@ -87,9 +88,9 @@ const sourcePill = (active: boolean): React.CSSProperties => ({
 
 function readSlideshowConfig(): SlideshowConfig {
   return {
-    fixedSec:   safeNum(localStorage.getItem('pd_slideshow_fixed_sec'), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
-    order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
-    subfolders: safeBool(localStorage.getItem('pd_subfolder'), DEFAULT_SLIDESHOW_CONFIG.subfolders),
+    fixedSec:   safeNum(localStorage.getItem(KEYS.slideshowFixedSec), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
+    order:      (localStorage.getItem(KEYS.slideshowOrder) as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
+    subfolders: safeBool(localStorage.getItem(KEYS.slideshowSubfolders), DEFAULT_SLIDESHOW_CONFIG.subfolders),
   }
 }
 
@@ -105,13 +106,13 @@ export default function ControlPanel() {
   const [helpOpen, setHelpOpen]               = useState(false)
 
   const [source, setSource] = useState<'spotify' | 'local' | 'dlna'>(
-    () => (localStorage.getItem('pd_audio_source') as 'spotify' | 'local' | 'dlna') ?? 'spotify'
+    () => (localStorage.getItem(KEYS.audioSource) as 'spotify' | 'local' | 'dlna') ?? 'spotify'
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
-    () => localStorage.getItem('pd_local_audio_folder')
+    () => localStorage.getItem(KEYS.localAudioFolder)
   )
   const [localRecursive, setLocalRecursive] = useState<boolean>(
-    () => localStorage.getItem('pd_local_audio_recursive') !== 'false'
+    () => safeBool(localStorage.getItem(KEYS.localAudioRecursive), true)
   )
   const [localPlaylist,  setLocalPlaylist]  = useState<PlaylistItem[]>([])
 
@@ -121,13 +122,13 @@ export default function ControlPanel() {
   const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
 
   const [photoSource, setPhotoSourceState] = useState<'local' | 'dlna'>(
-    () => (localStorage.getItem('pd_photo_source') as 'local' | 'dlna') ?? 'local'
+    () => (localStorage.getItem(KEYS.photoSource) as 'local' | 'dlna') ?? 'local'
   )
   const dlnaBrowserPhotos = useDlnaBrowser('pd_dlna_photos')
 
   function setPhotoSource(s: 'local' | 'dlna') {
     setPhotoSourceState(s)
-    localStorage.setItem('pd_photo_source', s)
+    localStorage.setItem(KEYS.photoSource, s)
   }
   // DLNA HTTP URLs are routed through a local proxy server (127.0.0.1:29341)
   // so the webview can load them without CSP / WebView2 mixed-content issues.
@@ -168,37 +169,37 @@ export default function ControlPanel() {
   // Persist display settings to localStorage and propagate to display window
   // whenever they change — including via hotkeys, regardless of panel visibility.
   useEffect(() => {
-    localStorage.setItem('pd_toast_duration_ms',      String(displaySettings.toastDurationMs))
-    localStorage.setItem('pd_song_toast_zoom',         String(displaySettings.songZoom))
-    localStorage.setItem('pd_volume_toast_zoom',       String(displaySettings.volumeZoom))
-    localStorage.setItem('pd_transition_effect',       displaySettings.transitionEffect)
-    localStorage.setItem('pd_transition_duration_ms',  String(displaySettings.transitionDurationMs))
-    localStorage.setItem('pd_image_fit',               displaySettings.imageFit)
-    localStorage.setItem('pd_spectrum_visible',        String(displaySettings.spectrumVisible))
-    localStorage.setItem('pd_spectrum_style',          displaySettings.spectrumStyle)
-    localStorage.setItem('pd_spectrum_theme',          displaySettings.spectrumTheme)
-    localStorage.setItem('pd_spectrum_height_pct',     String(displaySettings.spectrumHeightPct))
-    localStorage.setItem('pd_battery_visible',         String(displaySettings.batteryVisible))
-    localStorage.setItem('pd_battery_size',            String(displaySettings.batterySize))
-    localStorage.setItem('pd_battery_position',        displaySettings.batteryPosition)
-    localStorage.setItem('pd_track_overlay_visible',   String(displaySettings.trackOverlayVisible))
-    localStorage.setItem('pd_track_font_size',         String(displaySettings.trackFontSize))
-    localStorage.setItem('pd_track_position',          displaySettings.trackPosition)
-    localStorage.setItem('pd_track_color',             displaySettings.trackColor)
-    localStorage.setItem('pd_track_bg_color',          displaySettings.trackBgColor)
-    localStorage.setItem('pd_track_bg_opacity',        String(displaySettings.trackBgOpacity))
-    localStorage.setItem('pd_photo_counter_visible',   String(displaySettings.photoCounterVisible))
-    localStorage.setItem('pd_cw_visible',              String(displaySettings.clockWeatherVisible))
-    localStorage.setItem('pd_cw_position',             displaySettings.clockWeatherPosition)
-    localStorage.setItem('pd_cw_time_format',          displaySettings.clockWeatherTimeFormat)
-    localStorage.setItem('pd_cw_temp_unit',            displaySettings.clockWeatherTempUnit)
-    localStorage.setItem('pd_cw_city',                 displaySettings.clockWeatherCity)
-    localStorage.setItem('pd_lyrics_visible',          String(displaySettings.lyricsVisible))
-    localStorage.setItem('pd_lyrics_size',             String(displaySettings.lyricsSize))
-    localStorage.setItem('pd_lyrics_opacity',          String(displaySettings.lyricsOpacity))
-    localStorage.setItem('pd_lyrics_position',         displaySettings.lyricsPosition)
-    localStorage.setItem('pd_lyrics_split',            String(displaySettings.lyricsSplit))
-    localStorage.setItem('pd_lyrics_split_side',       displaySettings.lyricsSplitSide)
+    localStorage.setItem(KEYS.toastDurationMs,      String(displaySettings.toastDurationMs))
+    localStorage.setItem(KEYS.songToastZoom,         String(displaySettings.songZoom))
+    localStorage.setItem(KEYS.volumeToastZoom,       String(displaySettings.volumeZoom))
+    localStorage.setItem(KEYS.transitionEffect,      displaySettings.transitionEffect)
+    localStorage.setItem(KEYS.transitionDurationMs,  String(displaySettings.transitionDurationMs))
+    localStorage.setItem(KEYS.imageFit,              displaySettings.imageFit)
+    localStorage.setItem(KEYS.spectrumVisible,       String(displaySettings.spectrumVisible))
+    localStorage.setItem(KEYS.spectrumStyle,         displaySettings.spectrumStyle)
+    localStorage.setItem(KEYS.spectrumTheme,         displaySettings.spectrumTheme)
+    localStorage.setItem(KEYS.spectrumHeightPct,     String(displaySettings.spectrumHeightPct))
+    localStorage.setItem(KEYS.batteryVisible,        String(displaySettings.batteryVisible))
+    localStorage.setItem(KEYS.batterySize,           String(displaySettings.batterySize))
+    localStorage.setItem(KEYS.batteryPosition,       displaySettings.batteryPosition)
+    localStorage.setItem(KEYS.trackOverlayVisible,   String(displaySettings.trackOverlayVisible))
+    localStorage.setItem(KEYS.trackFontSize,         String(displaySettings.trackFontSize))
+    localStorage.setItem(KEYS.trackPosition,         displaySettings.trackPosition)
+    localStorage.setItem(KEYS.trackColor,            displaySettings.trackColor)
+    localStorage.setItem(KEYS.trackBgColor,          displaySettings.trackBgColor)
+    localStorage.setItem(KEYS.trackBgOpacity,        String(displaySettings.trackBgOpacity))
+    localStorage.setItem(KEYS.photoCounterVisible,   String(displaySettings.photoCounterVisible))
+    localStorage.setItem(KEYS.cwVisible,             String(displaySettings.clockWeatherVisible))
+    localStorage.setItem(KEYS.cwPosition,            displaySettings.clockWeatherPosition)
+    localStorage.setItem(KEYS.cwTimeFormat,          displaySettings.clockWeatherTimeFormat)
+    localStorage.setItem(KEYS.cwTempUnit,            displaySettings.clockWeatherTempUnit)
+    localStorage.setItem(KEYS.cwCity,                displaySettings.clockWeatherCity)
+    localStorage.setItem(KEYS.lyricsVisible,         String(displaySettings.lyricsVisible))
+    localStorage.setItem(KEYS.lyricsSize,            String(displaySettings.lyricsSize))
+    localStorage.setItem(KEYS.lyricsOpacity,         String(displaySettings.lyricsOpacity))
+    localStorage.setItem(KEYS.lyricsPosition,        displaySettings.lyricsPosition)
+    localStorage.setItem(KEYS.lyricsSplit,           String(displaySettings.lyricsSplit))
+    localStorage.setItem(KEYS.lyricsSplitSide,       displaySettings.lyricsSplitSide)
     emit('display-settings-changed', displaySettings).catch(console.error)
   }, [displaySettings])
 
@@ -228,9 +229,9 @@ export default function ControlPanel() {
 
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
-    localStorage.setItem('pd_slideshow_fixed_sec', String(c.fixedSec))
-    localStorage.setItem('pd_order',               c.order)
-    localStorage.setItem('pd_subfolder',           String(c.subfolders))
+    localStorage.setItem(KEYS.slideshowFixedSec,   String(c.fixedSec))
+    localStorage.setItem(KEYS.slideshowOrder,      c.order)
+    localStorage.setItem(KEYS.slideshowSubfolders, String(c.subfolders))
   }
 
   // ── Photo navigation ──────────────────────────────────────────────────────
@@ -245,7 +246,7 @@ export default function ControlPanel() {
     if (config.order === 'alpha' && library.folder) {
       let map: Record<string, string> = {}
       try {
-        const raw = localStorage.getItem('pd_last_photo')
+        const raw = localStorage.getItem(KEYS.lastPhotoPosition)
         if (raw) map = JSON.parse(raw)
       } catch {
         // Corrupted localStorage — start fresh rather than crashing.
@@ -256,7 +257,7 @@ export default function ControlPanel() {
         map = Object.fromEntries(keys.slice(-49).map(k => [k, map[k]]))
       }
       map[library.folder] = photo
-      localStorage.setItem('pd_last_photo', JSON.stringify(map))
+      localStorage.setItem(KEYS.lastPhotoPosition, JSON.stringify(map))
     }
   }, [library.photos, library.folder, config.order])
 
@@ -275,7 +276,7 @@ export default function ControlPanel() {
   }, [library.photos])
 
   useEffect(() => {
-    const lastFolder = localStorage.getItem('pd_last_folder')
+    const lastFolder = localStorage.getItem(KEYS.lastPhotoFolder)
     if (lastFolder) library.setFolder(lastFolder)
   }, [])
 
@@ -391,18 +392,18 @@ export default function ControlPanel() {
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
     if ((source === 'local' || source === 'dlna') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
-    localStorage.setItem('pd_audio_source', source)
+    localStorage.setItem(KEYS.audioSource, source)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
   const setLocalFolder = useCallback((folder: string) => {
     setLocalFolderState(folder)
-    localStorage.setItem('pd_local_audio_folder', folder)
+    localStorage.setItem(KEYS.localAudioFolder, folder)
   }, [])
 
   useEffect(() => {
     if (!localFolder) return
-    localStorage.setItem('pd_local_audio_recursive', String(localRecursive))
+    localStorage.setItem(KEYS.localAudioRecursive, String(localRecursive))
     invoke<string[]>('scan_audio_folder', { path: localFolder, recursive: localRecursive })
       .then(paths => setLocalPlaylist(paths.map(path => ({ path }))))
       .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
