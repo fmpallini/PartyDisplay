@@ -13,6 +13,7 @@
 /// URL via reqwest, forwarding Range / Content-Range / Accept-Ranges headers
 /// so seeking works.
 use std::sync::atomic::{AtomicBool, Ordering};
+use futures::StreamExt;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 
@@ -123,8 +124,6 @@ async fn handle(stream: tokio::net::TcpStream) {
 
     match req.send().await {
         Ok(resp) => {
-            use futures::StreamExt;
-
             let status = resp.status().as_u16();
             let ct = resp.headers().get("content-type")
                 .and_then(|v| v.to_str().ok())
@@ -145,8 +144,7 @@ async fn handle(stream: tokio::net::TcpStream) {
             if let Some(v) = ar { hdr += &format!("Accept-Ranges: {v}\r\n"); }
             hdr += "\r\n";
 
-            // Write headers first, then stream body chunks as they arrive so we
-            // never buffer the entire file in memory (important for large audio files).
+            // Stream chunks as they arrive — never buffer the entire file in memory.
             if writer.write_all(hdr.as_bytes()).await.is_err() { return; }
             let mut stream = resp.bytes_stream();
             while let Some(chunk) = stream.next().await {
