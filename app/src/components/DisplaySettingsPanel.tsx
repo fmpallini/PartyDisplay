@@ -1,8 +1,5 @@
-import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
 import { safeBool, safeEnum, safeNum } from '../lib/utils'
 import { KEYS } from '../lib/storage-keys'
-
-export type { SpectrumTheme, SpectrumStyle }
 
 export type VisualizerMode = 'photos' | 'visualizer' | 'split'
 
@@ -31,10 +28,6 @@ export interface DisplaySettings {
   transitionEffect:     TransitionEffect
   transitionDurationMs: number
   imageFit:             ImageFit
-  spectrumVisible:      boolean
-  spectrumStyle:        SpectrumStyle
-  spectrumTheme:        SpectrumTheme
-  spectrumHeightPct:    number
   visualizerMode:        VisualizerMode
   visualizerSplitSide:   'left' | 'right'
   visualizerPresetIndex: number
@@ -64,8 +57,6 @@ export interface DisplaySettings {
 
 const TRANSITION_EFFECT_VALUES = ['fade','slide-left','slide-right','slide-up','slide-down','zoom-in','zoom-out','blur','random'] as const
 const IMAGE_FIT_VALUES          = ['cover', 'contain'] as const
-const SPECTRUM_STYLE_VALUES     = ['bars', 'lines'] as const
-const SPECTRUM_THEME_VALUES     = ['energy', 'cyan', 'fire', 'white', 'rainbow', 'purple'] as const
 const TRACK_POSITION_VALUES     = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 const TIME_FORMAT_VALUES        = ['12h', '24h'] as const
 const TEMP_UNIT_VALUES          = ['celsius', 'fahrenheit'] as const
@@ -80,10 +71,6 @@ export function readDisplaySettings(): DisplaySettings {
     transitionEffect:     safeEnum(localStorage.getItem(KEYS.transitionEffect),     TRANSITION_EFFECT_VALUES, 'random'),
     transitionDurationMs: safeNum(localStorage.getItem(KEYS.transitionDurationMs), 500),
     imageFit:             safeEnum(localStorage.getItem(KEYS.imageFit),             IMAGE_FIT_VALUES,         'contain'),
-    spectrumVisible:      safeBool(localStorage.getItem(KEYS.spectrumVisible), false),
-    spectrumStyle:        safeEnum(localStorage.getItem(KEYS.spectrumStyle),        SPECTRUM_STYLE_VALUES,    'bars'),
-    spectrumTheme:        safeEnum(localStorage.getItem(KEYS.spectrumTheme),        SPECTRUM_THEME_VALUES,    'energy'),
-    spectrumHeightPct:    safeNum(localStorage.getItem(KEYS.spectrumHeightPct),     10),
     visualizerMode:        safeEnum(localStorage.getItem(KEYS.visualizerMode),        VISUALIZER_MODE_VALUES,  'photos'),
     visualizerSplitSide:   safeEnum(localStorage.getItem(KEYS.visualizerSplitSide),   VISUALIZER_SIDE_VALUES,  'right'),
     visualizerPresetIndex: safeNum(localStorage.getItem(KEYS.visualizerPresetIndex),  0),
@@ -121,15 +108,6 @@ const TRANSITION_EFFECTS: { value: TransitionEffect; label: string }[] = [
   { value: 'zoom-in',     label: 'Zoom In'     },
   { value: 'zoom-out',    label: 'Zoom Out'    },
   { value: 'blur',        label: 'Blur'        },
-]
-
-const SPECTRUM_THEMES: { value: SpectrumTheme; label: string }[] = [
-  { value: 'energy',  label: 'Energy (green→red)' },
-  { value: 'cyan',    label: 'Cyan'               },
-  { value: 'fire',    label: 'Fire'               },
-  { value: 'white',   label: 'White'              },
-  { value: 'rainbow', label: 'Rainbow'            },
-  { value: 'purple',  label: 'Purple'             },
 ]
 
 // ── Shared style primitives ───────────────────────────────────────────────────
@@ -248,45 +226,6 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           </label>
         </div>
 
-      </div>
-
-      {/* ── Spectrum ──────────────────────────────────────────────────── */}
-      <p style={subHead}>Spectrum <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(S to toggle)</span></p>
-
-      <label style={{ ...checkRow, marginBottom: 8 }}>
-        <input type="checkbox" checked={settings.spectrumVisible}
-          onChange={e => set({ spectrumVisible: e.target.checked })}
-          style={{ accentColor: '#1db954', cursor: 'pointer' }}
-        />
-        Show on display
-      </label>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-        <div>
-          <span style={fieldLabel}>Style</span>
-          <select value={settings.spectrumStyle} onChange={e => set({ spectrumStyle: e.target.value as SpectrumStyle })} style={selectInput}>
-            <option value="bars">Bars</option>
-            <option value="lines">Lines</option>
-          </select>
-        </div>
-        <div>
-          <span style={fieldLabel}>Theme</span>
-          <select value={settings.spectrumTheme} onChange={e => set({ spectrumTheme: e.target.value as SpectrumTheme })} style={selectInput}>
-            {SPECTRUM_THEMES.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <span style={fieldLabel}>Height</span>
-          <label style={inlineRow}>
-            <input type="number" min={5} max={50} step={1}
-              value={settings.spectrumHeightPct}
-              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, n(e.target.value))) })}
-              style={numInput}
-            /> % of screen
-          </label>
-        </div>
       </div>
 
       {/* ── Battery ───────────────────────────────────────────────────── */}

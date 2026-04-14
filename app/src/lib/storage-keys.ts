@@ -25,12 +25,6 @@ export const KEYS = {
   transitionDurationMs:'pd_transition_duration_ms',
   imageFit:            'pd_image_fit',
 
-  // Spectrum analyser
-  spectrumVisible:     'pd_spectrum_visible',
-  spectrumStyle:       'pd_spectrum_style',
-  spectrumTheme:       'pd_spectrum_theme',
-  spectrumHeightPct:   'pd_spectrum_height_pct',
-
   // Visualizer
   visualizerMode:        'pd_visualizer_mode',
   visualizerSplitSide:   'pd_visualizer_split_side',

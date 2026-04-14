@@ -10,7 +10,8 @@ interface Props {
 const HOTKEYS = [
   { key: '→ / ←',    action: 'Next / previous photo'     },
   { key: 'Space',     action: 'Pause / resume slideshow'  },
-  { key: 'S',         action: 'Toggle spectrum analyser'  },
+  { key: 'M',         action: 'Cycle visualizer mode'     },
+  { key: 'N',         action: 'Next visualizer preset'    },
   { key: 'T',         action: 'Toggle track overlay'      },
   { key: 'B',         action: 'Toggle battery'            },
   { key: 'P',         action: 'Toggle photo counter'      },
@@ -32,7 +33,7 @@ const CREDITS = [
   { name: 'Open-Meteo',                url: 'https://open-meteo.com',                   role: 'Free weather forecast API' },
   { name: 'ip-api.com',                 url: 'https://ip-api.com',                       role: 'IP-based location for weather auto-detect' },
   { name: 'cpal',                      url: 'https://github.com/RustAudio/cpal',        role: 'Cross-platform audio I/O (WASAPI loopback)' },
-  { name: 'RustFFT',                   url: 'https://github.com/ejmahler/RustFFT',      role: 'FFT for real-time spectrum analysis' },
+  { name: 'Butterchurn',               url: 'https://github.com/jberg/butterchurn',     role: 'MilkDrop-style WebGL visualizer' },
   { name: 'rupnp',                     url: 'https://github.com/jakobhellermann/rupnp', role: 'UPnP/DLNA device discovery and browsing' },
   { name: 'notify',                    url: 'https://github.com/notify-rs/notify',      role: 'File system watcher for photo folder' },
   { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },
