@@ -3,13 +3,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
 import { useHotkeys } from '../../hooks/useHotkeys'
-import { useFftData } from '../../hooks/useFftData'
 import { useBattery } from '../../hooks/useBattery'
 import type { BatteryStatus } from '../../hooks/useBattery'
 import { SlideshowView } from '../../components/SlideshowView'
 import { SongToast } from '../../components/SongToast'
 import { VolumeToast } from '../../components/VolumeToast'
-import SpectrumCanvas from '../../components/SpectrumCanvas'
+import VisualizerCanvas from '../../components/VisualizerCanvas'
 import { BatteryWidget } from '../../components/BatteryWidget'
 import { readDisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
@@ -28,16 +27,12 @@ export default function DisplayWindow() {
   const [isPaused,        setIsPaused]        = useState(false)
   const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [photoCounter, setPhotoCounter] = useState<{ index: number; total: number } | null>(null)
-  const bins    = useFftData()
   const battery = useBattery()
   const [weather, weatherError] = useWeather(displaySettings.clockWeatherTempUnit, displaySettings.clockWeatherCity)
 
-  // Track viewport height so the spectrum % is always accurate (e.g. on fullscreen toggle)
-  const [winHeight, setWinHeight] = useState(window.innerHeight)
+  // Start WASAPI loopback capture unconditionally — needed for DLNA, local audio, and Spotify.
   useEffect(() => {
-    const handler = () => setWinHeight(window.innerHeight)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
+    invoke('start_audio_capture').catch(console.error)
   }, [])
 
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -119,66 +114,55 @@ export default function DisplayWindow() {
   }, [])
 
   useHotkeys({
-    onNext:               () => emit('display-hotkey', { action: 'next'       }).catch(console.error),
-    onPrev:               () => emit('display-hotkey', { action: 'prev'       }).catch(console.error),
-    onTogglePause:        () => emit('display-hotkey', { action: 'pause'      }).catch(console.error),
-    onToggleSpectrum:     () => emit('display-hotkey', { action: 'spectrum'   }).catch(console.error),
-    onToggleTrackOverlay: () => emit('display-hotkey', { action: 'track'      }).catch(console.error),
-    onToggleFullscreen:   () => {
+    onNext:                () => emit('display-hotkey', { action: 'next'           }).catch(console.error),
+    onPrev:                () => emit('display-hotkey', { action: 'prev'           }).catch(console.error),
+    onTogglePause:         () => emit('display-hotkey', { action: 'pause'          }).catch(console.error),
+    onCycleVisualizerMode: () => emit('display-hotkey', { action: 'cycle-viz-mode' }).catch(console.error),
+    onNextPreset:          () => emit('display-hotkey', { action: 'next-preset'    }).catch(console.error),
+    onToggleTrackOverlay:  () => emit('display-hotkey', { action: 'track'          }).catch(console.error),
+    onToggleFullscreen:    () => {
       const next = !isFullscreen
       setIsFullscreen(next)
       invoke('set_display_fullscreen', { fullscreen: next }).catch(console.error)
       emit('fullscreen-changed', { fullscreen: next }).catch(console.error)
     },
-    onToggleBattery:      () => emit('display-hotkey', { action: 'battery'    }).catch(console.error),
-    onTogglePhotoCounter: () => emit('display-hotkey', { action: 'counter'    }).catch(console.error),
-    onToggleClockWeather: () => emit('display-hotkey', { action: 'clock'      }).catch(console.error),
-    onToggleLyrics:       () => emit('display-hotkey', { action: 'lyrics'       }).catch(console.error),
-    onMusicPrev:          () => emit('display-hotkey', { action: 'music-prev'   }).catch(console.error),
-    onMusicToggle:        () => emit('display-hotkey', { action: 'music-toggle' }).catch(console.error),
-    onMusicNext:          () => emit('display-hotkey', { action: 'music-next'   }).catch(console.error),
-    onVolumeUp:           () => emit('display-hotkey', { action: 'vol-up'       }).catch(console.error),
-    onVolumeDown:         () => emit('display-hotkey', { action: 'vol-down'     }).catch(console.error),
+    onToggleBattery:       () => emit('display-hotkey', { action: 'battery'        }).catch(console.error),
+    onTogglePhotoCounter:  () => emit('display-hotkey', { action: 'counter'        }).catch(console.error),
+    onToggleClockWeather:  () => emit('display-hotkey', { action: 'clock'          }).catch(console.error),
+    onToggleLyrics:        () => emit('display-hotkey', { action: 'lyrics'         }).catch(console.error),
+    onMusicPrev:           () => emit('display-hotkey', { action: 'music-prev'     }).catch(console.error),
+    onMusicToggle:         () => emit('display-hotkey', { action: 'music-toggle'   }).catch(console.error),
+    onMusicNext:           () => emit('display-hotkey', { action: 'music-next'     }).catch(console.error),
+    onVolumeUp:            () => emit('display-hotkey', { action: 'vol-up'         }).catch(console.error),
+    onVolumeDown:          () => emit('display-hotkey', { action: 'vol-down'       }).catch(console.error),
   })
 
   const lyrics = useLyrics(currentTrack, positionMs)
 
-  const spectrumHeightPx = Math.round(winHeight * (displaySettings.spectrumHeightPct / 100))
+  const vizMode     = displaySettings.visualizerMode
+  const vizSide     = displaySettings.visualizerSplitSide
+  const presetIndex = displaySettings.visualizerPresetIndex
 
-  // Split mode: show photo on one side and lyrics panel on the other
-  const isSplitMode = displaySettings.lyricsVisible && displaySettings.lyricsSplit
+  // Lyrics split panel is suppressed when the visualizer is in split mode (spec §1)
+  const effectiveLyricsSplit = displaySettings.lyricsSplit && vizMode !== 'split'
+  const isLyricsSplitMode    = displaySettings.lyricsVisible && effectiveLyricsSplit
 
-  // The photo+overlays pane — used in both normal and split layouts
-  const photoPaneContent = (isSplit: boolean) => (
+  // The photo+overlays pane — isSplitLyrics true means a separate lyrics panel is shown; skip overlay
+  const photoPaneContent = (isSplitLyrics: boolean) => (
     <>
       <SlideshowView
         photos={photos}
         transitionEffect={displaySettings.transitionEffect}
         transitionDurationMs={displaySettings.transitionDurationMs}
         imageFit={displaySettings.imageFit}
-        fillParent={isSplit}
+        fillParent={isSplitLyrics}
       />
-
-      {displaySettings.spectrumVisible && (
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, width: '100%', height: spectrumHeightPx, zIndex: 10,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%)',
-        }}>
-          <SpectrumCanvas
-            bins={bins}
-            height={spectrumHeightPx}
-            renderStyle={displaySettings.spectrumStyle}
-            theme={displaySettings.spectrumTheme}
-            overlay
-          />
-        </div>
-      )}
 
       {displaySettings.photoCounterVisible && photoCounter !== null && (
         <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
       )}
 
-      {!isSplit && displaySettings.lyricsVisible && lyrics.status !== 'not_found' && lyrics.status !== 'error' && lyrics.status !== 'idle' && (
+      {!isSplitLyrics && displaySettings.lyricsVisible && lyrics.status !== 'not_found' && lyrics.status !== 'error' && lyrics.status !== 'idle' && (
         <LyricsOverlay
           lines={lyrics.lines}
           currentIndex={lyrics.currentIndex}
@@ -223,8 +207,72 @@ export default function DisplayWindow() {
       <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
       <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
 
-      {isSplitMode ? (
-        // ── Split layout ──────────────────────────────────────────────────
+      {vizMode === 'visualizer' ? (
+        // ── Full-screen visualizer ─────────────────────────────────────────
+        <>
+          {/* Slideshow renders hidden so its internal timer keeps advancing */}
+          <div style={{ display: 'none' }}>
+            <SlideshowView
+              photos={photos}
+              transitionEffect={displaySettings.transitionEffect}
+              transitionDurationMs={displaySettings.transitionDurationMs}
+              imageFit={displaySettings.imageFit}
+              fillParent={false}
+            />
+          </div>
+          <VisualizerCanvas
+            presetIndex={presetIndex}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+          />
+          {/* All overlays on top of the canvas */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            {displaySettings.photoCounterVisible && photoCounter !== null && (
+              <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
+            )}
+            {displaySettings.lyricsVisible && lyrics.status !== 'not_found' && lyrics.status !== 'error' && lyrics.status !== 'idle' && (
+              <LyricsOverlay
+                lines={lyrics.lines}
+                currentIndex={lyrics.currentIndex}
+                status={lyrics.status}
+                settings={displaySettings}
+              />
+            )}
+            <CornerOverlays
+              displaySettings={displaySettings}
+              currentTrack={currentTrack}
+              positionMs={positionMs}
+              isPaused={isPaused}
+              weather={weather}
+              weatherError={weatherError}
+              battery={battery}
+            />
+          </div>
+        </>
+      ) : vizMode === 'split' ? (
+        // ── Visualizer split: photos 60% + Butterchurn 40% ────────────────
+        <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+          {vizSide === 'right' ? (
+            <>
+              <div style={{ position: 'relative', flex: '0 0 60%', height: '100%', overflow: 'hidden' }}>
+                {photoPaneContent(false)}
+              </div>
+              <div style={{ flex: '0 0 40%', height: '100%', overflow: 'hidden' }}>
+                <VisualizerCanvas presetIndex={presetIndex} style={{ width: '100%', height: '100%' }} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: '0 0 40%', height: '100%', overflow: 'hidden' }}>
+                <VisualizerCanvas presetIndex={presetIndex} style={{ width: '100%', height: '100%' }} />
+              </div>
+              <div style={{ position: 'relative', flex: '0 0 60%', height: '100%', overflow: 'hidden' }}>
+                {photoPaneContent(false)}
+              </div>
+            </>
+          )}
+        </div>
+      ) : isLyricsSplitMode ? (
+        // ── Lyrics split (photos mode only) ──────────────────────────────
         <div style={{ display: 'flex', width: '100%', height: '100%' }}>
           {displaySettings.lyricsSplitSide === 'right' ? (
             <>
@@ -247,7 +295,7 @@ export default function DisplayWindow() {
           )}
         </div>
       ) : (
-        // ── Normal full-screen layout ─────────────────────────────────────
+        // ── Photos mode (full-screen) ─────────────────────────────────────
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
           {photoPaneContent(false)}
         </div>
