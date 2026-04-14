@@ -76,11 +76,15 @@ HOW TO RUN
   - Configurable transition duration
   - Image fit: cover (fill/crop) or letterbox (contain)
 
- SPECTRUM ANALYSER
+ VISUALIZER
+  - MilkDrop-style animated visualizer powered by Butterchurn (WebGL)
   - Real-time WASAPI loopback audio capture — no driver install needed
-  - 64-bin FFT with logarithmic frequency mapping (40 Hz – 16 kHz)
-  - 2 render styles (bars / lines) × 6 colour themes
-  - Configurable height as % of screen
+  - Three modes: photos only, photo/visualizer split view, fullscreen visualizer
+  - 100 bundled presets — add your own by placing .json preset files in the
+    presets\ folder next to party-display.exe
+  - Preset cycling: manually (PgUp / PgDn), on every music change, or on a
+    configurable timer (default every 1 minute)
+  - Preset order: alphabetical or shuffle (default)
 
  LYRICS
   - Synchronized lyrics fetched from LRCLIB (free, no API key)
@@ -109,11 +113,15 @@ HOW TO RUN
   Arrow Right / Left    Next / previous photo
   Space                 Pause / resume slideshow
 
+ VISUALIZER
+  M                     Cycle visualizer mode (photos / split / fullscreen)
+  Page Up               Next visualizer preset
+  Page Down             Previous visualizer preset
+
  DISPLAY TOGGLES
   F                     Toggle fullscreen
   Esc                   Exit fullscreen
   Double-click          Toggle fullscreen
-  S                     Toggle spectrum analyser
   T                     Toggle track overlay
   B                     Toggle battery icon
   P                     Toggle photo counter
@@ -133,10 +141,11 @@ HOW TO RUN
   App shows blank / white screen
     Install the WebView2 runtime (link in REQUIREMENTS above).
 
-  No audio / spectrum is flat
+  Visualizer shows no animation
     Make sure audio is playing through your Windows default output device.
     Party Display captures the system loopback — it does not need a
-    microphone or any driver.
+    microphone or any driver. The visualizer reacts to all system audio,
+    not exclusively Spotify.
 
   Lyrics not showing
     Not all tracks have synchronized lyrics in LRCLIB. If a track has no
