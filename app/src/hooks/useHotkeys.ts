@@ -1,24 +1,25 @@
 import { useEffect } from 'react'
 
 interface Handlers {
-  onNext:                   () => void
-  onPrev:                   () => void
-  onTogglePause:            () => void
-  onToggleSpectrum?:        () => void
-  onToggleTrackOverlay?:    () => void
-  onToggleFullscreen?:      () => void
-  onToggleBattery?:         () => void
-  onTogglePhotoCounter?:    () => void
-  onToggleClockWeather?:    () => void
-  onToggleLyrics?:          () => void
-  onMusicPrev?:             () => void
-  onMusicToggle?:           () => void
-  onMusicNext?:             () => void
-  onVolumeUp?:              () => void
-  onVolumeDown?:            () => void
+  onNext:                      () => void
+  onPrev:                      () => void
+  onTogglePause:               () => void
+  onCycleVisualizerMode?:      () => void
+  onNextPreset?:               () => void
+  onToggleTrackOverlay?:       () => void
+  onToggleFullscreen?:         () => void
+  onToggleBattery?:            () => void
+  onTogglePhotoCounter?:       () => void
+  onToggleClockWeather?:       () => void
+  onToggleLyrics?:             () => void
+  onMusicPrev?:                () => void
+  onMusicToggle?:              () => void
+  onMusicNext?:                () => void
+  onVolumeUp?:                 () => void
+  onVolumeDown?:               () => void
 }
 
-export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics, onMusicPrev, onMusicToggle, onMusicNext, onVolumeUp, onVolumeDown }: Handlers) {
+export function useHotkeys({ onNext, onPrev, onTogglePause, onCycleVisualizerMode, onNextPreset, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics, onMusicPrev, onMusicToggle, onMusicNext, onVolumeUp, onVolumeDown }: Handlers) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       // Don't steal keys when the user is typing in a form element
@@ -35,19 +36,20 @@ export function useHotkeys({ onNext, onPrev, onTogglePause, onToggleSpectrum, on
       }
 
       switch (e.key) {
-        case 'ArrowRight':  e.preventDefault(); onNext();                    break
-        case 'ArrowLeft':   e.preventDefault(); onPrev();                    break
-        case ' ':           e.preventDefault(); onTogglePause();             break
-        case 's': case 'S': e.preventDefault(); onToggleSpectrum?.();        break
-        case 't': case 'T': e.preventDefault(); onToggleTrackOverlay?.();    break
-        case 'f': case 'F': e.preventDefault(); onToggleFullscreen?.();      break
-        case 'b': case 'B': e.preventDefault(); onToggleBattery?.();         break
-        case 'p': case 'P': e.preventDefault(); onTogglePhotoCounter?.();    break
-        case 'c': case 'C': e.preventDefault(); onToggleClockWeather?.();    break
-        case 'l': case 'L': e.preventDefault(); onToggleLyrics?.();          break
+        case 'ArrowRight':  e.preventDefault(); onNext();                       break
+        case 'ArrowLeft':   e.preventDefault(); onPrev();                       break
+        case ' ':           e.preventDefault(); onTogglePause();                break
+        case 'm': case 'M': e.preventDefault(); onCycleVisualizerMode?.();      break
+        case 'n': case 'N': e.preventDefault(); onNextPreset?.();               break
+        case 't': case 'T': e.preventDefault(); onToggleTrackOverlay?.();       break
+        case 'f': case 'F': e.preventDefault(); onToggleFullscreen?.();         break
+        case 'b': case 'B': e.preventDefault(); onToggleBattery?.();            break
+        case 'p': case 'P': e.preventDefault(); onTogglePhotoCounter?.();       break
+        case 'c': case 'C': e.preventDefault(); onToggleClockWeather?.();       break
+        case 'l': case 'L': e.preventDefault(); onToggleLyrics?.();             break
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onNext, onPrev, onTogglePause, onToggleSpectrum, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics, onMusicPrev, onMusicToggle, onMusicNext, onVolumeUp, onVolumeDown])
+  }, [onNext, onPrev, onTogglePause, onCycleVisualizerMode, onNextPreset, onToggleTrackOverlay, onToggleFullscreen, onToggleBattery, onTogglePhotoCounter, onToggleClockWeather, onToggleLyrics, onMusicPrev, onMusicToggle, onMusicNext, onVolumeUp, onVolumeDown])
 }
