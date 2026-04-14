@@ -155,8 +155,8 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
 }
 
 #[tauri::command]
-fn relaunch(app: tauri::AppHandle) {
-    app.restart();
+fn exit_app() {
+    std::process::exit(0);
 }
 
 /// Delete the WebView2 user-data folder so that localStorage and other
@@ -227,7 +227,7 @@ fn main() {
             local_audio::scan_audio_folder,
             dlna::dlna_discover,
             dlna::dlna_browse,
-            relaunch,
+            exit_app,
             clear_webview_data,
             presets::get_presets,
         ])

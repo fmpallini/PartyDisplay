@@ -51,14 +51,14 @@ export function HelpPanel({ onClose }: Props) {
 
   async function handleReset() {
     const ok = window.confirm(
-      'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then restart the app.'
+      'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then exit the app. Reopen it manually afterwards.'
     )
     if (!ok) return
 
     localStorage.clear()
     await invoke('clear_tokens').catch(console.error)
     await invoke('clear_webview_data').catch(console.error)
-    await invoke('relaunch').catch(console.error)
+    await invoke('exit_app').catch(console.error)
   }
 
   return (
@@ -94,7 +94,7 @@ export function HelpPanel({ onClose }: Props) {
 
         {/* About */}
         <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>
-          A Tauri + React app that turns a spare monitor into a music-aware photo slideshow with a MilkDrop-style visualizer, synced with Spotify.
+          A Tauri + React app that turns a spare monitor into a music-aware photo slideshow with a MilkDrop-style visualizer, synced with your music.
         </p>
         <p style={{ margin: 0, fontSize: 11, color: '#555', lineHeight: 1.5 }}>
           100 visualizer presets are bundled with the app. Add more by placing MilkDrop-compatible <code style={{ background: '#242424', borderRadius: 3, padding: '1px 4px' }}>.json</code> preset files in the <code style={{ background: '#242424', borderRadius: 3, padding: '1px 4px' }}>presets\</code> folder next to the executable.
@@ -155,7 +155,7 @@ export function HelpPanel({ onClose }: Props) {
             Reset
           </button>
           <p style={{ margin: '5px 0 0', fontSize: 10, color: '#444', lineHeight: 1.4 }}>
-            Clears all saved settings and Spotify credentials, then restarts the app.
+            Clears all saved settings and Spotify credentials, then exits the app. Reopen it manually afterwards.
           </p>
         </div>
 
