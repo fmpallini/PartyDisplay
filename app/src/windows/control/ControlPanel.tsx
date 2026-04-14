@@ -5,7 +5,6 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
 import NowPlaying from '../../components/NowPlaying'
-import SpectrumCanvas from '../../components/SpectrumCanvas'
 import { FolderPicker } from '../../components/FolderPicker'
 import { DisplayWindowControls } from '../../components/DisplayWindowControls'
 import { PlayerControls } from '../../components/PlayerControls'
@@ -14,8 +13,8 @@ import { DisplaySettingsPanel, readDisplaySettings } from '../../components/Disp
 import { HelpPanel } from '../../components/HelpPanel'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
+import type { VisualizerMode } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
-import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import type { PlaylistItem } from '../../hooks/useLocalPlayer'
@@ -104,6 +103,7 @@ export default function ControlPanel() {
   const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [helpOpen, setHelpOpen]               = useState(false)
+  const [presetNames, setPresetNames] = useState<string[]>([])
 
   const [source, setSource] = useState<'spotify' | 'local' | 'dlna'>(
     () => (localStorage.getItem(KEYS.audioSource) as 'spotify' | 'local' | 'dlna') ?? 'spotify'
@@ -156,8 +156,14 @@ export default function ControlPanel() {
   const player        = source === 'spotify' ? spotifyPlayer
                       : source === 'dlna'    ? dlnaPlayer
                       : localPlayer
-  const bins    = useFftData()
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
+
+  // Load preset names from the presets folder
+  useEffect(() => {
+    invoke<{ name: string; content: string }[]>('get_presets')
+      .then(list => setPresetNames(list.map(p => p.name)))
+      .catch(() => {})
+  }, [])
 
   // Notify display window whenever slideshow pause state changes (skip initial mount)
   const slideshowMountedRef = useRef(false)
@@ -175,10 +181,9 @@ export default function ControlPanel() {
     localStorage.setItem(KEYS.transitionEffect,      displaySettings.transitionEffect)
     localStorage.setItem(KEYS.transitionDurationMs,  String(displaySettings.transitionDurationMs))
     localStorage.setItem(KEYS.imageFit,              displaySettings.imageFit)
-    localStorage.setItem(KEYS.spectrumVisible,       String(displaySettings.spectrumVisible))
-    localStorage.setItem(KEYS.spectrumStyle,         displaySettings.spectrumStyle)
-    localStorage.setItem(KEYS.spectrumTheme,         displaySettings.spectrumTheme)
-    localStorage.setItem(KEYS.spectrumHeightPct,     String(displaySettings.spectrumHeightPct))
+    localStorage.setItem(KEYS.visualizerMode,        displaySettings.visualizerMode)
+    localStorage.setItem(KEYS.visualizerSplitSide,   displaySettings.visualizerSplitSide)
+    localStorage.setItem(KEYS.visualizerPresetIndex, String(displaySettings.visualizerPresetIndex))
     localStorage.setItem(KEYS.batteryVisible,        String(displaySettings.batteryVisible))
     localStorage.setItem(KEYS.batterySize,           String(displaySettings.batterySize))
     localStorage.setItem(KEYS.batteryPosition,       displaySettings.batteryPosition)
@@ -337,9 +342,22 @@ export default function ControlPanel() {
     invoke('start_audio_capture').catch(e => setCaptureError(String(e)))
   }, [player.ready])
 
-  const toggleSpectrum = useCallback(() => {
-    setDisplaySettings(s => ({ ...s, spectrumVisible: !s.spectrumVisible }))
+  const cycleVisualizerMode = useCallback(() => {
+    setDisplaySettings(s => {
+      const modes: VisualizerMode[] = ['photos', 'visualizer', 'split']
+      const idx = modes.indexOf(s.visualizerMode)
+      return { ...s, visualizerMode: modes[(idx + 1) % modes.length] }
+    })
   }, [])
+
+  const nextPreset = useCallback(() => {
+    setDisplaySettings(s => ({
+      ...s,
+      visualizerPresetIndex: presetNames.length > 0
+        ? (s.visualizerPresetIndex + 1) % presetNames.length
+        : 0,
+    }))
+  }, [presetNames.length])
 
   const toggleTrackOverlay = useCallback(() => {
     setDisplaySettings(s => ({ ...s, trackOverlayVisible: !s.trackOverlayVisible }))
@@ -367,14 +385,15 @@ export default function ControlPanel() {
   const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
   const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onCycleVisualizerMode: cycleVisualizerMode, onNextPreset: nextPreset, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
       if (payload.action === 'next')     doNext()
       if (payload.action === 'prev')     doPrev()
       if (payload.action === 'pause')    togglePause()
-      if (payload.action === 'spectrum') toggleSpectrum()
+      if (payload.action === 'cycle-viz-mode') cycleVisualizerMode()
+      if (payload.action === 'next-preset')    nextPreset()
       if (payload.action === 'track')    toggleTrackOverlay()
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
@@ -387,7 +406,7 @@ export default function ControlPanel() {
       if (payload.action === 'vol-down')      volumeDown()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
+  }, [doNext, doPrev, togglePause, cycleVisualizerMode, nextPreset, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
@@ -635,12 +654,6 @@ export default function ControlPanel() {
               <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
                 {Math.round(player.volume * 100)}%
               </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <SpectrumCanvas bins={bins} height={16}
-                  renderStyle={displaySettings.spectrumStyle}
-                  theme={displaySettings.spectrumTheme}
-                />
-              </div>
             </div>
           </div>
         </Card>
@@ -791,6 +804,52 @@ export default function ControlPanel() {
           />
         </Card>
 
+        {/* ── Visualizer card ──────────────────────────────────────────── */}
+        <Card label="Visualizer">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Mode</span>
+            {(['photos', 'visualizer', 'split'] as VisualizerMode[]).map(m => (
+              <button
+                key={m}
+                style={sourcePill(displaySettings.visualizerMode === m)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerMode: m }))}
+              >
+                {m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+          {displaySettings.visualizerMode === 'split' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: '#666', fontSize: 12 }}>Side</span>
+              {(['left', 'right'] as const).map(side => (
+                <button
+                  key={side}
+                  style={sourcePill(displaySettings.visualizerSplitSide === side)}
+                  onClick={() => setDisplaySettings(s => ({ ...s, visualizerSplitSide: side }))}
+                >
+                  {side.charAt(0).toUpperCase() + side.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #1e1e1e', paddingTop: 8 }}>
+            <span style={{ color: '#666', fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {presetNames[displaySettings.visualizerPresetIndex] ?? '—'}
+            </span>
+            <button
+              onClick={nextPreset}
+              style={{
+                background: '#1db95418', border: '1px solid #1db95444', color: '#1db954',
+                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+              }}
+              title="N"
+            >
+              Next Preset
+            </button>
+          </div>
+        </Card>
+
         {/* ── Display window card ─────────────────────────────────────── */}
         <Card label="Display Window">
           <DisplayWindowControls />
@@ -810,7 +869,7 @@ export default function ControlPanel() {
           )}
           {!settingsOpen && (
             <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
-              Toasts · Transitions · Spectrum · Battery · Track · Clock · Lyrics
+              Toasts · Transitions · Battery · Track · Clock · Lyrics
             </p>
           )}
         </Card>
