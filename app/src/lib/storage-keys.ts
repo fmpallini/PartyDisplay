@@ -31,6 +31,11 @@ export const KEYS = {
   spectrumTheme:       'pd_spectrum_theme',
   spectrumHeightPct:   'pd_spectrum_height_pct',
 
+  // Visualizer
+  visualizerMode:        'pd_visualizer_mode',
+  visualizerSplitSide:   'pd_visualizer_split_side',
+  visualizerPresetIndex: 'pd_visualizer_preset_index',
+
   // Battery widget
   batteryVisible:      'pd_battery_visible',
   batterySize:         'pd_battery_size',
