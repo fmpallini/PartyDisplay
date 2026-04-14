@@ -7,6 +7,7 @@ mod dlna_proxy;
 mod local_audio;
 mod slideshow;
 mod system;
+mod presets;
 mod window_manager;
 
 use std::sync::Arc;
@@ -228,6 +229,7 @@ fn main() {
             dlna::dlna_browse,
             relaunch,
             clear_webview_data,
+            presets::get_presets,
         ])
         .setup(|app| {
             // Start the DLNA HTTP proxy server (http://127.0.0.1:29341/...)
