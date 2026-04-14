@@ -133,6 +133,7 @@ export default function DisplayWindow() {
     onTogglePause:         () => emit('display-hotkey', { action: 'pause'          }).catch(console.error),
     onCycleVisualizerMode: () => emit('display-hotkey', { action: 'cycle-viz-mode' }).catch(console.error),
     onNextPreset:          () => emit('display-hotkey', { action: 'next-preset'    }).catch(console.error),
+    onPrevPreset:          () => emit('display-hotkey', { action: 'prev-preset'    }).catch(console.error),
     onToggleTrackOverlay:  () => emit('display-hotkey', { action: 'track'          }).catch(console.error),
     onToggleFullscreen:    () => {
       const next = !isFullscreen

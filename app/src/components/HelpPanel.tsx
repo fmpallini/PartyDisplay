@@ -11,7 +11,8 @@ const HOTKEYS = [
   { key: '→ / ←',    action: 'Next / previous photo'     },
   { key: 'Space',     action: 'Pause / resume slideshow'  },
   { key: 'M',         action: 'Cycle visualizer mode'     },
-  { key: 'N',         action: 'Next visualizer preset'    },
+  { key: 'PgUp',      action: 'Next visualizer preset'    },
+  { key: 'PgDn',      action: 'Previous visualizer preset'},
   { key: 'T',         action: 'Toggle track overlay'      },
   { key: 'B',         action: 'Toggle battery'            },
   { key: 'P',         action: 'Toggle photo counter'      },
@@ -93,7 +94,10 @@ export function HelpPanel({ onClose }: Props) {
 
         {/* About */}
         <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>
-          A Tauri + React app that turns a spare monitor into a music-aware photo slideshow, synced with Spotify.
+          A Tauri + React app that turns a spare monitor into a music-aware photo slideshow with a MilkDrop-style visualizer, synced with Spotify.
+        </p>
+        <p style={{ margin: 0, fontSize: 11, color: '#555', lineHeight: 1.5 }}>
+          100 visualizer presets are bundled with the app. Add more by placing MilkDrop-compatible <code style={{ background: '#242424', borderRadius: 3, padding: '1px 4px' }}>.json</code> preset files in the <code style={{ background: '#242424', borderRadius: 3, padding: '1px 4px' }}>presets\</code> folder next to the executable.
         </p>
 
         {/* GitHub */}

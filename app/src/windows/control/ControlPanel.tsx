@@ -13,7 +13,7 @@ import { DisplaySettingsPanel, readDisplaySettings } from '../../components/Disp
 import { HelpPanel } from '../../components/HelpPanel'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
-import type { VisualizerMode } from '../../components/DisplaySettingsPanel'
+import type { VisualizerMode, VisualizerPresetOrder, VisualizerPresetChange } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
@@ -181,9 +181,12 @@ export default function ControlPanel() {
     localStorage.setItem(KEYS.transitionEffect,      displaySettings.transitionEffect)
     localStorage.setItem(KEYS.transitionDurationMs,  String(displaySettings.transitionDurationMs))
     localStorage.setItem(KEYS.imageFit,              displaySettings.imageFit)
-    localStorage.setItem(KEYS.visualizerMode,        displaySettings.visualizerMode)
-    localStorage.setItem(KEYS.visualizerSplitSide,   displaySettings.visualizerSplitSide)
-    localStorage.setItem(KEYS.visualizerPresetIndex, String(displaySettings.visualizerPresetIndex))
+    localStorage.setItem(KEYS.visualizerMode,           displaySettings.visualizerMode)
+    localStorage.setItem(KEYS.visualizerSplitSide,      displaySettings.visualizerSplitSide)
+    localStorage.setItem(KEYS.visualizerPresetIndex,    String(displaySettings.visualizerPresetIndex))
+    localStorage.setItem(KEYS.visualizerPresetOrder,    displaySettings.visualizerPresetOrder)
+    localStorage.setItem(KEYS.visualizerPresetChange,   displaySettings.visualizerPresetChange)
+    localStorage.setItem(KEYS.visualizerPresetTimerMin, String(displaySettings.visualizerPresetTimerMin))
     localStorage.setItem(KEYS.batteryVisible,        String(displaySettings.batteryVisible))
     localStorage.setItem(KEYS.batterySize,           String(displaySettings.batterySize))
     localStorage.setItem(KEYS.batteryPosition,       displaySettings.batteryPosition)
@@ -362,14 +365,50 @@ export default function ControlPanel() {
     }
   }, [displaySettings.visualizerMode])
 
+  function pickPresetIndex(current: number, direction: 1 | -1, order: VisualizerPresetOrder, count: number): number {
+    if (count === 0) return 0
+    if (order === 'shuffle') {
+      if (count === 1) return 0
+      const r = Math.floor(Math.random() * (count - 1))
+      return r >= current ? r + 1 : r
+    }
+    return (current + direction + count) % count
+  }
+
   const nextPreset = useCallback(() => {
     setDisplaySettings(s => ({
       ...s,
-      visualizerPresetIndex: presetNames.length > 0
-        ? (s.visualizerPresetIndex + 1) % presetNames.length
-        : 0,
+      visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, 1, s.visualizerPresetOrder, presetNames.length),
     }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetNames.length])
+
+  const prevPreset = useCallback(() => {
+    setDisplaySettings(s => ({
+      ...s,
+      visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, -1, s.visualizerPresetOrder, presetNames.length),
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetNames.length])
+
+  // Auto-advance preset on music change
+  const prevTrackIdForPresetRef = useRef<string | null>(null)
+  useEffect(() => {
+    const id = player.track?.id ?? null
+    const prev = prevTrackIdForPresetRef.current
+    prevTrackIdForPresetRef.current = id
+    if (prev === null || id === null || id === prev) return
+    if (displaySettings.visualizerPresetChange === 'music') nextPreset()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.track?.id])
+
+  // Auto-advance preset on timer
+  useEffect(() => {
+    if (displaySettings.visualizerPresetChange !== 'timer') return
+    const ms = Math.max(1, displaySettings.visualizerPresetTimerMin) * 60_000
+    const id = setInterval(nextPreset, ms)
+    return () => clearInterval(id)
+  }, [displaySettings.visualizerPresetChange, displaySettings.visualizerPresetTimerMin, nextPreset])
 
   const toggleTrackOverlay = useCallback(() => {
     setDisplaySettings(s => ({ ...s, trackOverlayVisible: !s.trackOverlayVisible }))
@@ -397,7 +436,7 @@ export default function ControlPanel() {
   const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
   const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onCycleVisualizerMode: cycleVisualizerMode, onNextPreset: nextPreset, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onCycleVisualizerMode: cycleVisualizerMode, onNextPreset: nextPreset, onPrevPreset: prevPreset, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
@@ -406,6 +445,7 @@ export default function ControlPanel() {
       if (payload.action === 'pause')    togglePause()
       if (payload.action === 'cycle-viz-mode') cycleVisualizerMode()
       if (payload.action === 'next-preset')    nextPreset()
+      if (payload.action === 'prev-preset')    prevPreset()
       if (payload.action === 'track')    toggleTrackOverlay()
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
@@ -418,7 +458,7 @@ export default function ControlPanel() {
       if (payload.action === 'vol-down')      volumeDown()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, cycleVisualizerMode, nextPreset, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
+  }, [doNext, doPrev, togglePause, cycleVisualizerMode, nextPreset, prevPreset, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
@@ -818,46 +858,74 @@ export default function ControlPanel() {
 
         {/* ── Visualizer card ──────────────────────────────────────────── */}
         <Card label="Visualizer">
+          {/* Mode */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Mode</span>
             {(['photos', 'visualizer', 'split'] as VisualizerMode[]).map(m => (
-              <button
-                key={m}
-                style={sourcePill(displaySettings.visualizerMode === m)}
-                onClick={() => setDisplaySettings(s => ({ ...s, visualizerMode: m }))}
-              >
+              <button key={m} style={sourcePill(displaySettings.visualizerMode === m)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerMode: m }))}>
                 {m.charAt(0).toUpperCase() + m.slice(1)}
               </button>
             ))}
           </div>
+
+          {/* Split side */}
           {displaySettings.visualizerMode === 'split' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ color: '#666', fontSize: 12 }}>Side</span>
               {(['left', 'right'] as const).map(side => (
-                <button
-                  key={side}
-                  style={sourcePill(displaySettings.visualizerSplitSide === side)}
-                  onClick={() => setDisplaySettings(s => ({ ...s, visualizerSplitSide: side }))}
-                >
+                <button key={side} style={sourcePill(displaySettings.visualizerSplitSide === side)}
+                  onClick={() => setDisplaySettings(s => ({ ...s, visualizerSplitSide: side }))}>
                   {side.charAt(0).toUpperCase() + side.slice(1)}
                 </button>
               ))}
             </div>
           )}
+
+          {/* Order */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Order</span>
+            {(['alpha', 'shuffle'] as VisualizerPresetOrder[]).map(o => (
+              <button key={o} style={sourcePill(displaySettings.visualizerPresetOrder === o)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetOrder: o }))}>
+                {o === 'alpha' ? 'Alphabetic' : 'Shuffle'}
+              </button>
+            ))}
+          </div>
+
+          {/* Change trigger */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Change</span>
+            {(['manual', 'music', 'timer'] as VisualizerPresetChange[]).map(c => (
+              <button key={c} style={sourcePill(displaySettings.visualizerPresetChange === c)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetChange: c }))}>
+                {c === 'manual' ? 'Manual' : c === 'music' ? 'On music' : 'Timer'}
+              </button>
+            ))}
+            {displaySettings.visualizerPresetChange === 'timer' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ccc', fontSize: 12 }}>
+                <input
+                  type="number" min={1} max={60}
+                  value={displaySettings.visualizerPresetTimerMin}
+                  onChange={e => setDisplaySettings(s => ({ ...s, visualizerPresetTimerMin: Math.min(60, Math.max(1, Number(e.target.value) || 1)) }))}
+                  style={{ width: 40, background: '#242424', border: '1px solid #333', color: '#e8e8e8', borderRadius: 4, padding: '2px 4px', fontFamily: 'inherit', fontSize: 12 }}
+                /> min
+              </label>
+            )}
+          </div>
+
+          {/* Preset navigator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #1e1e1e', paddingTop: 8 }}>
             <span style={{ color: '#666', fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {presetNames[displaySettings.visualizerPresetIndex] ?? '—'}
             </span>
-            <button
-              onClick={nextPreset}
-              style={{
-                background: '#1db95418', border: '1px solid #1db95444', color: '#1db954',
-                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-              }}
-              title="N"
-            >
-              Next Preset
+            <button onClick={prevPreset} title="PgDn"
+              style={{ background: '#242424', border: '1px solid #333', color: '#aaa', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+              ‹
+            </button>
+            <button onClick={nextPreset} title="PgUp"
+              style={{ background: '#242424', border: '1px solid #333', color: '#aaa', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+              ›
             </button>
           </div>
         </Card>

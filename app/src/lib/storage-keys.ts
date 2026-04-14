@@ -26,9 +26,12 @@ export const KEYS = {
   imageFit:            'pd_image_fit',
 
   // Visualizer
-  visualizerMode:        'pd_visualizer_mode',
-  visualizerSplitSide:   'pd_visualizer_split_side',
-  visualizerPresetIndex: 'pd_visualizer_preset_index',
+  visualizerMode:           'pd_visualizer_mode',
+  visualizerSplitSide:      'pd_visualizer_split_side',
+  visualizerPresetIndex:    'pd_visualizer_preset_index',
+  visualizerPresetOrder:    'pd_visualizer_preset_order',
+  visualizerPresetChange:   'pd_visualizer_preset_change',
+  visualizerPresetTimerMin: 'pd_visualizer_preset_timer_min',
 
   // Battery widget
   batteryVisible:      'pd_battery_visible',

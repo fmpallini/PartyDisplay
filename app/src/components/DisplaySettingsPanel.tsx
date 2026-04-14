@@ -1,10 +1,14 @@
 import { safeBool, safeEnum, safeNum } from '../lib/utils'
 import { KEYS } from '../lib/storage-keys'
 
-export type VisualizerMode = 'photos' | 'visualizer' | 'split'
+export type VisualizerMode        = 'photos' | 'visualizer' | 'split'
+export type VisualizerPresetOrder  = 'alpha' | 'shuffle'
+export type VisualizerPresetChange = 'manual' | 'music' | 'timer'
 
-const VISUALIZER_MODE_VALUES  = ['photos', 'visualizer', 'split'] as const
-const VISUALIZER_SIDE_VALUES  = ['left', 'right'] as const
+const VISUALIZER_MODE_VALUES          = ['photos', 'visualizer', 'split'] as const
+const VISUALIZER_SIDE_VALUES          = ['left', 'right'] as const
+const VISUALIZER_PRESET_ORDER_VALUES  = ['alpha', 'shuffle'] as const
+const VISUALIZER_PRESET_CHANGE_VALUES = ['manual', 'music', 'timer'] as const
 
 export type TransitionEffect =
   | 'fade'
@@ -28,9 +32,12 @@ export interface DisplaySettings {
   transitionEffect:     TransitionEffect
   transitionDurationMs: number
   imageFit:             ImageFit
-  visualizerMode:        VisualizerMode
-  visualizerSplitSide:   'left' | 'right'
-  visualizerPresetIndex: number
+  visualizerMode:           VisualizerMode
+  visualizerSplitSide:      'left' | 'right'
+  visualizerPresetIndex:    number
+  visualizerPresetOrder:    VisualizerPresetOrder
+  visualizerPresetChange:   VisualizerPresetChange
+  visualizerPresetTimerMin: number
   batteryVisible:       boolean
   batterySize:          number
   batteryPosition:      TrackPosition
@@ -71,9 +78,12 @@ export function readDisplaySettings(): DisplaySettings {
     transitionEffect:     safeEnum(localStorage.getItem(KEYS.transitionEffect),     TRANSITION_EFFECT_VALUES, 'random'),
     transitionDurationMs: safeNum(localStorage.getItem(KEYS.transitionDurationMs), 500),
     imageFit:             safeEnum(localStorage.getItem(KEYS.imageFit),             IMAGE_FIT_VALUES,         'contain'),
-    visualizerMode:        safeEnum(localStorage.getItem(KEYS.visualizerMode),        VISUALIZER_MODE_VALUES,  'photos'),
-    visualizerSplitSide:   safeEnum(localStorage.getItem(KEYS.visualizerSplitSide),   VISUALIZER_SIDE_VALUES,  'right'),
-    visualizerPresetIndex: safeNum(localStorage.getItem(KEYS.visualizerPresetIndex),  0),
+    visualizerMode:           safeEnum(localStorage.getItem(KEYS.visualizerMode),           VISUALIZER_MODE_VALUES,          'photos'),
+    visualizerSplitSide:      safeEnum(localStorage.getItem(KEYS.visualizerSplitSide),      VISUALIZER_SIDE_VALUES,          'right'),
+    visualizerPresetIndex:    safeNum(localStorage.getItem(KEYS.visualizerPresetIndex),      0),
+    visualizerPresetOrder:    safeEnum(localStorage.getItem(KEYS.visualizerPresetOrder),     VISUALIZER_PRESET_ORDER_VALUES,  'shuffle'),
+    visualizerPresetChange:   safeEnum(localStorage.getItem(KEYS.visualizerPresetChange),    VISUALIZER_PRESET_CHANGE_VALUES, 'music'),
+    visualizerPresetTimerMin: safeNum(localStorage.getItem(KEYS.visualizerPresetTimerMin),   1),
     batteryVisible:       safeBool(localStorage.getItem(KEYS.batteryVisible), false),
     batterySize:          safeNum(localStorage.getItem(KEYS.batterySize),            36),
     batteryPosition:      safeEnum(localStorage.getItem(KEYS.batteryPosition),      TRACK_POSITION_VALUES,    'top-right'),
