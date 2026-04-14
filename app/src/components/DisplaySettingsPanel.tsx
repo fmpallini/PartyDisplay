@@ -4,6 +4,11 @@ import { KEYS } from '../lib/storage-keys'
 
 export type { SpectrumTheme, SpectrumStyle }
 
+export type VisualizerMode = 'photos' | 'visualizer' | 'split'
+
+const VISUALIZER_MODE_VALUES  = ['photos', 'visualizer', 'split'] as const
+const VISUALIZER_SIDE_VALUES  = ['left', 'right'] as const
+
 export type TransitionEffect =
   | 'fade'
   | 'slide-left'
@@ -30,6 +35,9 @@ export interface DisplaySettings {
   spectrumStyle:        SpectrumStyle
   spectrumTheme:        SpectrumTheme
   spectrumHeightPct:    number
+  visualizerMode:        VisualizerMode
+  visualizerSplitSide:   'left' | 'right'
+  visualizerPresetIndex: number
   batteryVisible:       boolean
   batterySize:          number
   batteryPosition:      TrackPosition
@@ -76,6 +84,9 @@ export function readDisplaySettings(): DisplaySettings {
     spectrumStyle:        safeEnum(localStorage.getItem(KEYS.spectrumStyle),        SPECTRUM_STYLE_VALUES,    'bars'),
     spectrumTheme:        safeEnum(localStorage.getItem(KEYS.spectrumTheme),        SPECTRUM_THEME_VALUES,    'energy'),
     spectrumHeightPct:    safeNum(localStorage.getItem(KEYS.spectrumHeightPct),     10),
+    visualizerMode:        safeEnum(localStorage.getItem(KEYS.visualizerMode),        VISUALIZER_MODE_VALUES,  'photos'),
+    visualizerSplitSide:   safeEnum(localStorage.getItem(KEYS.visualizerSplitSide),   VISUALIZER_SIDE_VALUES,  'right'),
+    visualizerPresetIndex: safeNum(localStorage.getItem(KEYS.visualizerPresetIndex),  0),
     batteryVisible:       safeBool(localStorage.getItem(KEYS.batteryVisible), false),
     batterySize:          safeNum(localStorage.getItem(KEYS.batterySize),            36),
     batteryPosition:      safeEnum(localStorage.getItem(KEYS.batteryPosition),      TRACK_POSITION_VALUES,    'top-right'),
