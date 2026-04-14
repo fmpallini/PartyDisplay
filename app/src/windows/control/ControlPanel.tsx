@@ -350,6 +350,18 @@ export default function ControlPanel() {
     })
   }, [])
 
+  // Auto-pause slideshow when entering full-screen visualizer; auto-resume when leaving
+  const prevVizModeRef = useRef(displaySettings.visualizerMode)
+  useEffect(() => {
+    const prev = prevVizModeRef.current
+    prevVizModeRef.current = displaySettings.visualizerMode
+    if (displaySettings.visualizerMode === 'visualizer') {
+      setSlideshowPaused(true)
+    } else if (prev === 'visualizer') {
+      setSlideshowPaused(false)
+    }
+  }, [displaySettings.visualizerMode])
+
   const nextPreset = useCallback(() => {
     setDisplaySettings(s => ({
       ...s,

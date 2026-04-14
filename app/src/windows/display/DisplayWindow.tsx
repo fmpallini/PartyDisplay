@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
@@ -32,8 +32,22 @@ export default function DisplayWindow() {
 
   // Start WASAPI loopback capture unconditionally — needed for DLNA, local audio, and Spotify.
   useEffect(() => {
-    invoke('start_audio_capture').catch(console.error)
+    invoke('start_audio_capture').catch(() => {})
   }, [])
+
+  // Preset names for the toast
+  const [presetNames, setPresetNames] = useState<string[]>([])
+  useEffect(() => {
+    invoke<{ name: string; content: string }[]>('get_presets')
+      .then(list => setPresetNames(list.map(p => p.name)))
+      .catch(() => {})
+  }, [])
+
+  // Preset toast — shown when presetIndex changes (skip initial mount)
+  const [presetToastText, setPresetToastText] = useState('')
+  const [presetToastVis,  setPresetToastVis]  = useState(false)
+  const presetTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const presetIdxMountedRef = useRef(false)
 
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -143,19 +157,30 @@ export default function DisplayWindow() {
   const vizSide     = displaySettings.visualizerSplitSide
   const presetIndex = displaySettings.visualizerPresetIndex
 
+  useEffect(() => {
+    if (!presetIdxMountedRef.current) { presetIdxMountedRef.current = true; return }
+    const name = presetNames[presetIndex]
+    if (!name) return
+    setPresetToastText(name)
+    setPresetToastVis(true)
+    if (presetTimerRef.current) clearTimeout(presetTimerRef.current)
+    presetTimerRef.current = setTimeout(() => setPresetToastVis(false), displaySettings.toastDurationMs)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetIndex])
+
   // Lyrics split panel is suppressed when the visualizer is in split mode (spec §1)
   const effectiveLyricsSplit = displaySettings.lyricsSplit && vizMode !== 'split'
   const isLyricsSplitMode    = displaySettings.lyricsVisible && effectiveLyricsSplit
 
-  // The photo+overlays pane — isSplitLyrics true means a separate lyrics panel is shown; skip overlay
-  const photoPaneContent = (isSplitLyrics: boolean) => (
+  // The photo+overlays pane — isSplitLyrics: separate lyrics panel is shown; fillParent: fit container instead of 100vw/vh
+  const photoPaneContent = (isSplitLyrics: boolean, fillParent = false) => (
     <>
       <SlideshowView
         photos={photos}
         transitionEffect={displaySettings.transitionEffect}
         transitionDurationMs={displaySettings.transitionDurationMs}
         imageFit={displaySettings.imageFit}
-        fillParent={isSplitLyrics}
+        fillParent={isSplitLyrics || fillParent}
       />
 
       {displaySettings.photoCounterVisible && photoCounter !== null && (
@@ -206,6 +231,7 @@ export default function DisplayWindow() {
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }} onDoubleClick={handleDoubleClick}>
       <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
       <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
+      {presetToastText && <PresetToastBanner name={presetToastText} visible={presetToastVis} />}
 
       {vizMode === 'visualizer' ? (
         // ── Full-screen visualizer ─────────────────────────────────────────
@@ -224,11 +250,8 @@ export default function DisplayWindow() {
             presetIndex={presetIndex}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
           />
-          {/* All overlays on top of the canvas */}
+          {/* All overlays on top of the canvas — photo counter is hidden in full-screen viz */}
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-            {displaySettings.photoCounterVisible && photoCounter !== null && (
-              <PhotoCounterOverlay index={photoCounter.index} total={photoCounter.total} />
-            )}
             {displaySettings.lyricsVisible && lyrics.status !== 'not_found' && lyrics.status !== 'error' && lyrics.status !== 'idle' && (
               <LyricsOverlay
                 lines={lyrics.lines}
@@ -254,7 +277,7 @@ export default function DisplayWindow() {
           {vizSide === 'right' ? (
             <>
               <div style={{ position: 'relative', flex: '0 0 60%', height: '100%', overflow: 'hidden' }}>
-                {photoPaneContent(false)}
+                {photoPaneContent(false, true)}
               </div>
               <div style={{ flex: '0 0 40%', height: '100%', overflow: 'hidden' }}>
                 <VisualizerCanvas presetIndex={presetIndex} style={{ width: '100%', height: '100%' }} />
@@ -266,7 +289,7 @@ export default function DisplayWindow() {
                 <VisualizerCanvas presetIndex={presetIndex} style={{ width: '100%', height: '100%' }} />
               </div>
               <div style={{ position: 'relative', flex: '0 0 60%', height: '100%', overflow: 'hidden' }}>
-                {photoPaneContent(false)}
+                {photoPaneContent(false, true)}
               </div>
             </>
           )}
@@ -370,6 +393,34 @@ function CornerOverlays({ displaySettings, currentTrack, positionMs, isPaused, w
         )
       })}
     </>
+  )
+}
+
+// ── Preset toast banner ───────────────────────────────────────────────────────
+
+function PresetToastBanner({ name, visible }: { name: string; visible: boolean }) {
+  return (
+    <div style={{
+      position:        'fixed',
+      top:             28,
+      left:            '50%',
+      transform:       'translateX(-50%)',
+      background:      'rgba(0,0,0,0.78)',
+      backdropFilter:  'blur(10px)',
+      borderRadius:    10,
+      padding:         '8px 20px',
+      zIndex:          200,
+      opacity:         visible ? 1 : 0,
+      transition:      'opacity 0.4s ease',
+      pointerEvents:   'none',
+      fontFamily:      'system-ui, -apple-system, sans-serif',
+      color:           '#fff',
+      fontSize:        13,
+      fontWeight:      600,
+      whiteSpace:      'nowrap',
+    }}>
+      {name}
+    </div>
   )
 }
 
