@@ -1,8 +1,3 @@
-# Party Display — Release & Build Guidelines
-
-## Pre-Work
-Validate if the user had recently run the /simplify, /security-review, and asked for a search for bugs.
-
 ## Version bumps
 
 When bumping the version, update these **4 files** and only these:
@@ -16,8 +11,12 @@ When bumping the version, update these **4 files** and only these:
 
 Also run the "npm install" to force updating the package-lock.json correcly.
 
-## Release procedure
+## Party Display — Release & Build Guidelines
 
+## Pre-Work
+Validate if the user had recently run the /simplify, /security-review, and asked for a search for bugs.
+
+## Release procedure
 Follow these steps **in order** when cutting a release.
 
 ### 1. Validate the version is new
@@ -53,11 +52,12 @@ Create a zip named `party-display-vX.Y.Z.zip` containing:
 - `party-display.exe` (from step 3)
 - `docs/docs for release/README.txt`
 - `docs/docs for release/LICENSE.txt`
-- Move that to the `release/` folder at the repo root.
+- the entire `presets` folder
+
+Move the zip to `release/` folder at the repo root.
 
 ### 6. Merge dev → master
 
 ### 7. Tag the release — `vX.Y.Z`
 
-### 8. Publish the GitHub release
-I don't have the GitHub CLI installed so just provide the instructions for doing manually.
+### 8. Give the guidelines to manually Publish the GitHub release at their website
