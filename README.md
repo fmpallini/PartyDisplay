@@ -97,7 +97,7 @@ Three validation spikes were run before writing any production code. The first a
 
 **Confirmed stack:** Tauri v2 on Windows, with WASAPI loopback for spectrum analysis.
 
-The main limitation inherited from this exploration is that the spectrum analyser taps the Windows audio output mix — not the SDK's internal audio graph. This works well in practice but means the visualiser reacts to all system audio, not exclusively to Spotify.
+The main limitation inherited from this exploration is that the spectrum analyzer taps the Windows audio output mix — not the SDK's internal audio graph. This works well in practice but means the visualizer reacts to all system audio, not exclusively to Spotify.
 
 ---
 
@@ -169,7 +169,7 @@ vcup2/
 - **Synchronized lyrics** — fetched from LRCLIB (no API key); overlay mode (3-line karaoke) or split-view mode (full scrolling panel alongside the photo); falls back to static text when sync data is unavailable
 - **Corner widgets** — track overlay (artist + title + progress), clock & weather (Open-Meteo, auto-detected or manual city), battery indicator; all four corners supported with graceful stacking
 - **Song & volume toasts** — brief on-screen notifications on track change and volume adjustment, with configurable duration and scale
-- **Display window** — designed for a second monitor, projector, or TV; fullscreen toggle, position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
+- **Display window** — designed for a second monitor, projector, or TV; features native one-click Miracast/TV casting that automatically routes the window and fullscreens it; position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
 - **Live settings sync** — all display settings update instantly on the display window without restart; control panel card layout with collapsible sections
 
 ---

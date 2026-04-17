@@ -100,6 +100,8 @@ HOW TO RUN
 
  DISPLAY WINDOW
   - Designed for a second monitor, projector, or TV
+  - Native "Cast to TV" button to wirelessly connect to Roku/Fire Stick/Smart TVs
+  - Auto-detects new wireless displays and seamlessly fullscreens the window
   - Fullscreen toggle, window position and state persisted across restarts
   - Screensaver / sleep blocked while the display window is open
   - Song changed toast (album art + track name) and volume toast
@@ -150,7 +152,15 @@ HOW TO RUN
   Lyrics not showing
     Not all tracks have synchronized lyrics in LRCLIB. If a track has no
     match, the overlay will not appear. Try toggling L to confirm it is
-    enabled.
+    enabled. If you are playing Local Files, ensure your audio file's
+    embedded metadata (Artist and Title tags) perfectly match the LRCLIB
+    database to fetch successfully.
+
+  No audio when Casting to TV (Miracast)
+    If the music continues playing on your laptop instead of the TV after
+    connecting, click the Speaker icon in your Windows taskbar and change
+    the output device to your TV. The visualizer will automatically switch
+    to listen to the TV's audio.
 
   Poor image quality when casting to TV (Miracast/Chromecast)
     Because casting involves capturing and encoding your screen over Wi-Fi
