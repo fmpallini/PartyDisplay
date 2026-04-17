@@ -10,14 +10,12 @@ class PcmInjectorProcessor extends AudioWorkletProcessor {
     this._available = 0
 
     this.port.onmessage = ({ data }) => {
-      // data is a Float32Array of 512 samples sent from the main thread
       for (let i = 0; i < data.length; i++) {
         this._buf[this._writePos] = data[i]
         this._writePos = (this._writePos + 1) % this._buf.length
         if (this._available < this._buf.length) {
           this._available++
         } else {
-          // Overflow: advance read pointer (drop oldest sample)
           this._readPos = (this._readPos + 1) % this._buf.length
         }
       }
