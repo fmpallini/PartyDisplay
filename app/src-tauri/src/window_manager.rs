@@ -121,12 +121,20 @@ pub fn open_display_window(
         let mon_pos  = mon.position();
         let mon_size = mon.size();
 
+        // Always un-fullscreen first to ensure the OS allows moving the window reliably
+        let _ = win.set_fullscreen(false);
+
         if fullscreen {
             // Place window inside target monitor so OS fullscreens on the right screen
             win.set_position(PhysicalPosition::new(
                 mon_pos.x + (mon_size.width as i32 / 2),
                 mon_pos.y + (mon_size.height as i32 / 2),
             )).map_err(|e| e.to_string())?;
+            
+            // Show and focus BEFORE setting fullscreen, otherwise Windows might ignore it or put it on the wrong screen
+            win.show().map_err(|e| e.to_string())?;
+            win.set_focus().map_err(|e| e.to_string())?;
+            
             win.set_fullscreen(true).map_err(|e| e.to_string())?;
         } else {
             let w = if saved.width  > 100 { saved.width  } else { 1280 };
@@ -146,14 +154,16 @@ pub fn open_display_window(
             } else {
                 (mon_pos.x + 80, mon_pos.y + 80)
             };
-            win.set_fullscreen(false).map_err(|e| e.to_string())?;
             win.set_size(PhysicalSize::new(w, h)).map_err(|e| e.to_string())?;
             win.set_position(PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+            
+            win.show().map_err(|e| e.to_string())?;
+            win.set_focus().map_err(|e| e.to_string())?;
         }
+    } else {
+        win.show().map_err(|e| e.to_string())?;
+        win.set_focus().map_err(|e| e.to_string())?;
     }
-
-    win.show().map_err(|e| e.to_string())?;
-    win.set_focus().map_err(|e| e.to_string())?;
 
     // Snapshot after opening and mark as open
     snapshot_window_state(&app, &win);

@@ -152,6 +152,14 @@ HOW TO RUN
     match, the overlay will not appear. Try toggling L to confirm it is
     enabled.
 
+  Poor image quality when casting to TV (Miracast/Chromecast)
+    Because casting involves capturing and encoding your screen over Wi-Fi
+    on the fly, high-motion graphics like the WebGL visualizer will show
+    heavy compression artifacts (blockiness) and lag. While wireless streaming
+    is usually fine for photo slideshows, the correct way to get high-quality,
+    uncompressed video and audio for the visualizer is to use a direct HDMI
+    cable, or a dedicated high-bitrate streaming solution like Sunshine/Moonlight.
+
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
     This clears all saved settings and Spotify tokens and closes the app.

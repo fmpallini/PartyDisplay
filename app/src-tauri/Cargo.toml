@@ -22,4 +22,5 @@ rupnp               = "1"
 roxmltree           = "0.20"
 futures             = "0.3"
 tokio               = { version = "1", features = ["time", "net", "io-util"] }
+enigo = "0.6.1"
 

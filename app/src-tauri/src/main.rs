@@ -230,6 +230,7 @@ fn main() {
             exit_app,
             clear_webview_data,
             presets::get_presets,
+            system::trigger_cast_flyout,
         ])
         .setup(|app| {
             // Start the DLNA HTTP proxy server (http://127.0.0.1:29341/...)

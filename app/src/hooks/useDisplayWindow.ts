@@ -56,6 +56,36 @@ export function useDisplayWindow() {
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
+  // Poll for monitor changes (e.g. Miracast connection) and auto-open on new monitor
+  useEffect(() => {
+    const interval = setInterval(() => {
+      invoke<MonitorInfo[]>('get_monitors').then(newMons => {
+        setMonitors(prev => {
+          // Check if the monitor list actually changed
+          const prevNames = prev.map(m => m.name).sort().join(',')
+          const newNames = newMons.map(m => m.name).sort().join(',')
+          if (prevNames === newNames) return prev // No change, avoid re-render
+          
+          // If a monitor was added, automatically open/fullscreen on it
+          if (prev.length > 0 && newMons.length > prev.length) {
+            const prevSet = new Set(prev.map(m => m.name))
+            const newMon = newMons.find(m => !prevSet.has(m.name))
+            if (newMon) {
+              console.log('[useDisplayWindow] New monitor detected:', newMon.name)
+              setSelectedMonitor(newMon.name)
+              setFullscreen(true)
+              invoke('open_display_window', { monitorName: newMon.name, fullscreen: true })
+                .then(() => setIsOpen(true))
+                .catch(console.error)
+            }
+          }
+          return newMons
+        })
+      }).catch(() => {})
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [])
+
   // Keep fullscreen checkbox in sync when toggled from the display window
   useEffect(() => {
     const unlisten = listen<{ fullscreen: boolean }>('fullscreen-changed', ({ payload }) => {
