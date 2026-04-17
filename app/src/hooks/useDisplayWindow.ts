@@ -58,8 +58,14 @@ export function useDisplayWindow() {
 
   // Poll for monitor changes (e.g. Miracast connection) and auto-open on new monitor
   useEffect(() => {
-    const interval = setInterval(() => {
+    let isCancelled = false
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const pollMonitors = () => {
+      if (isCancelled) return
+      
       invoke<MonitorInfo[]>('get_monitors').then(newMons => {
+        if (isCancelled) return
         setMonitors(prev => {
           // Check if the monitor list actually changed
           const prevNames = prev.map(m => m.name).sort().join(',')
@@ -82,8 +88,20 @@ export function useDisplayWindow() {
           return newMons
         })
       }).catch(() => {})
-    }, 2000)
-    return () => clearInterval(interval)
+      .finally(() => {
+        if (!isCancelled) {
+          timeoutId = setTimeout(pollMonitors, 2000)
+        }
+      })
+    }
+
+    // Start polling
+    pollMonitors()
+
+    return () => {
+      isCancelled = true
+      clearTimeout(timeoutId)
+    }
   }, [])
 
   // Keep fullscreen checkbox in sync when toggled from the display window
