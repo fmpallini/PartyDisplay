@@ -77,6 +77,25 @@ export async function refreshAccessToken(clientId: string, refresh_token: string
   return res.json() as Promise<RawTokenResponse>
 }
 
+// Returns true if clientId is recognized by Spotify.
+// Uses a dummy authorization_code grant — invalid_client = bad ID, invalid_grant = good ID.
+export async function validateClientId(clientId: string): Promise<boolean> {
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     clientId,
+      grant_type:    'authorization_code',
+      code:          'dummy',
+      redirect_uri:  REDIRECT_URI,
+      code_verifier: 'dummy',
+    }),
+  })
+  const body = await res.json() as { error?: string }
+  if (body.error === 'invalid_client') return false
+  return true
+}
+
 export function expiresAt(expires_in: number): number {
   // Subtract 60s buffer so we refresh before actual expiry.
   // Math.max(0, ...) guards against a server returning a very short TTL (< 60s).

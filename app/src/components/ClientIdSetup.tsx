@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { open } from '@tauri-apps/plugin-shell'
+import { validateClientId } from '../lib/spotify-auth'
 
 interface Props {
   onSave: (clientId: string) => Promise<void>
@@ -18,6 +19,12 @@ export function ClientIdSetup({ onSave, onBack }: Props) {
     setSaving(true)
     setError(null)
     try {
+      const valid = await validateClientId(trimmed)
+      if (!valid) {
+        setError('Invalid Client ID — not recognized by Spotify. Double-check and try again.')
+        setSaving(false)
+        return
+      }
       await onSave(trimmed)
     } catch (e) {
       setError(String(e))
@@ -110,7 +117,7 @@ export function ClientIdSetup({ onSave, onBack }: Props) {
             transition: 'background 0.15s',
           }}
         >
-          {saving ? 'Saving…' : 'Connect to Spotify'}
+          {saving ? 'Validating…' : 'Connect to Spotify'}
         </button>
       </div>
     </div>
