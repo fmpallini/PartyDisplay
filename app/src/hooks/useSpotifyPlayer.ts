@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export type { TrackInfo, PlayerState, PlayerControls } from '../lib/player-types'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
 
-export function useSpotifyPlayer(accessToken: string | null): PlayerState & PlayerControls {
+export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () => void): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>({
     ready: false, deviceId: null, track: null, paused: true, positionMs: 0, volume: 0.8,
     shuffle: false, error: null,
@@ -80,7 +80,10 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
       })
 
       player.addListener('initialization_error', e => setState(s => ({ ...s, error: `Init: ${e.message}` })))
-      player.addListener('authentication_error',  e => setState(s => ({ ...s, error: `Auth: ${e.message}` })))
+      player.addListener('authentication_error',  e => {
+        setState(s => ({ ...s, error: `Auth: ${e.message}` }))
+        onAuthError?.()
+      })
       player.addListener('account_error',         e => setState(s => ({ ...s, error: `Account: ${e.message}` })))
       player.addListener('playback_error',        e => {
         if (e.message === 'Cannot perform operation; no list was loaded.') return
@@ -102,7 +105,7 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
       playerRef.current?.disconnect()
       playerRef.current = null
     }
-  }, [accessToken])
+  }, [accessToken, onAuthError])
 
   // Poll volume every 2 s to catch changes made from the Spotify app
   useEffect(() => {

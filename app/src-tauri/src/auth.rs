@@ -1,8 +1,9 @@
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
 
-const SERVICE: &str = "party-display";
-const USER:    &str = "spotify-tokens";
+const SERVICE:        &str = "party-display";
+const USER:           &str = "spotify-tokens";
+const CLIENT_ID_KEY:  &str = "spotify-client-id";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TokenPayload {
@@ -40,6 +41,33 @@ pub fn clear_tokens() -> Result<(), String> {
     match entry.delete_credential() {
         Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn store_client_id(client_id: String) -> Result<(), String> {
+    Entry::new(SERVICE, CLIENT_ID_KEY)
+        .map_err(|e| e.to_string())?
+        .set_password(&client_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn load_client_id() -> Result<Option<String>, String> {
+    let entry = Entry::new(SERVICE, CLIENT_ID_KEY).map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(id)                          => Ok(Some(id)),
+        Err(keyring::Error::NoEntry)    => Ok(None),
+        Err(e)                          => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn clear_client_id() -> Result<(), String> {
+    let entry = Entry::new(SERVICE, CLIENT_ID_KEY).map_err(|e| e.to_string())?;
+    match entry.delete_credential() {
+        Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e)                               => Err(e.to_string()),
     }
 }
 

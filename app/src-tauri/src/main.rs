@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth;
+mod media_keys;
 mod remote_server;
 mod audio;
 mod dlna;
@@ -177,6 +178,7 @@ fn main() {
     let cli_args: Vec<String> = std::env::args().collect();
     if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
+        let _ = auth::clear_client_id();
         clear_webview_data();
         std::process::exit(0);
     }
@@ -214,6 +216,9 @@ fn main() {
             auth::store_tokens,
             auth::load_tokens,
             auth::clear_tokens,
+            auth::store_client_id,
+            auth::load_client_id,
+            auth::clear_client_id,
             audio::start_audio_capture,
             slideshow::watch_folder,
             slideshow::get_photos,
@@ -229,6 +234,7 @@ fn main() {
             local_audio::scan_audio_folder,
             dlna::dlna_discover,
             dlna::dlna_browse,
+            media_keys::send_media_key,
             exit_app,
             clear_webview_data,
             presets::get_presets,
