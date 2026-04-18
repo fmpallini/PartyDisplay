@@ -98,9 +98,29 @@ async fn handle_socket(mut socket: WebSocket, state: ServerState) {
                     _ => break,
                 }
             }
-            Ok(broadcast_msg) = rx.recv() => {
-                if socket.send(Message::Text(broadcast_msg.into())).await.is_err() {
-                    break;
+            broadcast_result = rx.recv() => {
+                match broadcast_result {
+                    Ok(broadcast_msg) => {
+                        if socket.send(Message::Text(broadcast_msg.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        // Re-send full state to resync the client after dropped messages.
+                        let resync = {
+                            let s = state.app_state.lock().unwrap();
+                            serde_json::json!({
+                                "type": "full-state",
+                                "playing": s.playing,
+                                "slideshowPaused": s.slideshow_paused,
+                                "toggles": s.toggles,
+                            }).to_string()
+                        };
+                        if socket.send(Message::Text(resync.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
                 }
             }
         }
@@ -209,8 +229,10 @@ pub fn start_remote_server(
         .with_state(server_state);
 
     let handle = tauri::async_runtime::spawn(async move {
-        let listener = tokio::net::TcpListener::from_std(std_listener).unwrap();
-        let _ = axum::serve(listener, router).await;
+        match tokio::net::TcpListener::from_std(std_listener) {
+            Ok(listener) => { let _ = axum::serve(listener, router).await; }
+            Err(e) => eprintln!("[remote_server] Failed to create async listener: {e}"),
+        }
     });
 
     {
