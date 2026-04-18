@@ -73,17 +73,18 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
+fn build_full_state(s: &RemoteAppState) -> String {
+    serde_json::json!({
+        "type": "full-state",
+        "playing": s.playing,
+        "slideshowPaused": s.slideshow_paused,
+        "toggles": s.toggles,
+    })
+    .to_string()
+}
+
 async fn handle_socket(mut socket: WebSocket, state: ServerState) {
-    let full_state = {
-        let s = state.app_state.lock().unwrap();
-        serde_json::json!({
-            "type": "full-state",
-            "playing": s.playing,
-            "slideshowPaused": s.slideshow_paused,
-            "toggles": s.toggles,
-        })
-        .to_string()
-    };
+    let full_state = build_full_state(&state.app_state.lock().unwrap());
     if socket.send(Message::Text(full_state.into())).await.is_err() {
         return;
     }
@@ -118,15 +119,7 @@ async fn handle_socket(mut socket: WebSocket, state: ServerState) {
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                         // Re-send full state to resync the client after dropped messages.
-                        let resync = {
-                            let s = state.app_state.lock().unwrap();
-                            serde_json::json!({
-                                "type": "full-state",
-                                "playing": s.playing,
-                                "slideshowPaused": s.slideshow_paused,
-                                "toggles": s.toggles,
-                            }).to_string()
-                        };
+                        let resync = build_full_state(&state.app_state.lock().unwrap());
                         if socket.send(Message::Text(resync.into())).await.is_err() {
                             break;
                         }

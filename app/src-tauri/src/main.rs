@@ -256,7 +256,11 @@ fn main() {
                             .get("paused")
                             .and_then(|v| v.as_bool())
                             .unwrap_or(true);
-                        app_state_pb.lock().unwrap().playing = !paused;
+                        let mut s = app_state_pb.lock().unwrap();
+                        let playing = !paused;
+                        if s.playing == playing { return; }
+                        s.playing = playing;
+                        drop(s);
                         let msg =
                             serde_json::json!({ "type": "playback-state", "paused": paused })
                                 .to_string();
@@ -272,7 +276,10 @@ fn main() {
                             .get("paused")
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false);
-                        app_state_ss.lock().unwrap().slideshow_paused = paused;
+                        let mut s = app_state_ss.lock().unwrap();
+                        if s.slideshow_paused == paused { return; }
+                        s.slideshow_paused = paused;
+                        drop(s);
                         let msg =
                             serde_json::json!({ "type": "slideshow-state", "paused": paused })
                                 .to_string();
