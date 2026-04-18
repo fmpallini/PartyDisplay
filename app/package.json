@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "release": "tauri build && node -e \"require('fs').cpSync('../presets', 'src-tauri/target/release/presets', {recursive: true, force: true})\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

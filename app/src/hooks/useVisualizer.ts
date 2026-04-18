@@ -24,6 +24,7 @@ export function useVisualizer(
   // load (blend=0) from user-driven changes (blend=2.7 seconds).
   const lastLoadedRef    = useRef<number>(-1)
   const [presets, setPresets] = useState<{ name: string; data: Record<string, unknown> }[]>([])
+  const [presetsLoaded, setPresetsLoaded] = useState(false)
 
   // Load preset list once on mount
   useEffect(() => {
@@ -35,8 +36,9 @@ export function useVisualizer(
           })
           .map(({ name, content }) => ({ name, data: JSON.parse(content) as Record<string, unknown> }))
         setPresets(loaded)
+        setPresetsLoaded(true)
       })
-      .catch(e => console.error('[useVisualizer] get_presets failed:', e))
+      .catch(e => { console.error('[useVisualizer] get_presets failed:', e); setPresetsLoaded(true) })
   }, [])
 
   // Initialize Butterchurn when canvas + presets are ready
@@ -117,5 +119,5 @@ export function useVisualizer(
     vizRef.current?.setRendererSize(w, h)
   }, [])
 
-  return { notifyResize }
+  return { notifyResize, presetsEmpty: presetsLoaded && presets.length === 0 }
 }
