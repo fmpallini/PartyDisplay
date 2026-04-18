@@ -10,7 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 
 const HTML: &str = include_str!("../../../remote/index.html");
 const PORT: u16 = 9091;
@@ -28,15 +28,18 @@ pub struct RemoteState {
     pub handle: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
     pub tx: broadcast::Sender<String>,
     pub app_state: Arc<Mutex<RemoteAppState>>,
+    pub shutdown_tx: watch::Sender<bool>,
 }
 
 impl Default for RemoteState {
     fn default() -> Self {
         let (tx, _) = broadcast::channel(32);
+        let (shutdown_tx, _) = watch::channel(true);
         Self {
             handle: Mutex::new(None),
             tx,
             app_state: Arc::new(Mutex::new(RemoteAppState::default())),
+            shutdown_tx,
         }
     }
 }
@@ -54,6 +57,7 @@ struct ServerState {
     tx: broadcast::Sender<String>,
     app_state: Arc<Mutex<RemoteAppState>>,
     app: AppHandle,
+    shutdown_rx: watch::Receiver<bool>,
 }
 
 // ── Route handlers ────────────────────────────────────────────────────────────
@@ -85,9 +89,16 @@ async fn handle_socket(mut socket: WebSocket, state: ServerState) {
     }
 
     let mut rx = state.tx.subscribe();
+    let mut shutdown_rx = state.shutdown_rx.clone();
 
     loop {
         tokio::select! {
+            _ = shutdown_rx.changed() => {
+                if !*shutdown_rx.borrow() {
+                    let _ = socket.send(Message::Close(None)).await;
+                    break;
+                }
+            }
             msg = socket.recv() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
@@ -216,13 +227,15 @@ pub fn start_remote_server(
 
     let tx = state.tx.clone();
     let app_state = Arc::clone(&state.app_state);
+    let _ = state.shutdown_tx.send(true); // mark active for new connections
+    let shutdown_rx = state.shutdown_tx.subscribe();
 
     // Bind synchronously so port-in-use errors surface immediately to the caller.
     let std_listener = std::net::TcpListener::bind(format!("0.0.0.0:{PORT}"))
         .map_err(|e| format!("Could not start server: {e}"))?;
     std_listener.set_nonblocking(true).map_err(|e| e.to_string())?;
 
-    let server_state = ServerState { tx, app_state, app };
+    let server_state = ServerState { tx, app_state, app, shutdown_rx };
     let router = Router::new()
         .route("/", get(serve_html))
         .route("/ws", get(ws_handler))
@@ -245,6 +258,7 @@ pub fn start_remote_server(
 
 #[tauri::command]
 pub fn stop_remote_server(state: tauri::State<'_, RemoteState>) {
+    let _ = state.shutdown_tx.send(false); // signal all active sockets to close
     let mut guard = state.handle.lock().unwrap();
     if let Some(h) = guard.take() {
         h.abort();

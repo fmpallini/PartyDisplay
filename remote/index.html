@@ -593,7 +593,7 @@
     clearTimeout(reconnectTimer);
 
     const host = window.location.hostname;
-    const url = `ws://${host}:${WS_PORT}`;
+    const url = `ws://${host}:${WS_PORT}/ws`;
 
     try {
       ws = new WebSocket(url);
