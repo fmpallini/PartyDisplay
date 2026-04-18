@@ -7,9 +7,10 @@ mod dlna_proxy;
 mod local_audio;
 mod slideshow;
 mod system;
+mod presets;
 mod window_manager;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::Manager;
 
@@ -26,15 +27,6 @@ fn html_escape(s: &str) -> String {
      .replace('>', "&gt;")
      .replace('"', "&quot;")
      .replace('\'', "&#39;")
-}
-
-pub struct AppState {
-    pub device_id: Mutex<Option<String>>,
-}
-
-#[tauri::command]
-fn ping() -> &'static str {
-    "pong"
 }
 
 /// Starts a one-shot HTTP server on 127.0.0.1:7357 that receives the OAuth
@@ -163,14 +155,8 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
 }
 
 #[tauri::command]
-fn set_device_id(state: tauri::State<AppState>, device_id: String) -> Result<(), String> {
-    *state.device_id.lock().unwrap() = Some(device_id);
-    Ok(())
-}
-
-#[tauri::command]
-fn relaunch(app: tauri::AppHandle) {
-    app.restart();
+fn exit_app() {
+    std::process::exit(0);
 }
 
 /// Delete the WebView2 user-data folder so that localStorage and other
@@ -196,9 +182,6 @@ fn main() {
 
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
-        .manage(AppState {
-            device_id: Mutex::new(None),
-        })
         .manage(Arc::clone(&slideshow_state))
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
@@ -225,9 +208,7 @@ fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            ping,
             start_oauth_callback_server,
-            set_device_id,
             auth::store_tokens,
             auth::load_tokens,
             auth::clear_tokens,
@@ -246,8 +227,10 @@ fn main() {
             local_audio::scan_audio_folder,
             dlna::dlna_discover,
             dlna::dlna_browse,
-            relaunch,
+            exit_app,
             clear_webview_data,
+            presets::get_presets,
+            system::trigger_cast_flyout,
         ])
         .setup(|app| {
             // Start the DLNA HTTP proxy server (http://127.0.0.1:29341/...)

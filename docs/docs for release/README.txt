@@ -1,4 +1,4 @@
-Party Display v0.7.0 — Windows 64-bit Portable
+Party Display v0.9.0 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -76,11 +76,15 @@ HOW TO RUN
   - Configurable transition duration
   - Image fit: cover (fill/crop) or letterbox (contain)
 
- SPECTRUM ANALYSER
+ VISUALIZER
+  - MilkDrop-style animated visualizer powered by Butterchurn (WebGL)
   - Real-time WASAPI loopback audio capture — no driver install needed
-  - 64-bin FFT with logarithmic frequency mapping (40 Hz – 16 kHz)
-  - 2 render styles (bars / lines) × 6 colour themes
-  - Configurable height as % of screen
+  - Three modes: photos only, photo/visualizer split view, fullscreen visualizer
+  - 100 bundled presets — add your own by placing .json preset files in the
+    presets\ folder next to party-display.exe
+  - Preset cycling: manually (PgUp / PgDn), on every music change, or on a
+    configurable timer (default every 1 minute)
+  - Preset order: alphabetical or shuffle (default)
 
  LYRICS
   - Synchronized lyrics fetched from LRCLIB (free, no API key)
@@ -96,6 +100,8 @@ HOW TO RUN
 
  DISPLAY WINDOW
   - Designed for a second monitor, projector, or TV
+  - Native "Cast to TV" button to wirelessly connect to Roku/Fire Stick/Smart TVs
+  - Auto-detects new wireless displays and seamlessly fullscreens the window
   - Fullscreen toggle, window position and state persisted across restarts
   - Screensaver / sleep blocked while the display window is open
   - Song changed toast (album art + track name) and volume toast
@@ -109,11 +115,15 @@ HOW TO RUN
   Arrow Right / Left    Next / previous photo
   Space                 Pause / resume slideshow
 
+ VISUALIZER
+  M                     Cycle visualizer mode (photos / split / fullscreen)
+  Page Up               Next visualizer preset
+  Page Down             Previous visualizer preset
+
  DISPLAY TOGGLES
   F                     Toggle fullscreen
   Esc                   Exit fullscreen
   Double-click          Toggle fullscreen
-  S                     Toggle spectrum analyser
   T                     Toggle track overlay
   B                     Toggle battery icon
   P                     Toggle photo counter
@@ -133,23 +143,41 @@ HOW TO RUN
   App shows blank / white screen
     Install the WebView2 runtime (link in REQUIREMENTS above).
 
-  No audio / spectrum is flat
+  Visualizer shows no animation
     Make sure audio is playing through your Windows default output device.
     Party Display captures the system loopback — it does not need a
-    microphone or any driver.
+    microphone or any driver. The visualizer reacts to all system audio,
+    not exclusively Spotify.
 
   Lyrics not showing
     Not all tracks have synchronized lyrics in LRCLIB. If a track has no
     match, the overlay will not appear. Try toggling L to confirm it is
-    enabled.
+    enabled. If you are playing Local Files, ensure your audio file's
+    embedded metadata (Artist and Title tags) perfectly match the LRCLIB
+    database to fetch successfully.
+
+  No audio when Casting to TV (Miracast)
+    If the music continues playing on your laptop instead of the TV after
+    connecting, click the Speaker icon in your Windows taskbar and change
+    the output device to your TV. The visualizer will automatically switch
+    to listen to the TV's audio.
+
+  Poor image quality when casting to TV (Miracast/Chromecast)
+    Because casting involves capturing and encoding your screen over Wi-Fi
+    on the fly, high-motion graphics like the WebGL visualizer will show
+    heavy compression artifacts (blockiness) and lag. While wireless streaming
+    is usually fine for photo slideshows, the correct way to get high-quality,
+    uncompressed video and audio for the visualizer is to use a direct HDMI
+    cable, or a dedicated high-bitrate streaming solution like Sunshine/Moonlight.
 
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
-    This clears all saved settings and Spotify tokens, then restarts the app.
+    This clears all saved settings and Spotify tokens and closes the app.
+    Relaunch the app manually afterwards.
 
     You can also reset from the command line:
 
       party-display.exe --reset
 
-    This clears all saved settings and Spotify credentials, then exits.
+    This clears all saved settings and Spotify credentials.
     Relaunch the app manually afterwards.

@@ -1,4 +1,6 @@
 import { useDisplayWindow } from '../hooks/useDisplayWindow'
+import { invoke } from '@tauri-apps/api/core'
+import { message } from '@tauri-apps/plugin-dialog'
 
 export function DisplayWindowControls() {
   const {
@@ -38,7 +40,7 @@ export function DisplayWindowControls() {
       </div>
 
       {/* Open / Close row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         {!isOpen ? (
           <button onClick={() => openWindow()} style={{ ...btnBase, background: '#1db954', color: '#000', fontWeight: 700 }}>
             Open Display
@@ -48,6 +50,34 @@ export function DisplayWindowControls() {
             Close Display
           </button>
         )}
+        <button 
+          onClick={() => {
+            message('Tip for Miracast audio:\n\nIf the sound doesn\'t automatically play on your TV after connecting, click the Speaker icon in your Windows taskbar (bottom right) and select your TV as the output device.\n\nThe visualizer will automatically switch to the new audio output!', { title: 'Cast to TV Tips', kind: 'info' })
+              .then(() => invoke('trigger_cast_flyout'))
+              .catch(console.error)
+          }} 
+          style={{ ...btnBase, background: '#2a2a2a', color: '#aaa', border: '1px solid #333', display: 'flex', alignItems: 'center', gap: 4 }}
+          title="Opens the Windows Cast menu (Win+K) to connect to a Miracast display (Roku, Fire Stick, Smart TVs)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+            <polyline points="17 2 12 7 7 2"></polyline>
+          </svg>
+          Cast to TV
+        </button>
+        <button 
+          onClick={() => {
+            message('To cast to a Chromecast device:\n\n1. Open Google Chrome or Microsoft Edge.\n2. Click the 3-dots menu (⋮) in the top right.\n3. Select "Cast..." (or "Save and share > Cast").\n4. Click the "Sources" dropdown and select "Cast screen".\n5. Choose your Chromecast device from the list.\n\nYour entire screen (including the Party Display window) will now be mirrored to your TV!', { title: 'Chromecast Instructions', kind: 'info' }).catch(console.error)
+          }} 
+          style={{ ...btnBase, background: '#2a2a2a', color: '#aaa', border: '1px solid #333', display: 'flex', alignItems: 'center', gap: 4 }}
+          title="Show instructions for casting to a Chromecast device"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path>
+            <line x1="2" y1="20" x2="2.01" y2="20"></line>
+          </svg>
+          Chromecast
+        </button>
       </div>
 
       {/* Status hints */}

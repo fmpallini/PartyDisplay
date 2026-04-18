@@ -14,5 +14,6 @@ export default defineConfig({
     target: ['es2021', 'chrome105'],
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_DEBUG,
+    ...(process.env.TAURI_DEBUG ? {} : { esbuildOptions: { drop: ['console'] } }),
   },
 })

@@ -97,7 +97,7 @@ Three validation spikes were run before writing any production code. The first a
 
 **Confirmed stack:** Tauri v2 on Windows, with WASAPI loopback for spectrum analysis.
 
-The main limitation inherited from this exploration is that the spectrum analyser taps the Windows audio output mix — not the SDK's internal audio graph. This works well in practice but means the visualiser reacts to all system audio, not exclusively to Spotify.
+The main limitation inherited from this exploration is that the spectrum analyzer taps the Windows audio output mix — not the SDK's internal audio graph. This works well in practice but means the visualizer reacts to all system audio, not exclusively to Spotify.
 
 ---
 
@@ -113,7 +113,7 @@ The main limitation inherited from this exploration is that the spectrum analyse
 │  │              │  │                  │ │
 │  │ Spotify SDK  │  │ Photo Slideshow  │ │
 │  │ OAuth / Auth │  │ Now Playing HUD  │ │
-│  │ Volume / Skip│  │ Spectrum Canvas  │ │
+│  │ Volume / Skip│  │ Visualizer (WebGL│ │
 │  └──────┬───────┘  └────────┬─────────┘ │
 │         │                   │           │
 │  ┌──────▼───────────────────▼─────────┐ │
@@ -131,7 +131,7 @@ The main limitation inherited from this exploration is that the spectrum analyse
 
 The two WebView2 windows are independent renderer processes that communicate through the Rust backend via Tauri IPC commands and broadcast events. The control panel owns the Spotify SDK instance and forwards playback state to the display window; the display window is purely a consumer — it renders but issues no Spotify API calls of its own.
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · rupnp · notify · music-metadata · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Butterchurn · rupnp · notify · music-metadata · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
 
 ---
 
@@ -149,6 +149,7 @@ vcup2/
 │   │   └── src/                # main · auth · audio · slideshow · system · window_manager · dlna · dlna_proxy
 │   ├── .env.local              # ← YOU CREATE THIS (gitignored)
 │   └── package.json
+├── presets/                    # MilkDrop preset JSONs (bundled next to exe at release)
 ├── docs/
 │   └── docs for release/       # README.txt, LICENSE.txt, sample screenshot
 ├── release/                    # Built release zips (gitignored)
@@ -164,11 +165,11 @@ vcup2/
 - **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
 - **DLNA / UPnP media** — discovers UPnP/DLNA servers on the local network; browse their containers directly in the control panel; stream audio tracks and photos from any DLNA server (NAS, media server, etc.) via a local HTTP proxy that handles range requests for seeking
 - **Photo slideshow** — watches a local folder or a DLNA container for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
-- **Real-time spectrum analyser** — WASAPI loopback capture in Rust (no driver install), 64-bin FFT, bars or lines render style, six colour themes, configurable height
+- **MilkDrop visualizer** — Butterchurn WebGL visualizer driven by real-time WASAPI loopback capture (no driver install); three modes: photos only, photo/visualizer split view, fullscreen; 100 bundled presets, add more by dropping `.json` MilkDrop preset files in the `presets/` folder next to the exe; cycle presets manually (PgUp / PgDn), on every track change, or on a configurable timer
 - **Synchronized lyrics** — fetched from LRCLIB (no API key); overlay mode (3-line karaoke) or split-view mode (full scrolling panel alongside the photo); falls back to static text when sync data is unavailable
 - **Corner widgets** — track overlay (artist + title + progress), clock & weather (Open-Meteo, auto-detected or manual city), battery indicator; all four corners supported with graceful stacking
 - **Song & volume toasts** — brief on-screen notifications on track change and volume adjustment, with configurable duration and scale
-- **Display window** — designed for a second monitor, projector, or TV; fullscreen toggle, position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
+- **Display window** — designed for a second monitor, projector, or TV; features native one-click Miracast/TV casting that automatically routes the window and fullscreens it; position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
 - **Live settings sync** — all display settings update instantly on the display window without restart; control panel card layout with collapsible sections
 
 ---
@@ -183,8 +184,9 @@ vcup2/
 | [LRCLIB](https://lrclib.net) | Free, open synchronized lyrics API — no auth required |
 | [Open-Meteo](https://open-meteo.com) | Free weather forecast API — no API key required |
 | [ip-api.com](https://ip-api.com) | IP-based geolocation for weather auto-detect |
+| [Butterchurn](https://github.com/jberg/butterchurn) | MilkDrop-style WebGL visualizer |
 | [cpal](https://github.com/RustAudio/cpal) | Cross-platform audio I/O — WASAPI loopback capture |
-| [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time spectrum analysis |
+| [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time audio analysis |
 | [rupnp](https://github.com/jakobhellermann/rupnp) | UPnP/DLNA device discovery and browsing |
 | [notify](https://github.com/notify-rs/notify) | File system watcher for photo folder |
 | [keyring-rs](https://github.com/hwchen/keyring-rs) | Secure credential storage via Windows Credential Store |

@@ -10,7 +10,9 @@ interface Props {
 const HOTKEYS = [
   { key: '→ / ←',    action: 'Next / previous photo'     },
   { key: 'Space',     action: 'Pause / resume slideshow'  },
-  { key: 'S',         action: 'Toggle spectrum analyser'  },
+  { key: 'M',         action: 'Cycle visualizer mode'     },
+  { key: 'PgUp',      action: 'Next visualizer preset'    },
+  { key: 'PgDn',      action: 'Previous visualizer preset'},
   { key: 'T',         action: 'Toggle track overlay'      },
   { key: 'B',         action: 'Toggle battery'            },
   { key: 'P',         action: 'Toggle photo counter'      },
@@ -32,7 +34,7 @@ const CREDITS = [
   { name: 'Open-Meteo',                url: 'https://open-meteo.com',                   role: 'Free weather forecast API' },
   { name: 'ip-api.com',                 url: 'https://ip-api.com',                       role: 'IP-based location for weather auto-detect' },
   { name: 'cpal',                      url: 'https://github.com/RustAudio/cpal',        role: 'Cross-platform audio I/O (WASAPI loopback)' },
-  { name: 'RustFFT',                   url: 'https://github.com/ejmahler/RustFFT',      role: 'FFT for real-time spectrum analysis' },
+  { name: 'Butterchurn',               url: 'https://github.com/jberg/butterchurn',     role: 'MilkDrop-style WebGL visualizer' },
   { name: 'rupnp',                     url: 'https://github.com/jakobhellermann/rupnp', role: 'UPnP/DLNA device discovery and browsing' },
   { name: 'notify',                    url: 'https://github.com/notify-rs/notify',      role: 'File system watcher for photo folder' },
   { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },
@@ -49,14 +51,14 @@ export function HelpPanel({ onClose }: Props) {
 
   async function handleReset() {
     const ok = window.confirm(
-      'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then restart the app.'
+      'Reset all settings and credentials?\n\nThis will clear all saved settings and Spotify tokens, then exit the app. Reopen it manually afterwards.'
     )
     if (!ok) return
 
     localStorage.clear()
     await invoke('clear_tokens').catch(console.error)
     await invoke('clear_webview_data').catch(console.error)
-    await invoke('relaunch').catch(console.error)
+    await invoke('exit_app').catch(console.error)
   }
 
   return (
@@ -92,7 +94,10 @@ export function HelpPanel({ onClose }: Props) {
 
         {/* About */}
         <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>
-          A Tauri + React app that turns a spare monitor into a music-aware photo slideshow, synced with Spotify.
+          A Tauri + React app that turns a spare monitor into a music-aware photo slideshow with a MilkDrop-style visualizer, synced with your music.
+        </p>
+        <p style={{ margin: 0, fontSize: 11, color: '#555', lineHeight: 1.5 }}>
+          100 visualizer presets are bundled with the app. Add more by placing MilkDrop-compatible <code style={{ background: '#242424', borderRadius: 3, padding: '1px 4px' }}>.json</code> preset files in the <code style={{ background: '#242424', borderRadius: 3, padding: '1px 4px' }}>presets\</code> folder next to the executable.
         </p>
 
         {/* GitHub */}
@@ -150,7 +155,7 @@ export function HelpPanel({ onClose }: Props) {
             Reset
           </button>
           <p style={{ margin: '5px 0 0', fontSize: 10, color: '#444', lineHeight: 1.4 }}>
-            Clears all saved settings and Spotify credentials, then restarts the app.
+            Clears all saved settings and Spotify credentials, then exits the app. Reopen it manually afterwards.
           </p>
         </div>
 

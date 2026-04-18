@@ -1,6 +1,6 @@
 [package]
 name = "party-display"
-version = "0.7.0"
+version = "0.9.0"
 edition = "2021"
 
 [build-dependencies]
@@ -15,7 +15,6 @@ serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
 keyring    = { version = "3", features = ["windows-native"] }
 cpal       = "0.15"
-rustfft    = "6"
 notify     = "6"
 tauri-plugin-dialog = "2"
 reqwest             = { version = "0.12", features = ["json", "stream"] }
@@ -23,4 +22,5 @@ rupnp               = "1"
 roxmltree           = "0.20"
 futures             = "0.3"
 tokio               = { version = "1", features = ["time", "net", "io-util"] }
+enigo = "0.6.1"
 

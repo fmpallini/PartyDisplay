@@ -1,61 +1,53 @@
-# Party Display — Release & Build Guidelines
+## Release Guidelines
 
-## Version bumps
+### Version bump — 4 files only
 
-When bumping the version, update these **4 files** and only these:
+| File | Field |
+|------|-------|
+| `app/package.json` | `"version"` |
+| `app/src-tauri/Cargo.toml` | `version` |
+| `app/src-tauri/tauri.conf.json` | `"version"` |
+| `app/src-tauri/Cargo.lock` | `version` under `name = "party-display"` |
 
-| File | Field | How |
-|------|-------|-----|
-| `app/package.json` | `"version"` | JSON string |
-| `app/src-tauri/Cargo.toml` | `version` | TOML string |
-| `app/src-tauri/tauri.conf.json` | `"version"` | JSON string |
-| `app/src-tauri/Cargo.lock` | `version` under `name = "party-display"` | Lock file entry |
+Then run `npm install` to update `package-lock.json`.
 
-Also run the "npm install" to force updating the package-lock.json correcly.
+### Pre-work
 
-## Release procedure
+Confirm the user has recently run `/simplify`, `/security-review`, and a bug search. If not, run them now.
 
-Follow these steps **in order** when cutting a release.
+### Release procedure
 
-### 1. Validate the version is new
+**1. Validate version**
+- Read `app/package.json` for current version.
+- `git tag` — confirm `vX.Y.Z` does not already exist.
+- `git log --oneline origin/master..HEAD` — confirm unreleased commits exist.
+- Stop and report if any check fails.
 
-- Read `app/package.json` to get the current version string.
-- Run `git tag` and confirm no tag named `vX.Y.Z` already exists for that version.
-- Run `git log --oneline origin/master..HEAD` to confirm there are unreleased commits on `dev`.
-- If any check fails, stop and report to the user before continuing.
+**2. Check docs**
+- `README.md` reflects current features.
+- `docs/docs for release/README.txt` matches (version, features, build instructions). Skip the screenshot version reference.
+- Update and commit if stale.
 
-### 2. Verify docs are up to date
-
-- Check that `README.md` (repo root) reflects the current version and feature set.
-- Check that `docs/docs for release/README.txt` is consistent with the root README (build instructions, feature list, version number) - remember not need to bump the reference in the screenshot picture since its from a previous version.
-- If either is stale, update it and commit before continuing.
-
-### 3. Build the release binary
-
-Run the Tauri production build from the `app/` directory:
-
+**3. Build**
 ```
-cd app && npm run tauri build
+cd app && npm run release
 ```
 
-Use the **standalone `party-display.exe`** (not the installer) as the release artifact.
+Artifact: standalone `party-display.exe` at `src-tauri/target/release/` with `presets/` alongside it.
 
-### 4. Ask the user to test
+**4. Ask user to test — do not proceed until confirmed.**
 
-Do **not** proceed until the user explicitly confirms the build is good.
-
-### 5. Package the release zip
-
-Create a zip named `party-display-vX.Y.Z.zip` containing:
-- `party-display.exe` (from step 3)
+**5. Package zip**
+Create `party-display-vX.Y.Z.zip` containing:
+- `party-display.exe`
 - `docs/docs for release/README.txt`
 - `docs/docs for release/LICENSE.txt`
-- Move that to the `release/` folder at the repo root.
+- entire `presets/` folder
 
-### 6. Merge dev → master
+Move zip to `release/` at repo root.
 
-### 7. Tag the release — `vX.Y.Z`
+**6. Merge dev → master**
 
-### 8. Publish the GitHub release
+**7. Tag — `vX.Y.Z`**
 
-The zip file is the **only** asset.
+**8. Give user manual GitHub release publish instructions**

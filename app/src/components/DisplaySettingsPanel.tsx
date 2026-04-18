@@ -1,7 +1,14 @@
-import type { SpectrumTheme, SpectrumStyle } from './SpectrumCanvas'
-import { safeNum } from '../lib/utils'
+import { safeBool, safeEnum, safeNum } from '../lib/utils'
+import { KEYS } from '../lib/storage-keys'
 
-export type { SpectrumTheme, SpectrumStyle }
+export type VisualizerMode        = 'photos' | 'visualizer' | 'split'
+export type VisualizerPresetOrder  = 'alpha' | 'shuffle'
+export type VisualizerPresetChange = 'manual' | 'music' | 'timer'
+
+const VISUALIZER_MODE_VALUES          = ['photos', 'visualizer', 'split'] as const
+const VISUALIZER_SIDE_VALUES          = ['left', 'right'] as const
+const VISUALIZER_PRESET_ORDER_VALUES  = ['alpha', 'shuffle'] as const
+const VISUALIZER_PRESET_CHANGE_VALUES = ['manual', 'music', 'timer'] as const
 
 export type TransitionEffect =
   | 'fade'
@@ -25,10 +32,12 @@ export interface DisplaySettings {
   transitionEffect:     TransitionEffect
   transitionDurationMs: number
   imageFit:             ImageFit
-  spectrumVisible:      boolean
-  spectrumStyle:        SpectrumStyle
-  spectrumTheme:        SpectrumTheme
-  spectrumHeightPct:    number
+  visualizerMode:           VisualizerMode
+  visualizerSplitSide:      'left' | 'right'
+  visualizerPresetIndex:    number
+  visualizerPresetOrder:    VisualizerPresetOrder
+  visualizerPresetChange:   VisualizerPresetChange
+  visualizerPresetTimerMin: number
   batteryVisible:       boolean
   batterySize:          number
   batteryPosition:      TrackPosition
@@ -52,14 +61,9 @@ export interface DisplaySettings {
   lyricsSplitSide:        'left' | 'right'
 }
 
-function safeEnum<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
-  return allowed.includes(value as T) ? (value as T) : fallback
-}
 
 const TRANSITION_EFFECT_VALUES = ['fade','slide-left','slide-right','slide-up','slide-down','zoom-in','zoom-out','blur','random'] as const
 const IMAGE_FIT_VALUES          = ['cover', 'contain'] as const
-const SPECTRUM_STYLE_VALUES     = ['bars', 'lines'] as const
-const SPECTRUM_THEME_VALUES     = ['energy', 'cyan', 'fire', 'white', 'rainbow', 'purple'] as const
 const TRACK_POSITION_VALUES     = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 const TIME_FORMAT_VALUES        = ['12h', '24h'] as const
 const TEMP_UNIT_VALUES          = ['celsius', 'fahrenheit'] as const
@@ -68,37 +72,39 @@ const LYRICS_SIDE_VALUES        = ['left', 'right'] as const
 
 export function readDisplaySettings(): DisplaySettings {
   return {
-    toastDurationMs:      safeNum(localStorage.getItem('pd_toast_duration_ms'),      5000),
-    songZoom:             safeNum(localStorage.getItem('pd_song_toast_zoom'),         1.7),
-    volumeZoom:           safeNum(localStorage.getItem('pd_volume_toast_zoom'),       1.7),
-    transitionEffect:     safeEnum(localStorage.getItem('pd_transition_effect'),     TRANSITION_EFFECT_VALUES, 'random'),
-    transitionDurationMs: safeNum(localStorage.getItem('pd_transition_duration_ms'), 500),
-    imageFit:             safeEnum(localStorage.getItem('pd_image_fit'),             IMAGE_FIT_VALUES,         'contain'),
-    spectrumVisible:      localStorage.getItem('pd_spectrum_visible') === 'true',
-    spectrumStyle:        safeEnum(localStorage.getItem('pd_spectrum_style'),        SPECTRUM_STYLE_VALUES,    'bars'),
-    spectrumTheme:        safeEnum(localStorage.getItem('pd_spectrum_theme'),        SPECTRUM_THEME_VALUES,    'energy'),
-    spectrumHeightPct:    safeNum(localStorage.getItem('pd_spectrum_height_pct'),     10),
-    batteryVisible:       localStorage.getItem('pd_battery_visible') === 'true',
-    batterySize:          safeNum(localStorage.getItem('pd_battery_size'),            36),
-    batteryPosition:      safeEnum(localStorage.getItem('pd_battery_position'),      TRACK_POSITION_VALUES,    'top-right'),
-    trackOverlayVisible:  (localStorage.getItem('pd_track_overlay_visible') ?? 'true') === 'true',
-    trackFontSize:        safeNum(localStorage.getItem('pd_track_font_size'),         18),
-    trackPosition:        safeEnum(localStorage.getItem('pd_track_position'),        TRACK_POSITION_VALUES,    'top-left'),
-    trackColor:           localStorage.getItem('pd_track_color') ?? '#ffffff',
-    trackBgColor:         localStorage.getItem('pd_track_bg_color') ?? '#000000',
-    trackBgOpacity:       safeNum(localStorage.getItem('pd_track_bg_opacity'),        0.5),
-    photoCounterVisible:  localStorage.getItem('pd_photo_counter_visible') !== 'false',
-    clockWeatherVisible:    localStorage.getItem('pd_cw_visible') !== 'false',
-    clockWeatherPosition:   safeEnum(localStorage.getItem('pd_cw_position'),         TRACK_POSITION_VALUES,    'bottom-left'),
-    clockWeatherTimeFormat: safeEnum(localStorage.getItem('pd_cw_time_format'),      TIME_FORMAT_VALUES,       '24h'),
-    clockWeatherTempUnit:   safeEnum(localStorage.getItem('pd_cw_temp_unit'),        TEMP_UNIT_VALUES,         'celsius'),
-    clockWeatherCity:       localStorage.getItem('pd_cw_city') ?? '',
-    lyricsVisible:          localStorage.getItem('pd_lyrics_visible') === 'true',
-    lyricsSize:             safeNum(localStorage.getItem('pd_lyrics_size'),    32),
-    lyricsOpacity:          safeNum(localStorage.getItem('pd_lyrics_opacity'), 0.9),
-    lyricsPosition:         safeEnum(localStorage.getItem('pd_lyrics_position'),     LYRICS_POSITION_VALUES,   'lower-third'),
-    lyricsSplit:            localStorage.getItem('pd_lyrics_split') === 'true',
-    lyricsSplitSide:        safeEnum(localStorage.getItem('pd_lyrics_split_side'),   LYRICS_SIDE_VALUES,       'right'),
+    toastDurationMs:      safeNum(localStorage.getItem(KEYS.toastDurationMs),      5000),
+    songZoom:             safeNum(localStorage.getItem(KEYS.songToastZoom),         1.7),
+    volumeZoom:           safeNum(localStorage.getItem(KEYS.volumeToastZoom),       1.7),
+    transitionEffect:     safeEnum(localStorage.getItem(KEYS.transitionEffect),     TRANSITION_EFFECT_VALUES, 'random'),
+    transitionDurationMs: safeNum(localStorage.getItem(KEYS.transitionDurationMs), 500),
+    imageFit:             safeEnum(localStorage.getItem(KEYS.imageFit),             IMAGE_FIT_VALUES,         'contain'),
+    visualizerMode:           safeEnum(localStorage.getItem(KEYS.visualizerMode),           VISUALIZER_MODE_VALUES,          'photos'),
+    visualizerSplitSide:      safeEnum(localStorage.getItem(KEYS.visualizerSplitSide),      VISUALIZER_SIDE_VALUES,          'right'),
+    visualizerPresetIndex:    safeNum(localStorage.getItem(KEYS.visualizerPresetIndex),      0),
+    visualizerPresetOrder:    safeEnum(localStorage.getItem(KEYS.visualizerPresetOrder),     VISUALIZER_PRESET_ORDER_VALUES,  'shuffle'),
+    visualizerPresetChange:   safeEnum(localStorage.getItem(KEYS.visualizerPresetChange),    VISUALIZER_PRESET_CHANGE_VALUES, 'music'),
+    visualizerPresetTimerMin: safeNum(localStorage.getItem(KEYS.visualizerPresetTimerMin),   1),
+    batteryVisible:       safeBool(localStorage.getItem(KEYS.batteryVisible), false),
+    batterySize:          safeNum(localStorage.getItem(KEYS.batterySize),            36),
+    batteryPosition:      safeEnum(localStorage.getItem(KEYS.batteryPosition),      TRACK_POSITION_VALUES,    'top-right'),
+    trackOverlayVisible:  safeBool(localStorage.getItem(KEYS.trackOverlayVisible), true),
+    trackFontSize:        safeNum(localStorage.getItem(KEYS.trackFontSize),         18),
+    trackPosition:        safeEnum(localStorage.getItem(KEYS.trackPosition),        TRACK_POSITION_VALUES,    'top-left'),
+    trackColor:           localStorage.getItem(KEYS.trackColor) ?? '#ffffff',
+    trackBgColor:         localStorage.getItem(KEYS.trackBgColor) ?? '#000000',
+    trackBgOpacity:       safeNum(localStorage.getItem(KEYS.trackBgOpacity),        0.5),
+    photoCounterVisible:  safeBool(localStorage.getItem(KEYS.photoCounterVisible), true),
+    clockWeatherVisible:    safeBool(localStorage.getItem(KEYS.cwVisible), true),
+    clockWeatherPosition:   safeEnum(localStorage.getItem(KEYS.cwPosition),         TRACK_POSITION_VALUES,    'bottom-left'),
+    clockWeatherTimeFormat: safeEnum(localStorage.getItem(KEYS.cwTimeFormat),      TIME_FORMAT_VALUES,       '24h'),
+    clockWeatherTempUnit:   safeEnum(localStorage.getItem(KEYS.cwTempUnit),         TEMP_UNIT_VALUES,         'celsius'),
+    clockWeatherCity:       localStorage.getItem(KEYS.cwCity) ?? '',
+    lyricsVisible:          safeBool(localStorage.getItem(KEYS.lyricsVisible), false),
+    lyricsSize:             safeNum(localStorage.getItem(KEYS.lyricsSize),    32),
+    lyricsOpacity:          safeNum(localStorage.getItem(KEYS.lyricsOpacity), 0.9),
+    lyricsPosition:         safeEnum(localStorage.getItem(KEYS.lyricsPosition),     LYRICS_POSITION_VALUES,   'lower-third'),
+    lyricsSplit:            safeBool(localStorage.getItem(KEYS.lyricsSplit), false),
+    lyricsSplitSide:        safeEnum(localStorage.getItem(KEYS.lyricsSplitSide),   LYRICS_SIDE_VALUES,       'right'),
   }
 }
 
@@ -112,15 +118,6 @@ const TRANSITION_EFFECTS: { value: TransitionEffect; label: string }[] = [
   { value: 'zoom-in',     label: 'Zoom In'     },
   { value: 'zoom-out',    label: 'Zoom Out'    },
   { value: 'blur',        label: 'Blur'        },
-]
-
-const SPECTRUM_THEMES: { value: SpectrumTheme; label: string }[] = [
-  { value: 'energy',  label: 'Energy (green→red)' },
-  { value: 'cyan',    label: 'Cyan'               },
-  { value: 'fire',    label: 'Fire'               },
-  { value: 'white',   label: 'White'              },
-  { value: 'rainbow', label: 'Rainbow'            },
-  { value: 'purple',  label: 'Purple'             },
 ]
 
 // ── Shared style primitives ───────────────────────────────────────────────────
@@ -239,45 +236,6 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
           </label>
         </div>
 
-      </div>
-
-      {/* ── Spectrum ──────────────────────────────────────────────────── */}
-      <p style={subHead}>Spectrum <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(S to toggle)</span></p>
-
-      <label style={{ ...checkRow, marginBottom: 8 }}>
-        <input type="checkbox" checked={settings.spectrumVisible}
-          onChange={e => set({ spectrumVisible: e.target.checked })}
-          style={{ accentColor: '#1db954', cursor: 'pointer' }}
-        />
-        Show on display
-      </label>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-        <div>
-          <span style={fieldLabel}>Style</span>
-          <select value={settings.spectrumStyle} onChange={e => set({ spectrumStyle: e.target.value as SpectrumStyle })} style={selectInput}>
-            <option value="bars">Bars</option>
-            <option value="lines">Lines</option>
-          </select>
-        </div>
-        <div>
-          <span style={fieldLabel}>Theme</span>
-          <select value={settings.spectrumTheme} onChange={e => set({ spectrumTheme: e.target.value as SpectrumTheme })} style={selectInput}>
-            {SPECTRUM_THEMES.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <span style={fieldLabel}>Height</span>
-          <label style={inlineRow}>
-            <input type="number" min={5} max={50} step={1}
-              value={settings.spectrumHeightPct}
-              onChange={e => set({ spectrumHeightPct: Math.min(50, Math.max(5, n(e.target.value))) })}
-              style={numInput}
-            /> % of screen
-          </label>
-        </div>
       </div>
 
       {/* ── Battery ───────────────────────────────────────────────────── */}

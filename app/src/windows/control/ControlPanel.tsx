@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { safeNum } from '../../lib/utils'
+import { safeBool, safeNum } from '../../lib/utils'
+import { KEYS } from '../../lib/storage-keys'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import LoginButton from '../../components/LoginButton'
 import NowPlaying from '../../components/NowPlaying'
-import SpectrumCanvas from '../../components/SpectrumCanvas'
 import { FolderPicker } from '../../components/FolderPicker'
 import { DisplayWindowControls } from '../../components/DisplayWindowControls'
 import { PlayerControls } from '../../components/PlayerControls'
@@ -13,8 +13,8 @@ import { DisplaySettingsPanel, readDisplaySettings } from '../../components/Disp
 import { HelpPanel } from '../../components/HelpPanel'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
+import type { VisualizerMode, VisualizerPresetOrder, VisualizerPresetChange } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
-import { useFftData } from '../../hooks/useFftData'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import type { PlaylistItem } from '../../hooks/useLocalPlayer'
@@ -87,9 +87,9 @@ const sourcePill = (active: boolean): React.CSSProperties => ({
 
 function readSlideshowConfig(): SlideshowConfig {
   return {
-    fixedSec:   safeNum(localStorage.getItem('pd_slideshow_fixed_sec'), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
-    order:      (localStorage.getItem('pd_order') as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
-    subfolders: localStorage.getItem('pd_subfolder') !== null ? localStorage.getItem('pd_subfolder') === 'true' : DEFAULT_SLIDESHOW_CONFIG.subfolders,
+    fixedSec:   safeNum(localStorage.getItem(KEYS.slideshowFixedSec), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
+    order:      (localStorage.getItem(KEYS.slideshowOrder) as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
+    subfolders: safeBool(localStorage.getItem(KEYS.slideshowSubfolders), DEFAULT_SLIDESHOW_CONFIG.subfolders),
   }
 }
 
@@ -103,15 +103,16 @@ export default function ControlPanel() {
   const [slideshowPaused, setSlideshowPaused] = useState(false)
   const [settingsOpen, setSettingsOpen]       = useState(false)
   const [helpOpen, setHelpOpen]               = useState(false)
+  const [presetNames, setPresetNames] = useState<string[]>([])
 
   const [source, setSource] = useState<'spotify' | 'local' | 'dlna'>(
-    () => (localStorage.getItem('pd_audio_source') as 'spotify' | 'local' | 'dlna') ?? 'spotify'
+    () => (localStorage.getItem(KEYS.audioSource) as 'spotify' | 'local' | 'dlna') ?? 'spotify'
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
-    () => localStorage.getItem('pd_local_audio_folder')
+    () => localStorage.getItem(KEYS.localAudioFolder)
   )
   const [localRecursive, setLocalRecursive] = useState<boolean>(
-    () => localStorage.getItem('pd_local_audio_recursive') !== 'false'
+    () => safeBool(localStorage.getItem(KEYS.localAudioRecursive), true)
   )
   const [localPlaylist,  setLocalPlaylist]  = useState<PlaylistItem[]>([])
 
@@ -121,13 +122,13 @@ export default function ControlPanel() {
   const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
 
   const [photoSource, setPhotoSourceState] = useState<'local' | 'dlna'>(
-    () => (localStorage.getItem('pd_photo_source') as 'local' | 'dlna') ?? 'local'
+    () => (localStorage.getItem(KEYS.photoSource) as 'local' | 'dlna') ?? 'local'
   )
   const dlnaBrowserPhotos = useDlnaBrowser('pd_dlna_photos')
 
   function setPhotoSource(s: 'local' | 'dlna') {
     setPhotoSourceState(s)
-    localStorage.setItem('pd_photo_source', s)
+    localStorage.setItem(KEYS.photoSource, s)
   }
   // DLNA HTTP URLs are routed through a local proxy server (127.0.0.1:29341)
   // so the webview can load them without CSP / WebView2 mixed-content issues.
@@ -155,8 +156,14 @@ export default function ControlPanel() {
   const player        = source === 'spotify' ? spotifyPlayer
                       : source === 'dlna'    ? dlnaPlayer
                       : localPlayer
-  const bins    = useFftData()
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
+
+  // Load preset names from the presets folder
+  useEffect(() => {
+    invoke<{ name: string; content: string }[]>('get_presets')
+      .then(list => setPresetNames(list.map(p => p.name)))
+      .catch(() => {})
+  }, [])
 
   // Notify display window whenever slideshow pause state changes (skip initial mount)
   const slideshowMountedRef = useRef(false)
@@ -168,37 +175,39 @@ export default function ControlPanel() {
   // Persist display settings to localStorage and propagate to display window
   // whenever they change — including via hotkeys, regardless of panel visibility.
   useEffect(() => {
-    localStorage.setItem('pd_toast_duration_ms',      String(displaySettings.toastDurationMs))
-    localStorage.setItem('pd_song_toast_zoom',         String(displaySettings.songZoom))
-    localStorage.setItem('pd_volume_toast_zoom',       String(displaySettings.volumeZoom))
-    localStorage.setItem('pd_transition_effect',       displaySettings.transitionEffect)
-    localStorage.setItem('pd_transition_duration_ms',  String(displaySettings.transitionDurationMs))
-    localStorage.setItem('pd_image_fit',               displaySettings.imageFit)
-    localStorage.setItem('pd_spectrum_visible',        String(displaySettings.spectrumVisible))
-    localStorage.setItem('pd_spectrum_style',          displaySettings.spectrumStyle)
-    localStorage.setItem('pd_spectrum_theme',          displaySettings.spectrumTheme)
-    localStorage.setItem('pd_spectrum_height_pct',     String(displaySettings.spectrumHeightPct))
-    localStorage.setItem('pd_battery_visible',         String(displaySettings.batteryVisible))
-    localStorage.setItem('pd_battery_size',            String(displaySettings.batterySize))
-    localStorage.setItem('pd_battery_position',        displaySettings.batteryPosition)
-    localStorage.setItem('pd_track_overlay_visible',   String(displaySettings.trackOverlayVisible))
-    localStorage.setItem('pd_track_font_size',         String(displaySettings.trackFontSize))
-    localStorage.setItem('pd_track_position',          displaySettings.trackPosition)
-    localStorage.setItem('pd_track_color',             displaySettings.trackColor)
-    localStorage.setItem('pd_track_bg_color',          displaySettings.trackBgColor)
-    localStorage.setItem('pd_track_bg_opacity',        String(displaySettings.trackBgOpacity))
-    localStorage.setItem('pd_photo_counter_visible',   String(displaySettings.photoCounterVisible))
-    localStorage.setItem('pd_cw_visible',              String(displaySettings.clockWeatherVisible))
-    localStorage.setItem('pd_cw_position',             displaySettings.clockWeatherPosition)
-    localStorage.setItem('pd_cw_time_format',          displaySettings.clockWeatherTimeFormat)
-    localStorage.setItem('pd_cw_temp_unit',            displaySettings.clockWeatherTempUnit)
-    localStorage.setItem('pd_cw_city',                 displaySettings.clockWeatherCity)
-    localStorage.setItem('pd_lyrics_visible',          String(displaySettings.lyricsVisible))
-    localStorage.setItem('pd_lyrics_size',             String(displaySettings.lyricsSize))
-    localStorage.setItem('pd_lyrics_opacity',          String(displaySettings.lyricsOpacity))
-    localStorage.setItem('pd_lyrics_position',         displaySettings.lyricsPosition)
-    localStorage.setItem('pd_lyrics_split',            String(displaySettings.lyricsSplit))
-    localStorage.setItem('pd_lyrics_split_side',       displaySettings.lyricsSplitSide)
+    localStorage.setItem(KEYS.toastDurationMs,      String(displaySettings.toastDurationMs))
+    localStorage.setItem(KEYS.songToastZoom,         String(displaySettings.songZoom))
+    localStorage.setItem(KEYS.volumeToastZoom,       String(displaySettings.volumeZoom))
+    localStorage.setItem(KEYS.transitionEffect,      displaySettings.transitionEffect)
+    localStorage.setItem(KEYS.transitionDurationMs,  String(displaySettings.transitionDurationMs))
+    localStorage.setItem(KEYS.imageFit,              displaySettings.imageFit)
+    localStorage.setItem(KEYS.visualizerMode,           displaySettings.visualizerMode)
+    localStorage.setItem(KEYS.visualizerSplitSide,      displaySettings.visualizerSplitSide)
+    localStorage.setItem(KEYS.visualizerPresetIndex,    String(displaySettings.visualizerPresetIndex))
+    localStorage.setItem(KEYS.visualizerPresetOrder,    displaySettings.visualizerPresetOrder)
+    localStorage.setItem(KEYS.visualizerPresetChange,   displaySettings.visualizerPresetChange)
+    localStorage.setItem(KEYS.visualizerPresetTimerMin, String(displaySettings.visualizerPresetTimerMin))
+    localStorage.setItem(KEYS.batteryVisible,        String(displaySettings.batteryVisible))
+    localStorage.setItem(KEYS.batterySize,           String(displaySettings.batterySize))
+    localStorage.setItem(KEYS.batteryPosition,       displaySettings.batteryPosition)
+    localStorage.setItem(KEYS.trackOverlayVisible,   String(displaySettings.trackOverlayVisible))
+    localStorage.setItem(KEYS.trackFontSize,         String(displaySettings.trackFontSize))
+    localStorage.setItem(KEYS.trackPosition,         displaySettings.trackPosition)
+    localStorage.setItem(KEYS.trackColor,            displaySettings.trackColor)
+    localStorage.setItem(KEYS.trackBgColor,          displaySettings.trackBgColor)
+    localStorage.setItem(KEYS.trackBgOpacity,        String(displaySettings.trackBgOpacity))
+    localStorage.setItem(KEYS.photoCounterVisible,   String(displaySettings.photoCounterVisible))
+    localStorage.setItem(KEYS.cwVisible,             String(displaySettings.clockWeatherVisible))
+    localStorage.setItem(KEYS.cwPosition,            displaySettings.clockWeatherPosition)
+    localStorage.setItem(KEYS.cwTimeFormat,          displaySettings.clockWeatherTimeFormat)
+    localStorage.setItem(KEYS.cwTempUnit,            displaySettings.clockWeatherTempUnit)
+    localStorage.setItem(KEYS.cwCity,                displaySettings.clockWeatherCity)
+    localStorage.setItem(KEYS.lyricsVisible,         String(displaySettings.lyricsVisible))
+    localStorage.setItem(KEYS.lyricsSize,            String(displaySettings.lyricsSize))
+    localStorage.setItem(KEYS.lyricsOpacity,         String(displaySettings.lyricsOpacity))
+    localStorage.setItem(KEYS.lyricsPosition,        displaySettings.lyricsPosition)
+    localStorage.setItem(KEYS.lyricsSplit,           String(displaySettings.lyricsSplit))
+    localStorage.setItem(KEYS.lyricsSplitSide,       displaySettings.lyricsSplitSide)
     emit('display-settings-changed', displaySettings).catch(console.error)
   }, [displaySettings])
 
@@ -228,9 +237,9 @@ export default function ControlPanel() {
 
   function setConfig(c: SlideshowConfig) {
     setConfigState(c)
-    localStorage.setItem('pd_slideshow_fixed_sec', String(c.fixedSec))
-    localStorage.setItem('pd_order',               c.order)
-    localStorage.setItem('pd_subfolder',           String(c.subfolders))
+    localStorage.setItem(KEYS.slideshowFixedSec,   String(c.fixedSec))
+    localStorage.setItem(KEYS.slideshowOrder,      c.order)
+    localStorage.setItem(KEYS.slideshowSubfolders, String(c.subfolders))
   }
 
   // ── Photo navigation ──────────────────────────────────────────────────────
@@ -245,7 +254,7 @@ export default function ControlPanel() {
     if (config.order === 'alpha' && library.folder) {
       let map: Record<string, string> = {}
       try {
-        const raw = localStorage.getItem('pd_last_photo')
+        const raw = localStorage.getItem(KEYS.lastPhotoPosition)
         if (raw) map = JSON.parse(raw)
       } catch {
         // Corrupted localStorage — start fresh rather than crashing.
@@ -256,7 +265,7 @@ export default function ControlPanel() {
         map = Object.fromEntries(keys.slice(-49).map(k => [k, map[k]]))
       }
       map[library.folder] = photo
-      localStorage.setItem('pd_last_photo', JSON.stringify(map))
+      localStorage.setItem(KEYS.lastPhotoPosition, JSON.stringify(map))
     }
   }, [library.photos, library.folder, config.order])
 
@@ -275,7 +284,7 @@ export default function ControlPanel() {
   }, [library.photos])
 
   useEffect(() => {
-    const lastFolder = localStorage.getItem('pd_last_folder')
+    const lastFolder = localStorage.getItem(KEYS.lastPhotoFolder)
     if (lastFolder) library.setFolder(lastFolder)
   }, [])
 
@@ -336,9 +345,70 @@ export default function ControlPanel() {
     invoke('start_audio_capture').catch(e => setCaptureError(String(e)))
   }, [player.ready])
 
-  const toggleSpectrum = useCallback(() => {
-    setDisplaySettings(s => ({ ...s, spectrumVisible: !s.spectrumVisible }))
+  const cycleVisualizerMode = useCallback(() => {
+    setDisplaySettings(s => {
+      const modes: VisualizerMode[] = ['photos', 'visualizer', 'split']
+      const idx = modes.indexOf(s.visualizerMode)
+      return { ...s, visualizerMode: modes[(idx + 1) % modes.length] }
+    })
   }, [])
+
+  // Auto-pause slideshow when entering full-screen visualizer; auto-resume when leaving
+  const prevVizModeRef = useRef(displaySettings.visualizerMode)
+  useEffect(() => {
+    const prev = prevVizModeRef.current
+    prevVizModeRef.current = displaySettings.visualizerMode
+    if (displaySettings.visualizerMode === 'visualizer') {
+      setSlideshowPaused(true)
+    } else if (prev === 'visualizer') {
+      setSlideshowPaused(false)
+    }
+  }, [displaySettings.visualizerMode])
+
+  function pickPresetIndex(current: number, direction: 1 | -1, order: VisualizerPresetOrder, count: number): number {
+    if (count === 0) return 0
+    if (order === 'shuffle') {
+      if (count === 1) return 0
+      const r = Math.floor(Math.random() * (count - 1))
+      return r >= current ? r + 1 : r
+    }
+    return (current + direction + count) % count
+  }
+
+  const nextPreset = useCallback(() => {
+    setDisplaySettings(s => ({
+      ...s,
+      visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, 1, s.visualizerPresetOrder, presetNames.length),
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetNames.length])
+
+  const prevPreset = useCallback(() => {
+    setDisplaySettings(s => ({
+      ...s,
+      visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, -1, s.visualizerPresetOrder, presetNames.length),
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetNames.length])
+
+  // Auto-advance preset on music change
+  const prevTrackIdForPresetRef = useRef<string | null>(null)
+  useEffect(() => {
+    const id = player.track?.id ?? null
+    const prev = prevTrackIdForPresetRef.current
+    prevTrackIdForPresetRef.current = id
+    if (prev === null || id === null || id === prev) return
+    if (displaySettings.visualizerPresetChange === 'music') nextPreset()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.track?.id])
+
+  // Auto-advance preset on timer
+  useEffect(() => {
+    if (displaySettings.visualizerPresetChange !== 'timer') return
+    const ms = Math.max(1, displaySettings.visualizerPresetTimerMin) * 60_000
+    const id = setInterval(nextPreset, ms)
+    return () => clearInterval(id)
+  }, [displaySettings.visualizerPresetChange, displaySettings.visualizerPresetTimerMin, nextPreset])
 
   const toggleTrackOverlay = useCallback(() => {
     setDisplaySettings(s => ({ ...s, trackOverlayVisible: !s.trackOverlayVisible }))
@@ -366,14 +436,16 @@ export default function ControlPanel() {
   const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
   const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
 
-  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onToggleSpectrum: toggleSpectrum, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
+  useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onCycleVisualizerMode: cycleVisualizerMode, onNextPreset: nextPreset, onPrevPreset: prevPreset, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
 
   useEffect(() => {
     const unlisten = listen<{ action: string }>('display-hotkey', ({ payload }) => {
       if (payload.action === 'next')     doNext()
       if (payload.action === 'prev')     doPrev()
       if (payload.action === 'pause')    togglePause()
-      if (payload.action === 'spectrum') toggleSpectrum()
+      if (payload.action === 'cycle-viz-mode') cycleVisualizerMode()
+      if (payload.action === 'next-preset')    nextPreset()
+      if (payload.action === 'prev-preset')    prevPreset()
       if (payload.action === 'track')    toggleTrackOverlay()
       if (payload.action === 'battery')  toggleBattery()
       if (payload.action === 'counter')  togglePhotoCounter()
@@ -386,23 +458,23 @@ export default function ControlPanel() {
       if (payload.action === 'vol-down')      volumeDown()
     })
     return () => { unlisten.then(fn => fn()) }
-  }, [doNext, doPrev, togglePause, toggleSpectrum, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
+  }, [doNext, doPrev, togglePause, cycleVisualizerMode, nextPreset, prevPreset, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
     if ((source === 'local' || source === 'dlna') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
-    localStorage.setItem('pd_audio_source', source)
+    localStorage.setItem(KEYS.audioSource, source)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
   const setLocalFolder = useCallback((folder: string) => {
     setLocalFolderState(folder)
-    localStorage.setItem('pd_local_audio_folder', folder)
+    localStorage.setItem(KEYS.localAudioFolder, folder)
   }, [])
 
   useEffect(() => {
     if (!localFolder) return
-    localStorage.setItem('pd_local_audio_recursive', String(localRecursive))
+    localStorage.setItem(KEYS.localAudioRecursive, String(localRecursive))
     invoke<string[]>('scan_audio_folder', { path: localFolder, recursive: localRecursive })
       .then(paths => setLocalPlaylist(paths.map(path => ({ path }))))
       .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
@@ -634,12 +706,6 @@ export default function ControlPanel() {
               <span style={{ color: '#555', fontSize: 11, minWidth: 28 }}>
                 {Math.round(player.volume * 100)}%
               </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <SpectrumCanvas bins={bins} height={16}
-                  renderStyle={displaySettings.spectrumStyle}
-                  theme={displaySettings.spectrumTheme}
-                />
-              </div>
             </div>
           </div>
         </Card>
@@ -790,6 +856,80 @@ export default function ControlPanel() {
           />
         </Card>
 
+        {/* ── Visualizer card ──────────────────────────────────────────── */}
+        <Card label="Visualizer">
+          {/* Mode */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Mode</span>
+            {(['photos', 'visualizer', 'split'] as VisualizerMode[]).map(m => (
+              <button key={m} style={sourcePill(displaySettings.visualizerMode === m)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerMode: m }))}>
+                {m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Split side */}
+          {displaySettings.visualizerMode === 'split' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: '#666', fontSize: 12 }}>Side</span>
+              {(['left', 'right'] as const).map(side => (
+                <button key={side} style={sourcePill(displaySettings.visualizerSplitSide === side)}
+                  onClick={() => setDisplaySettings(s => ({ ...s, visualizerSplitSide: side }))}>
+                  {side.charAt(0).toUpperCase() + side.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Order */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Order</span>
+            {(['alpha', 'shuffle'] as VisualizerPresetOrder[]).map(o => (
+              <button key={o} style={sourcePill(displaySettings.visualizerPresetOrder === o)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetOrder: o }))}>
+                {o === 'alpha' ? 'Alphabetic' : 'Shuffle'}
+              </button>
+            ))}
+          </div>
+
+          {/* Change trigger */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ color: '#666', fontSize: 12 }}>Change</span>
+            {(['manual', 'music', 'timer'] as VisualizerPresetChange[]).map(c => (
+              <button key={c} style={sourcePill(displaySettings.visualizerPresetChange === c)}
+                onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetChange: c }))}>
+                {c === 'manual' ? 'Manual' : c === 'music' ? 'On music' : 'Timer'}
+              </button>
+            ))}
+            {displaySettings.visualizerPresetChange === 'timer' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ccc', fontSize: 12 }}>
+                <input
+                  type="number" min={1} max={60}
+                  value={displaySettings.visualizerPresetTimerMin}
+                  onChange={e => setDisplaySettings(s => ({ ...s, visualizerPresetTimerMin: Math.min(60, Math.max(1, Number(e.target.value) || 1)) }))}
+                  style={{ width: 40, background: '#242424', border: '1px solid #333', color: '#e8e8e8', borderRadius: 4, padding: '2px 4px', fontFamily: 'inherit', fontSize: 12 }}
+                /> min
+              </label>
+            )}
+          </div>
+
+          {/* Preset navigator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #1e1e1e', paddingTop: 8 }}>
+            <span style={{ color: '#666', fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {presetNames[displaySettings.visualizerPresetIndex] ?? '—'}
+            </span>
+            <button onClick={prevPreset} title="PgDn"
+              style={{ background: '#242424', border: '1px solid #333', color: '#aaa', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+              ‹
+            </button>
+            <button onClick={nextPreset} title="PgUp"
+              style={{ background: '#242424', border: '1px solid #333', color: '#aaa', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+              ›
+            </button>
+          </div>
+        </Card>
+
         {/* ── Display window card ─────────────────────────────────────── */}
         <Card label="Display Window">
           <DisplayWindowControls />
@@ -809,7 +949,7 @@ export default function ControlPanel() {
           )}
           {!settingsOpen && (
             <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
-              Toasts · Transitions · Spectrum · Battery · Track · Clock · Lyrics
+              Toasts · Transitions · Battery · Track · Clock · Lyrics
             </p>
           )}
         </Card>

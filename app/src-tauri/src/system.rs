@@ -121,3 +121,16 @@ pub fn prevent_sleep(active: bool) {
 pub fn get_battery_status() -> BatteryStatus {
     platform::get_battery()
 }
+
+#[tauri::command]
+pub fn trigger_cast_flyout() -> Result<(), String> {
+    use enigo::{Enigo, Key, Keyboard, Settings, Direction};
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+    
+    // Simulate Win + K
+    enigo.key(Key::Meta, Direction::Press).map_err(|e| e.to_string())?;
+    enigo.key(Key::Unicode('k'), Direction::Click).map_err(|e| e.to_string())?;
+    enigo.key(Key::Meta, Direction::Release).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
