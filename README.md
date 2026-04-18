@@ -171,6 +171,7 @@ vcup2/
 - **Song & volume toasts** — brief on-screen notifications on track change and volume adjustment, with configurable duration and scale
 - **Display window** — designed for a second monitor, projector, or TV; features native one-click Miracast/TV casting that automatically routes the window and fullscreens it; position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
 - **Live settings sync** — all display settings update instantly on the display window without restart; control panel card layout with collapsible sections
+- **Phone remote control** — browser-based remote served over Wi-Fi; control playback, volume, slideshow, presets, and display toggles from any phone on the local network; QR code for quick access
 
 ---
 

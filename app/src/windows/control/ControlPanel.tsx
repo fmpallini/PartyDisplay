@@ -466,6 +466,7 @@ export default function ControlPanel() {
       remoteEnabledRef.current = false
       invoke('stop_remote_server').catch(() => {})
       setRemoteEnabled(false)
+      setRemoteStarting(false)
       setRemoteInfo(null)
       setRemoteError(null)
     }
