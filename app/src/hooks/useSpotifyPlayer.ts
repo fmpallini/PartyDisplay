@@ -82,7 +82,10 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
       player.addListener('initialization_error', e => setState(s => ({ ...s, error: `Init: ${e.message}` })))
       player.addListener('authentication_error',  e => setState(s => ({ ...s, error: `Auth: ${e.message}` })))
       player.addListener('account_error',         e => setState(s => ({ ...s, error: `Account: ${e.message}` })))
-      player.addListener('playback_error',        e => setState(s => ({ ...s, error: `Playback: ${e.message}` })))
+      player.addListener('playback_error',        e => {
+        if (e.message === 'Cannot perform operation; no list was loaded.') return
+        setState(s => ({ ...s, error: `Playback: ${e.message}` }))
+      })
 
       player.connect()
       playerRef.current = player

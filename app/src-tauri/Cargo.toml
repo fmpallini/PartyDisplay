@@ -1,6 +1,6 @@
 [package]
 name = "party-display"
-version = "0.9.0"
+version = "0.9.1"
 edition = "2021"
 
 [build-dependencies]
@@ -21,6 +21,8 @@ reqwest             = { version = "0.12", features = ["json", "stream"] }
 rupnp               = "1"
 roxmltree           = "0.20"
 futures             = "0.3"
-tokio               = { version = "1", features = ["time", "net", "io-util"] }
+tokio               = { version = "1", features = ["time", "net", "io-util", "sync"] }
+axum               = { version = "0.7", features = ["ws"] }
+local-ip-address   = "0.6"
 enigo = "0.6.1"
 

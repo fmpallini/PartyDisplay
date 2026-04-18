@@ -116,6 +116,13 @@ export default function ControlPanel() {
   )
   const [localPlaylist,  setLocalPlaylist]  = useState<PlaylistItem[]>([])
 
+  const [remoteEnabled, setRemoteEnabled]   = useState(false)
+  const [remoteStarting, setRemoteStarting] = useState(false)
+  const [remoteInfo, setRemoteInfo]         = useState<{ ip: string; port: number } | null>(null)
+  const [remoteError, setRemoteError]       = useState<string | null>(null)
+  const [qrDataUrl, setQrDataUrl]           = useState<string | null>(null)
+  const remoteEnabledRef = useRef(false)
+
   const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
   const localPlayer   = useLocalPlayer(localPlaylist, source === 'local', 'pd_local_player')
 
@@ -436,6 +443,35 @@ export default function ControlPanel() {
   const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
   const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
 
+  const handleRemoteToggle = useCallback(async (enable: boolean) => {
+    if (enable) {
+      remoteEnabledRef.current = true
+      setRemoteStarting(true)
+      setRemoteError(null)
+      try {
+        const info = await invoke<{ ip: string; port: number }>('start_remote_server')
+        if (!remoteEnabledRef.current) {
+          invoke('stop_remote_server').catch(() => {})
+          return
+        }
+        setRemoteInfo(info)
+        setRemoteEnabled(true)
+      } catch (e) {
+        setRemoteError(String(e))
+        setRemoteEnabled(false)
+      } finally {
+        setRemoteStarting(false)
+      }
+    } else {
+      remoteEnabledRef.current = false
+      invoke('stop_remote_server').catch(() => {})
+      setRemoteEnabled(false)
+      setRemoteStarting(false)
+      setRemoteInfo(null)
+      setRemoteError(null)
+    }
+  }, [])
+
   useHotkeys({ onNext: doNext, onPrev: doPrev, onTogglePause: togglePause, onCycleVisualizerMode: cycleVisualizerMode, onNextPreset: nextPreset, onPrevPreset: prevPreset, onToggleTrackOverlay: toggleTrackOverlay, onToggleBattery: toggleBattery, onTogglePhotoCounter: togglePhotoCounter, onToggleClockWeather: toggleClockWeather, onToggleLyrics: toggleLyrics, onMusicPrev: musicPrev, onMusicToggle: musicToggle, onMusicNext: musicNext, onVolumeUp: volumeUp, onVolumeDown: volumeDown })
 
   useEffect(() => {
@@ -479,6 +515,14 @@ export default function ControlPanel() {
       .then(paths => setLocalPlaylist(paths.map(path => ({ path }))))
       .catch(err => console.error('[ControlPanel] scan_audio_folder failed:', err))
   }, [localFolder, localRecursive])
+
+  useEffect(() => {
+    if (!remoteInfo) { setQrDataUrl(null); return }
+    const url = `http://${remoteInfo.ip}:${remoteInfo.port}`
+    import('qrcode').then(QRCode => {
+      QRCode.toDataURL(url, { width: 150, margin: 1 }).then(setQrDataUrl).catch(() => {})
+    })
+  }, [remoteInfo])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -951,6 +995,45 @@ export default function ControlPanel() {
             <p style={{ margin: 0, fontSize: 11, color: '#444' }}>
               Toasts · Transitions · Battery · Track · Clock · Lyrics
             </p>
+          )}
+        </Card>
+
+        {/* ── Remote Control card ────────────────────────────────────── */}
+        <Card
+          label="Remote Control"
+          right={
+            <input
+              type="checkbox"
+              checked={remoteEnabled}
+              disabled={remoteStarting}
+              onChange={e => handleRemoteToggle(e.target.checked)}
+              style={{ cursor: remoteStarting ? 'wait' : 'pointer' }}
+            />
+          }
+        >
+          {!remoteEnabled && !remoteError && (
+            <p style={{ margin: 0, fontSize: 11, color: '#666' }}>
+              {remoteStarting ? 'Starting…' : 'Control Party Display from your phone'}
+            </p>
+          )}
+          {remoteError && <ErrBanner>{remoteError}</ErrBanner>}
+          {remoteInfo && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#e8e8e8' }}>
+                  http://{remoteInfo.ip}:{remoteInfo.port}
+                </span>
+                <button
+                  style={{ background: '#242424', border: '1px solid #333', color: '#aaa', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11 }}
+                  onClick={() => navigator.clipboard.writeText(`http://${remoteInfo.ip}:${remoteInfo.port}`)}
+                >
+                  Copy
+                </button>
+              </div>
+              {qrDataUrl && (
+                <img src={qrDataUrl} width={150} height={150} alt="QR code for remote control" />
+              )}
+            </div>
           )}
         </Card>
 

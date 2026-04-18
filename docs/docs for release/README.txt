@@ -1,4 +1,4 @@
-Party Display v0.9.0 — Windows 64-bit Portable
+Party Display v0.9.1 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -97,6 +97,13 @@ HOW TO RUN
   - Clock & weather — live clock with temperature and weather icon (Open-Meteo)
   - Battery         — phone-style SVG icon with charge indicator
   - Photo counter   — x / y display at top-center
+
+ PHONE REMOTE
+  - Browser-based remote control served over Wi-Fi (no app install needed)
+  - Enable in the control panel — shows URL and QR code for quick access
+  - Controls: play/pause, previous/next track, volume, slideshow navigation,
+    visualizer preset cycling, and all display toggles
+  - Works from any phone or tablet browser on the local network
 
  DISPLAY WINDOW
   - Designed for a second monitor, projector, or TV
