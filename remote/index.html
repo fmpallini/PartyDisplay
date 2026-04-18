@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Party Display Remote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --body-bg:       #0a0a0d;
+      --remote-bg:     #141418;
+      --surface:       #1c1c22;
+      --surface-hi:    #242430;
+      --border:        #2a2a36;
+      --music-clr:     #ff5a1e;
+      --music-dim:     #7a2a0e;
+      --slide-clr:     #00b4d8;
+      --slide-dim:     #005a6a;
+      --toggle-clr:    #a855f7;
+      --toggle-dim:    #4b1a7a;
+      --danger-clr:    #ef4444;
+      --text-primary:  #e8e8f0;
+      --text-muted:    #5a5a70;
+      --text-label:    #888890;
+      --btn-face:      #22222a;
+      --btn-top:       #2e2e3a;
+      --btn-shadow:    #08080c;
+      --radius-btn:    14px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--body-bg);
+      font-family: 'Exo 2', sans-serif;
+      color: var(--text-primary);
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ── REMOTE CHASSIS ── */
+    .remote {
+      max-width: 420px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      background:
+        radial-gradient(ellipse at 20% 0%, #1e1e28 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, #18181f 0%, transparent 60%),
+        var(--remote-bg);
+      padding: 0 0 env(safe-area-inset-bottom, 24px);
+      position: relative;
+    }
+
+    /* subtle grain texture */
+    .remote::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      max-width: 420px;
+      margin: auto;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .remote > * { position: relative; z-index: 1; }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-name {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .brand-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: #333344;
+    }
+
+    /* decorative speaker dots */
+    .speaker-dots {
+      display: grid;
+      grid-template-columns: repeat(5, 5px);
+      gap: 4px;
+    }
+    .speaker-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #1e1e28;
+      box-shadow: inset 0 1px 1px #08080c, 0 1px 0 #28283a;
+    }
+
+    /* connection status */
+    .status-area {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .status-led {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #222230;
+      box-shadow: 0 0 0 2px #18181f, inset 0 1px 2px #0a0a10;
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .status-led.connected {
+      background: #22ff88;
+      box-shadow: 0 0 8px #22ff8888, 0 0 0 2px #18181f, inset 0 1px 2px rgba(255,255,255,0.3);
+      animation: pulse-led 2s ease-in-out infinite;
+    }
+    .status-led.error {
+      background: var(--danger-clr);
+      box-shadow: 0 0 8px #ef444488, 0 0 0 2px #18181f;
+    }
+    @keyframes pulse-led {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .status-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 8px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      padding: 20px 20px 12px;
+    }
+    .section + .section {
+      border-top: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .section-music .section-label  { color: var(--music-clr); }
+    .section-slide .section-label  { color: var(--slide-clr); }
+    .section-toggle .section-label { color: var(--toggle-clr); }
+
+    /* ── BUTTON BASE ── */
+    .btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+      font-family: 'Exo 2', sans-serif;
+      transition: transform 80ms ease, box-shadow 80ms ease, background 80ms ease;
+      -webkit-user-select: none;
+      outline: none;
+      background: var(--btn-face);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 3D raised effect */
+    .btn {
+      box-shadow:
+        0 1px 0 var(--btn-top) inset,
+        0 -1px 0 #10101a inset,
+        0 4px 0 var(--btn-shadow),
+        0 6px 12px rgba(0,0,0,0.5);
+    }
+    .btn:active {
+      transform: translateY(3px);
+      box-shadow:
+        0 1px 0 var(--btn-top) inset,
+        0 -1px 0 #10101a inset,
+        0 1px 0 var(--btn-shadow),
+        0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    /* ripple on press */
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      border-radius: inherit;
+      transition: opacity 200ms;
+    }
+    .btn:active::after { opacity: 0.06; }
+
+    .btn-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+    .btn-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── MUSIC CONTROLS ── */
+    .music-row {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .btn-music {
+      border-radius: var(--radius-btn);
+      height: 80px;
+    }
+    .btn-music .btn-icon { font-size: 26px; }
+
+    .btn-music-main {
+      border-radius: 50%;
+      width: 90px;
+      height: 90px;
+      place-self: center;
+    }
+    .btn-music-main .btn-icon { font-size: 32px; }
+
+    .btn-music,
+    .btn-music-main {
+      background: linear-gradient(160deg, #221510, #1a0e08);
+      box-shadow:
+        0 1px 0 #3a2010 inset,
+        0 -1px 0 #0a0503 inset,
+        0 4px 0 #0a0503,
+        0 6px 16px rgba(255,90,30,0.15);
+    }
+    .btn-music .btn-icon,
+    .btn-music-main .btn-icon { color: var(--music-clr); }
+    .btn-music .btn-label,
+    .btn-music-main .btn-label { color: #7a4030; }
+    .btn-music:active,
+    .btn-music-main:active { box-shadow: 0 1px 0 #3a2010 inset, 0 -1px 0 #0a0503 inset, 0 1px 0 #0a0503, 0 2px 6px rgba(255,90,30,0.1); }
+
+    .vol-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .btn-vol {
+      border-radius: var(--radius-btn);
+      height: 56px;
+      flex-direction: row;
+      gap: 10px;
+    }
+    .btn-vol .btn-icon { font-size: 20px; }
+    .btn-vol .btn-label { font-size: 10px; }
+
+    .btn-vol {
+      background: linear-gradient(160deg, #1c1410, #151008);
+      box-shadow:
+        0 1px 0 #2e2010 inset,
+        0 -1px 0 #080502 inset,
+        0 4px 0 #080502,
+        0 6px 12px rgba(0,0,0,0.4);
+    }
+    .btn-vol .btn-icon { color: #cc4410; }
+    .btn-vol .btn-label { color: #6a3820; }
+    .btn-vol:active { box-shadow: 0 1px 0 #2e2010 inset, 0 -1px 0 #080502 inset, 0 1px 0 #080502, 0 2px 4px rgba(0,0,0,0.3); }
+
+    /* center play/pause row layout */
+    .music-center-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .music-center-row .btn-music { flex: 1; }
+    .music-center-row .btn-music-main { flex-shrink: 0; margin: 0 12px; }
+
+    /* ── SLIDESHOW CONTROLS ── */
+    .slide-main-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .btn-slide {
+      border-radius: var(--radius-btn);
+      height: 76px;
+      background: linear-gradient(160deg, #0e1a20, #081014);
+      box-shadow:
+        0 1px 0 #102030 inset,
+        0 -1px 0 #040810 inset,
+        0 4px 0 #040810,
+        0 6px 16px rgba(0,180,216,0.12);
+    }
+    .btn-slide .btn-icon { color: var(--slide-clr); font-size: 24px; }
+    .btn-slide .btn-label { color: var(--slide-dim); }
+    .btn-slide:active { box-shadow: 0 1px 0 #102030 inset, 0 -1px 0 #040810 inset, 0 1px 0 #040810, 0 2px 6px rgba(0,180,216,0.08); }
+
+    .btn-slide-pause { background: linear-gradient(160deg, #121a20, #0a1218); }
+    .btn-slide-pause .btn-icon { font-size: 26px; }
+
+    .viz-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .btn-viz {
+      border-radius: var(--radius-btn);
+      height: 52px;
+      flex-direction: row;
+      gap: 8px;
+      background: linear-gradient(160deg, #0c141c, #080e14);
+      box-shadow:
+        0 1px 0 #0e2030 inset,
+        0 -1px 0 #030810 inset,
+        0 4px 0 #030810,
+        0 5px 10px rgba(0,0,0,0.4);
+    }
+    .btn-viz .btn-icon { color: #0088aa; font-size: 18px; }
+    .btn-viz .btn-label { color: var(--slide-dim); font-size: 9px; }
+    .btn-viz:active { box-shadow: 0 1px 0 #0e2030 inset, 0 -1px 0 #030810 inset, 0 1px 0 #030810, 0 2px 4px rgba(0,0,0,0.3); }
+
+    /* ── TOGGLE GRID ── */
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .btn-toggle {
+      border-radius: var(--radius-btn);
+      height: 72px;
+      background: linear-gradient(160deg, #16101e, #100c18);
+      box-shadow:
+        0 1px 0 #221830 inset,
+        0 -1px 0 #080510 inset,
+        0 4px 0 #080510,
+        0 6px 12px rgba(0,0,0,0.4);
+      transition: transform 80ms ease, box-shadow 80ms ease, background 150ms ease;
+    }
+    .btn-toggle .btn-icon { font-size: 22px; color: #443058; }
+    .btn-toggle .btn-label { color: #3a2850; }
+
+    .btn-toggle.active {
+      background: linear-gradient(160deg, #1e1030, #160c24);
+      box-shadow:
+        0 1px 0 #3a2050 inset,
+        0 -1px 0 #0c0818 inset,
+        0 4px 0 #0c0818,
+        0 0 16px rgba(168,85,247,0.2),
+        0 6px 12px rgba(0,0,0,0.4);
+    }
+    .btn-toggle.active .btn-icon { color: var(--toggle-clr); }
+    .btn-toggle.active .btn-label { color: #8b45d0; }
+    .btn-toggle:active { box-shadow: 0 1px 0 #221830 inset, 0 -1px 0 #080510 inset, 0 1px 0 #080510, 0 2px 4px rgba(0,0,0,0.3); }
+
+    /* ── FEEDBACK TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 24px) + 20px);
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--text-primary);
+      z-index: 200;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s;
+      opacity: 0;
+      white-space: nowrap;
+      max-width: 90vw;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border), transparent);
+      margin: 0 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="remote">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-name">Party Display</div>
+      <div class="brand-sub">REMOTE CONTROL v1.0</div>
+    </div>
+    <div class="speaker-dots">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="status-area">
+      <div class="status-led" id="statusLed"></div>
+      <div class="status-text" id="statusText">OFFLINE</div>
+    </div>
+  </header>
+
+  <!-- MUSIC SECTION -->
+  <div class="section section-music">
+    <div class="section-label">Music</div>
+
+    <div class="music-center-row">
+      <button class="btn btn-music" data-action="prev-track">
+        <span class="btn-icon">⏮</span>
+        <span class="btn-label">Prev</span>
+      </button>
+      <button class="btn btn-music-main" data-action="play-pause">
+        <span class="btn-icon" id="playIcon">▶</span>
+        <span class="btn-label">Play</span>
+      </button>
+      <button class="btn btn-music" data-action="next-track">
+        <span class="btn-icon">⏭</span>
+        <span class="btn-label">Next</span>
+      </button>
+    </div>
+
+    <div class="vol-row">
+      <button class="btn btn-vol" data-action="vol-down">
+        <span class="btn-icon">🔉</span>
+        <span class="btn-label">Vol −</span>
+      </button>
+      <button class="btn btn-vol" data-action="vol-up">
+        <span class="btn-icon">🔊</span>
+        <span class="btn-label">Vol +</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SLIDESHOW SECTION -->
+  <div class="section section-slide">
+    <div class="section-label">Slideshow</div>
+
+    <div class="slide-main-row">
+      <button class="btn btn-slide" data-action="prev-photo">
+        <span class="btn-icon">◀</span>
+        <span class="btn-label">Prev</span>
+      </button>
+      <button class="btn btn-slide btn-slide-pause" data-action="pause-slideshow" id="slidePauseBtn">
+        <span class="btn-icon" id="slideIcon">⏸</span>
+        <span class="btn-label" id="slideLabel">Pause</span>
+      </button>
+      <button class="btn btn-slide" data-action="next-photo">
+        <span class="btn-icon">▶</span>
+        <span class="btn-label">Next</span>
+      </button>
+    </div>
+
+    <div class="viz-row">
+      <button class="btn btn-viz" data-action="prev-preset">
+        <span class="btn-icon">◀</span>
+        <span class="btn-label">Viz Preset</span>
+      </button>
+      <button class="btn btn-viz" data-action="next-preset">
+        <span class="btn-icon">▶</span>
+        <span class="btn-label">Viz Preset</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- DISPLAY TOGGLES -->
+  <div class="section section-toggle">
+    <div class="section-label">Display</div>
+
+    <div class="toggle-grid">
+      <button class="btn btn-toggle" data-action="toggle-viz-mode" data-toggle="viz-mode">
+        <span class="btn-icon">🎨</span>
+        <span class="btn-label">Viz Mode</span>
+      </button>
+      <button class="btn btn-toggle" data-action="toggle-track" data-toggle="track">
+        <span class="btn-icon">🎵</span>
+        <span class="btn-label">Track</span>
+      </button>
+      <button class="btn btn-toggle" data-action="toggle-lyrics" data-toggle="lyrics">
+        <span class="btn-icon">📝</span>
+        <span class="btn-label">Lyrics</span>
+      </button>
+      <button class="btn btn-toggle" data-action="toggle-clock" data-toggle="clock">
+        <span class="btn-icon">🕐</span>
+        <span class="btn-label">Clock</span>
+      </button>
+      <button class="btn btn-toggle" data-action="toggle-battery" data-toggle="battery">
+        <span class="btn-icon">🔋</span>
+        <span class="btn-label">Battery</span>
+      </button>
+      <button class="btn btn-toggle" data-action="toggle-photos" data-toggle="photos">
+        <span class="btn-icon">🖼</span>
+        <span class="btn-label">Photos #</span>
+      </button>
+    </div>
+  </div>
+
+</div><!-- .remote -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────────
+  // WebSocket port — must match the server started in the Tauri app
+  const WS_PORT = 9091;
+
+  // ── STATE ────────────────────────────────────────────────────────────────
+  const state = {
+    connected: false,
+    playing: false,
+    slideshowPaused: false,
+    toggles: {
+      'viz-mode': false,
+      track: false,
+      lyrics: false,
+      clock: false,
+      battery: false,
+      photos: false,
+    },
+  };
+
+  let ws = null;
+  let reconnectTimer = null;
+  let toastTimer = null;
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  const statusLed  = document.getElementById('statusLed');
+  const statusText = document.getElementById('statusText');
+  const playIcon   = document.getElementById('playIcon');
+  const slideIcon  = document.getElementById('slideIcon');
+  const slideLabel = document.getElementById('slideLabel');
+  const toast      = document.getElementById('toast');
+
+  // ── WEBSOCKET ────────────────────────────────────────────────────────────
+  function connect() {
+    if (ws) { ws.close(); ws = null; }
+    clearTimeout(reconnectTimer);
+
+    const host = window.location.hostname;
+    const url = `ws://${host}:${WS_PORT}`;
+
+    try {
+      ws = new WebSocket(url);
+    } catch (e) {
+      setStatus('error');
+      return;
+    }
+
+    ws.onopen = () => {
+      setStatus('connected');
+    };
+
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        handleServerMsg(msg);
+      } catch (_) {}
+    };
+
+    ws.onclose = () => {
+      if (state.connected) showToast('Connection lost. Reconnecting…');
+      setStatus('disconnected');
+      reconnectTimer = setTimeout(connect, 3000);
+    };
+
+    ws.onerror = () => {
+      setStatus('error');
+    };
+  }
+
+  function send(action, payload = {}) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showToast('Not connected');
+      return;
+    }
+    ws.send(JSON.stringify({ action, ...payload }));
+  }
+
+  // ── SERVER MESSAGES (state sync) ─────────────────────────────────────────
+  function handleServerMsg(msg) {
+    switch (msg.type) {
+      case 'playback-state':
+        state.playing = !msg.paused;
+        updatePlayIcon();
+        break;
+      case 'slideshow-state':
+        state.slideshowPaused = msg.paused;
+        updateSlideIcon();
+        break;
+      case 'toggle-state':
+        if (msg.key in state.toggles) {
+          state.toggles[msg.key] = msg.value;
+          updateToggleUI(msg.key);
+        }
+        break;
+      case 'full-state':
+        // initial sync blob
+        if (msg.playing !== undefined)        { state.playing = msg.playing; updatePlayIcon(); }
+        if (msg.slideshowPaused !== undefined) { state.slideshowPaused = msg.slideshowPaused; updateSlideIcon(); }
+        if (msg.toggles)                       { Object.assign(state.toggles, msg.toggles); syncAllToggles(); }
+        break;
+    }
+  }
+
+  // ── STATUS ────────────────────────────────────────────────────────────────
+  function setStatus(s) {
+    state.connected = (s === 'connected');
+    statusLed.className = 'status-led' + (s === 'connected' ? ' connected' : s === 'error' ? ' error' : '');
+    statusText.textContent = s === 'connected' ? 'LIVE' : s === 'error' ? 'ERROR' : 'OFFLINE';
+  }
+
+  // ── UI SYNC ────────────────────────────────────────────────────────────────
+  function updatePlayIcon() {
+    playIcon.textContent = state.playing ? '⏸' : '▶';
+    playIcon.closest('.btn').querySelector('.btn-label').textContent = state.playing ? 'Pause' : 'Play';
+  }
+
+  function updateSlideIcon() {
+    slideIcon.textContent = state.slideshowPaused ? '▶' : '⏸';
+    slideLabel.textContent = state.slideshowPaused ? 'Resume' : 'Pause';
+  }
+
+  function updateToggleUI(key) {
+    const btn = document.querySelector(`[data-toggle="${key}"]`);
+    if (btn) btn.classList.toggle('active', !!state.toggles[key]);
+  }
+
+  function syncAllToggles() {
+    Object.keys(state.toggles).forEach(updateToggleUI);
+  }
+
+  // ── BUTTON ACTIONS ────────────────────────────────────────────────────────
+  function handleAction(action) {
+    send(action);
+
+    // optimistic local state for toggles
+    switch (action) {
+      case 'play-pause':
+        state.playing = !state.playing;
+        updatePlayIcon();
+        break;
+      case 'pause-slideshow':
+        state.slideshowPaused = !state.slideshowPaused;
+        updateSlideIcon();
+        break;
+      case 'toggle-viz-mode':
+        state.toggles['viz-mode'] = !state.toggles['viz-mode'];
+        updateToggleUI('viz-mode');
+        break;
+      case 'toggle-track':
+        state.toggles.track = !state.toggles.track;
+        updateToggleUI('track');
+        break;
+      case 'toggle-lyrics':
+        state.toggles.lyrics = !state.toggles.lyrics;
+        updateToggleUI('lyrics');
+        break;
+      case 'toggle-clock':
+        state.toggles.clock = !state.toggles.clock;
+        updateToggleUI('clock');
+        break;
+      case 'toggle-battery':
+        state.toggles.battery = !state.toggles.battery;
+        updateToggleUI('battery');
+        break;
+      case 'toggle-photos':
+        state.toggles.photos = !state.toggles.photos;
+        updateToggleUI('photos');
+        break;
+    }
+  }
+
+  // ── TOAST ─────────────────────────────────────────────────────────────────
+  function showToast(msg, duration = 2200) {
+    clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+  }
+
+  // ── BUTTON BINDINGS ───────────────────────────────────────────────────────
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => handleAction(btn.dataset.action));
+    // prevent double-fire on mobile
+    btn.addEventListener('touchend', (e) => e.preventDefault());
+    btn.addEventListener('touchend', () => handleAction(btn.dataset.action));
+  });
+
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  connect();
+</script>
+</body>
+</html>
