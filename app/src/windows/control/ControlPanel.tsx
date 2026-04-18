@@ -121,6 +121,7 @@ export default function ControlPanel() {
   const [remoteInfo, setRemoteInfo]         = useState<{ ip: string; port: number } | null>(null)
   const [remoteError, setRemoteError]       = useState<string | null>(null)
   const [qrDataUrl, setQrDataUrl]           = useState<string | null>(null)
+  const remoteEnabledRef = useRef(false)
 
   const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
   const localPlayer   = useLocalPlayer(localPlaylist, source === 'local', 'pd_local_player')
@@ -444,10 +445,15 @@ export default function ControlPanel() {
 
   const handleRemoteToggle = useCallback(async (enable: boolean) => {
     if (enable) {
+      remoteEnabledRef.current = true
       setRemoteStarting(true)
       setRemoteError(null)
       try {
         const info = await invoke<{ ip: string; port: number }>('start_remote_server')
+        if (!remoteEnabledRef.current) {
+          invoke('stop_remote_server').catch(() => {})
+          return
+        }
         setRemoteInfo(info)
         setRemoteEnabled(true)
       } catch (e) {
@@ -457,6 +463,7 @@ export default function ControlPanel() {
         setRemoteStarting(false)
       }
     } else {
+      remoteEnabledRef.current = false
       invoke('stop_remote_server').catch(() => {})
       setRemoteEnabled(false)
       setRemoteInfo(null)
