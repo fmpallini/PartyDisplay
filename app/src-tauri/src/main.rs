@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth;
+mod remote_server;
 mod audio;
 mod dlna;
 mod dlna_proxy;
@@ -12,7 +13,7 @@ mod window_manager;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tauri::Manager;
+use tauri::{Manager, Listener};
 
 /// Monotonic counter: each call to `start_oauth_callback_server` bumps this.
 /// The spawned thread compares its snapshot — if it no longer matches, the
@@ -183,6 +184,7 @@ fn main() {
     let slideshow_state = Arc::new(slideshow::SlideshowState::default());
     tauri::Builder::default()
         .manage(Arc::clone(&slideshow_state))
+        .manage(remote_server::RemoteState::default())
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
         // and forward it to the running instance instead of opening a new window.
@@ -231,10 +233,54 @@ fn main() {
             clear_webview_data,
             presets::get_presets,
             system::trigger_cast_flyout,
+            remote_server::start_remote_server,
+            remote_server::stop_remote_server,
         ])
         .setup(|app| {
             // Start the DLNA HTTP proxy server (http://127.0.0.1:29341/...)
             tauri::async_runtime::spawn(dlna_proxy::start());
+
+            // Keep RemoteState in sync with playback and slideshow events.
+            {
+                let remote = app.state::<remote_server::RemoteState>();
+                let tx_pb = remote.tx.clone();
+                let app_state_pb = Arc::clone(&remote.app_state);
+                let tx_ss = remote.tx.clone();
+                let app_state_ss = Arc::clone(&remote.app_state);
+
+                app.handle().listen("playback-tick", move |event| {
+                    if let Ok(payload) =
+                        serde_json::from_str::<serde_json::Value>(event.payload())
+                    {
+                        let paused = payload
+                            .get("paused")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true);
+                        app_state_pb.lock().unwrap().playing = !paused;
+                        let msg =
+                            serde_json::json!({ "type": "playback-state", "paused": paused })
+                                .to_string();
+                        let _ = tx_pb.send(msg);
+                    }
+                });
+
+                app.handle().listen("slideshow-state", move |event| {
+                    if let Ok(payload) =
+                        serde_json::from_str::<serde_json::Value>(event.payload())
+                    {
+                        let paused = payload
+                            .get("paused")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        app_state_ss.lock().unwrap().slideshow_paused = paused;
+                        let msg =
+                            serde_json::json!({ "type": "slideshow-state", "paused": paused })
+                                .to_string();
+                        let _ = tx_ss.send(msg);
+                    }
+                });
+            }
+
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
