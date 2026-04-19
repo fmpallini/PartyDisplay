@@ -17,7 +17,7 @@ Then run `npm install` to update `package-lock.json`.
 
 **P2. Security review** — invoke `/security-review` skill. Fix any HIGH/MEDIUM findings. Commit.
 
-**P3. Bug search** — spawn an Explore agent to hunt logic bugs, race conditions, null checks, and edge cases in all files changed since the last tag (`git diff <last-tag>..HEAD`). Fix any real bugs found. Commit.
+**P3. Bug search** — spawn an Explore agent to hunt logic bugs, race conditions, null checks, and edge cases in all files changed since the last tag. Fix any real bugs found. Commit.
 
 Do not skip or batch these. Each must complete and be committed before moving to the release procedure.
 

@@ -309,6 +309,18 @@ fn main() {
                     }
                 });
             }
+            // Size the control window to fill the available monitor height (minus taskbar).
+            if let Some(control) = app.get_webview_window("control") {
+                if let Ok(Some(monitor)) = control.current_monitor() {
+                    let scale = monitor.scale_factor();
+                    let logical_h = monitor.size().height as f64 / scale;
+                    let target_h = (logical_h - 80.0).min(950.0).max(720.0);
+                    let _ = control.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                        width: 420.0,
+                        height: target_h,
+                    }));
+                }
+            }
             // Auto-save display window state on every resize/move; intercept manual close
             if let Some(display) = app.get_webview_window("display") {
                 let app_handle2 = app.handle().clone();

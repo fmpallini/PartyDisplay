@@ -508,10 +508,21 @@ export default function ControlPanel() {
 
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
-    if ((source === 'local' || source === 'dlna') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    if ((source === 'local' || source === 'dlna' || source === 'external') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
     localStorage.setItem(KEYS.audioSource, source)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
+
+  // Auto-switch to Spotify when a remote device starts playback while another source is active.
+  const prevSpotifyPausedRef = useRef(true)
+  useEffect(() => {
+    const wasPaused = prevSpotifyPausedRef.current
+    prevSpotifyPausedRef.current = spotifyPlayer.paused
+    if (!wasPaused || spotifyPlayer.paused || source === 'spotify') return
+    if (!player.paused) player.togglePlay()
+    setSource('spotify')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spotifyPlayer.paused])
 
   const setLocalFolder = useCallback((folder: string) => {
     setLocalFolderState(folder)
