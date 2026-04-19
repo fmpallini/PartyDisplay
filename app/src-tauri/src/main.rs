@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth;
+mod media_keys;
 mod remote_server;
 mod audio;
 mod dlna;
@@ -177,6 +178,7 @@ fn main() {
     let cli_args: Vec<String> = std::env::args().collect();
     if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
+        let _ = auth::clear_client_id();
         clear_webview_data();
         std::process::exit(0);
     }
@@ -214,6 +216,9 @@ fn main() {
             auth::store_tokens,
             auth::load_tokens,
             auth::clear_tokens,
+            auth::store_client_id,
+            auth::load_client_id,
+            auth::clear_client_id,
             audio::start_audio_capture,
             slideshow::watch_folder,
             slideshow::get_photos,
@@ -229,6 +234,7 @@ fn main() {
             local_audio::scan_audio_folder,
             dlna::dlna_discover,
             dlna::dlna_browse,
+            media_keys::send_media_key,
             exit_app,
             clear_webview_data,
             presets::get_presets,
@@ -302,6 +308,18 @@ fn main() {
                         app_handle.exit(0);
                     }
                 });
+            }
+            // Size the control window to fill the available monitor height (minus taskbar).
+            if let Some(control) = app.get_webview_window("control") {
+                if let Ok(Some(monitor)) = control.current_monitor() {
+                    let scale = monitor.scale_factor();
+                    let logical_h = monitor.size().height as f64 / scale;
+                    let target_h = (logical_h - 80.0).min(950.0).max(720.0);
+                    let _ = control.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                        width: 420.0,
+                        height: target_h,
+                    }));
+                }
             }
             // Auto-save display window state on every resize/move; intercept manual close
             if let Some(display) = app.get_webview_window("display") {

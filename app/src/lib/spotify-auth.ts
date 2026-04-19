@@ -1,4 +1,3 @@
-const CLIENT_ID   = import.meta.env.VITE_SPOTIFY_CLIENT_ID as string
 const REDIRECT_URI = 'http://127.0.0.1:7357/callback'
 const SCOPES       = 'streaming user-read-playback-state user-modify-playback-state user-read-currently-playing'
 
@@ -27,9 +26,9 @@ export function generateState(): string {
   return base64url(randomBytes(32).buffer as ArrayBuffer)
 }
 
-export function buildAuthUrl(challenge: string, state: string): string {
+export function buildAuthUrl(clientId: string, challenge: string, state: string): string {
   const params = new URLSearchParams({
-    client_id:             CLIENT_ID,
+    client_id:             clientId,
     response_type:         'code',
     redirect_uri:          REDIRECT_URI,
     scope:                 SCOPES,
@@ -48,12 +47,12 @@ export interface RawTokenResponse {
   expires_in:    number
 }
 
-export async function exchangeCode(code: string, verifier: string): Promise<RawTokenResponse> {
+export async function exchangeCode(clientId: string, code: string, verifier: string): Promise<RawTokenResponse> {
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id:     CLIENT_ID,
+      client_id:     clientId,
       grant_type:    'authorization_code',
       code,
       redirect_uri:  REDIRECT_URI,
@@ -64,18 +63,38 @@ export async function exchangeCode(code: string, verifier: string): Promise<RawT
   return res.json() as Promise<RawTokenResponse>
 }
 
-export async function refreshAccessToken(refresh_token: string): Promise<RawTokenResponse> {
+export async function refreshAccessToken(clientId: string, refresh_token: string): Promise<RawTokenResponse> {
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id:     CLIENT_ID,
+      client_id:     clientId,
       grant_type:    'refresh_token',
       refresh_token,
     }),
   })
   if (!res.ok) throw new Error(`Token refresh failed: ${res.status} ${await res.text()}`)
   return res.json() as Promise<RawTokenResponse>
+}
+
+// Returns true if clientId is recognized by Spotify.
+// Uses a dummy authorization_code grant — invalid_client = bad ID, invalid_grant = good ID.
+export async function validateClientId(clientId: string): Promise<boolean> {
+  if (!/^[0-9a-f]{32}$/i.test(clientId)) return false
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     clientId,
+      grant_type:    'authorization_code',
+      code:          'dummy',
+      redirect_uri:  REDIRECT_URI,
+      code_verifier: 'dummy',
+    }),
+  })
+  const body = await res.json() as { error?: string }
+  if (body.error === 'invalid_client') return false
+  return true
 }
 
 export function expiresAt(expires_in: number): number {

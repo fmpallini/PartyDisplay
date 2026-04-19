@@ -73,7 +73,7 @@ const LYRICS_SIDE_VALUES        = ['left', 'right'] as const
 export function readDisplaySettings(): DisplaySettings {
   return {
     toastDurationMs:      safeNum(localStorage.getItem(KEYS.toastDurationMs),      5000),
-    songZoom:             safeNum(localStorage.getItem(KEYS.songToastZoom),         1.7),
+    songZoom:             safeNum(localStorage.getItem(KEYS.songToastZoom),         1.2),
     volumeZoom:           safeNum(localStorage.getItem(KEYS.volumeToastZoom),       1.7),
     transitionEffect:     safeEnum(localStorage.getItem(KEYS.transitionEffect),     TRANSITION_EFFECT_VALUES, 'random'),
     transitionDurationMs: safeNum(localStorage.getItem(KEYS.transitionDurationMs), 500),

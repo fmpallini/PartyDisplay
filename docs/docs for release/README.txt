@@ -1,4 +1,4 @@
-Party Display v0.9.1 — Windows 64-bit Portable
+Party Display v0.9.5 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -27,13 +27,19 @@ HOW TO RUN
 
  2. In the control panel, click "Connect Spotify".
 
- 3. Your browser will open the Spotify login page. Log in and grant
+ 3. If this is your first launch, you will be prompted to enter your
+    Spotify Client ID. Follow the on-screen steps to create a free app
+    on developer.spotify.com and paste the Client ID. It is stored
+    securely in the Windows Credential Store and never needs to be
+    entered again.
+
+ 4. Your browser will open the Spotify login page. Log in and grant
     the requested permissions.
 
- 4. The browser will redirect to 127.0.0.1:7357 (a local page served
+ 5. The browser will redirect to 127.0.0.1:7357 (a local page served
     briefly by the app), then close automatically.
 
- 5. The control panel will show your account as connected.
+ 6. The control panel will show your account as connected.
     Pick a photo folder, open the display window, and enjoy.
 
  NOTE: A Spotify Premium account is required to stream audio to the
@@ -46,11 +52,18 @@ HOW TO RUN
 
  SPOTIFY
   - Registers as a Spotify Connect device (Web Playback SDK)
+  - Client ID entered at runtime via guided setup — no config file needed
   - OAuth PKCE login — tokens saved in Windows Credential Store
   - Auto token refresh — sessions survive app restarts
   - Volume synced from your Spotify session on connect
   - Now playing card: album art, track name, artist, progress bar + seek
   - Transport controls: play/pause, previous, next, volume
+
+ EXTERNAL AUDIO
+  - Pass-through mode for any audio playing on your PC
+  - Numpad +/- send system-wide volume keys; 4/5/6 send media keys
+  - WASAPI loopback still drives the visualizer
+  - No track metadata displayed (album art / lyrics unavailable)
 
  LOCAL FILES
   - Play audio files from a local folder through the built-in HTML5 player
@@ -138,9 +151,10 @@ HOW TO RUN
   L                     Toggle lyrics
 
  MUSIC (numpad)
-  Numpad 4 / 6          Previous / next Spotify track
-  Numpad 5              Play / pause Spotify
+  Numpad 4 / 6          Previous / next track
+  Numpad 5              Play / pause
   Numpad + / -          Volume up / down
+                        (sends system volume keys when External source is active)
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

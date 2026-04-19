@@ -57,6 +57,7 @@ export function HelpPanel({ onClose }: Props) {
 
     localStorage.clear()
     await invoke('clear_tokens').catch(console.error)
+    await invoke('clear_client_id').catch(console.error)
     await invoke('clear_webview_data').catch(console.error)
     await invoke('exit_app').catch(console.error)
   }

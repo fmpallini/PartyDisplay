@@ -3,7 +3,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export type { TrackInfo, PlayerState, PlayerControls } from '../lib/player-types'
 import type { PlayerState, PlayerControls } from '../lib/player-types'
 
-export function useSpotifyPlayer(accessToken: string | null): PlayerState & PlayerControls {
+function fetchDeviceVolume(token: string, onVol: (vol: number) => void) {
+  fetch('https://api.spotify.com/v1/me/player', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(r => r.status === 200 ? r.json() : null)
+    .then((data: any) => { const pct = data?.device?.volume_percent; if (pct != null) onVol(pct / 100) })
+    .catch(() => {})
+}
+
+export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () => void): PlayerState & PlayerControls {
   const [state, setState] = useState<PlayerState>({
     ready: false, deviceId: null, track: null, paused: true, positionMs: 0, volume: 0.8,
     shuffle: false, error: null,
@@ -39,21 +48,11 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
 
       player.addListener('ready', ({ device_id }) => {
         setState(s => ({ ...s, ready: true, deviceId: device_id, error: null }))
-        // Fetch actual session volume from Spotify Web API (SDK getVolume() returns its own
-        // initial value, not the real device volume the user had before connecting).
-        fetch('https://api.spotify.com/v1/me/player', {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
+        // SDK getVolume() returns its own initial value, not the real device volume.
+        fetchDeviceVolume(accessToken!, vol => {
+          ;(player as any).setVolume(vol)
+          setState(s => ({ ...s, volume: vol }))
         })
-          .then(r => r.status === 200 ? r.json() : null)
-          .then((data: any) => {
-            const pct = data?.device?.volume_percent
-            if (pct != null) {
-              const vol = pct / 100
-              ;(player as any).setVolume(vol)
-              setState(s => ({ ...s, volume: vol }))
-            }
-          })
-          .catch(() => {})
       })
 
       player.addListener('not_ready', ({ device_id }) => {
@@ -80,7 +79,10 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
       })
 
       player.addListener('initialization_error', e => setState(s => ({ ...s, error: `Init: ${e.message}` })))
-      player.addListener('authentication_error',  e => setState(s => ({ ...s, error: `Auth: ${e.message}` })))
+      player.addListener('authentication_error',  e => {
+        setState(s => ({ ...s, error: `Auth: ${e.message}` }))
+        onAuthError?.()
+      })
       player.addListener('account_error',         e => setState(s => ({ ...s, error: `Account: ${e.message}` })))
       player.addListener('playback_error',        e => {
         if (e.message === 'Cannot perform operation; no list was loaded.') return
@@ -102,17 +104,17 @@ export function useSpotifyPlayer(accessToken: string | null): PlayerState & Play
       playerRef.current?.disconnect()
       playerRef.current = null
     }
-  }, [accessToken])
+  }, [accessToken, onAuthError])
 
   // Poll volume every 2 s to catch changes made from the Spotify app
   useEffect(() => {
     if (!state.ready) return
     const id = setInterval(() => {
-      const player = playerRef.current as any
-      if (!player) return
-      player.getVolume().then((vol: number) => {
+      const token = accessTokenRef.current
+      if (!token) return
+      fetchDeviceVolume(token, vol => {
         setState(s => Math.abs(s.volume - vol) > 0.005 ? { ...s, volume: vol } : s)
-      }).catch(() => {})
+      })
     }, 2000)
     return () => clearInterval(id)
   }, [state.ready])

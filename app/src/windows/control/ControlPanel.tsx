@@ -15,8 +15,10 @@ import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
 import type { VisualizerMode, VisualizerPresetOrder, VisualizerPresetChange } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
+import { ClientIdSetup } from '../../components/ClientIdSetup'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
+import { useExternalPlayer } from '../../hooks/useExternalPlayer'
 import type { PlaylistItem } from '../../hooks/useLocalPlayer'
 import { useDlnaBrowser } from '../../hooks/useDlnaBrowser'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
@@ -96,7 +98,7 @@ function readSlideshowConfig(): SlideshowConfig {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ControlPanel() {
-  const { authenticated, loading, accessToken, error: authError, login, logout } = useAuth()
+  const { authenticated, loading, accessToken, clientId, error: authError, login, logout, saveClientId } = useAuth()
   const [captureError, setCaptureError]       = useState<string | null>(null)
   const [config, setConfigState]              = useState<SlideshowConfig>(readSlideshowConfig)
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
@@ -105,8 +107,8 @@ export default function ControlPanel() {
   const [helpOpen, setHelpOpen]               = useState(false)
   const [presetNames, setPresetNames] = useState<string[]>([])
 
-  const [source, setSource] = useState<'spotify' | 'local' | 'dlna'>(
-    () => (localStorage.getItem(KEYS.audioSource) as 'spotify' | 'local' | 'dlna') ?? 'spotify'
+  const [source, setSource] = useState<'spotify' | 'local' | 'dlna' | 'external'>(
+    () => (localStorage.getItem(KEYS.audioSource) as 'spotify' | 'local' | 'dlna' | 'external') ?? 'spotify'
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
     () => localStorage.getItem(KEYS.localAudioFolder)
@@ -158,10 +160,12 @@ export default function ControlPanel() {
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dlnaBrowserMusic.items])
-  const dlnaPlayer = useLocalPlayer(dlnaPlaylist, source === 'dlna', 'pd_dlna_player')
+  const dlnaPlayer     = useLocalPlayer(dlnaPlaylist, source === 'dlna', 'pd_dlna_player')
+  const externalPlayer = useExternalPlayer(source === 'external')
 
-  const player        = source === 'spotify' ? spotifyPlayer
-                      : source === 'dlna'    ? dlnaPlayer
+  const player        = source === 'spotify'  ? spotifyPlayer
+                      : source === 'dlna'     ? dlnaPlayer
+                      : source === 'external' ? externalPlayer
                       : localPlayer
   const library = usePhotoLibrary({ order: config.order, recursive: config.subfolders })
 
@@ -440,8 +444,14 @@ export default function ControlPanel() {
   const musicNext   = useCallback(() => { player.nextTrack()  }, [player.nextTrack])
   const musicPrev   = useCallback(() => { player.prevTrack()  }, [player.prevTrack])
   const musicToggle = useCallback(() => { player.togglePlay() }, [player.togglePlay])
-  const volumeUp    = useCallback(() => { player.setVolume(Math.min(1, player.volume + 0.05)) }, [player.setVolume, player.volume])
-  const volumeDown  = useCallback(() => { player.setVolume(Math.max(0, player.volume - 0.05)) }, [player.setVolume, player.volume])
+  const volumeUp    = useCallback(() => {
+    if (source === 'external') { invoke('send_media_key', { key: 'vol_up' }).catch(e => console.error('[volume]', e)); return }
+    player.setVolume(Math.min(1, player.volume + 0.05))
+  }, [source, player.setVolume, player.volume])
+  const volumeDown  = useCallback(() => {
+    if (source === 'external') { invoke('send_media_key', { key: 'vol_down' }).catch(e => console.error('[volume]', e)); return }
+    player.setVolume(Math.max(0, player.volume - 0.05))
+  }, [source, player.setVolume, player.volume])
 
   const handleRemoteToggle = useCallback(async (enable: boolean) => {
     if (enable) {
@@ -498,10 +508,21 @@ export default function ControlPanel() {
 
   // Pause the outgoing player on source switch; user controls resume from there.
   useEffect(() => {
-    if ((source === 'local' || source === 'dlna') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    if ((source === 'local' || source === 'dlna' || source === 'external') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
     localStorage.setItem(KEYS.audioSource, source)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
+
+  // Auto-switch to Spotify when a remote device starts playback while another source is active.
+  const prevSpotifyPausedRef = useRef(true)
+  useEffect(() => {
+    const wasPaused = prevSpotifyPausedRef.current
+    prevSpotifyPausedRef.current = spotifyPlayer.paused
+    if (!wasPaused || spotifyPlayer.paused || source === 'spotify') return
+    if (!player.paused) player.togglePlay()
+    setSource('spotify')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spotifyPlayer.paused])
 
   const setLocalFolder = useCallback((folder: string) => {
     setLocalFolderState(folder)
@@ -526,7 +547,24 @@ export default function ControlPanel() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const [showClientIdSetup, setShowClientIdSetup] = useState(false)
+
+  function handleLogin() {
+    if (!clientId) { setShowClientIdSetup(true); return }
+    login()
+  }
+
+  async function handleClientIdSave(id: string) {
+    await saveClientId(id)
+    setShowClientIdSetup(false)
+    login()
+  }
+
   const hasErrors = !!(authError || spotifyPlayer.error || localPlayer.error || dlnaPlayer.error || captureError)
+
+  if (showClientIdSetup) {
+    return <ClientIdSetup onSave={handleClientIdSave} onBack={() => setShowClientIdSetup(false)} />
+  }
 
   return (
     <div style={{
@@ -582,18 +620,19 @@ export default function ControlPanel() {
           {/* Source picker */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Source</span>
-            <button style={sourcePill(source === 'spotify')} onClick={() => setSource('spotify')}>Spotify</button>
-            <button style={sourcePill(source === 'local')}   onClick={() => setSource('local')}>Local Files</button>
-            <button style={sourcePill(source === 'dlna')}    onClick={() => setSource('dlna')}>DLNA</button>
+            <button style={sourcePill(source === 'spotify')}  onClick={() => setSource('spotify')}>Spotify</button>
+            <button style={sourcePill(source === 'local')}    onClick={() => setSource('local')}>Local Files</button>
+            <button style={sourcePill(source === 'dlna')}     onClick={() => setSource('dlna')}>DLNA</button>
+            <button style={sourcePill(source === 'external')} onClick={() => setSource('external')}>External</button>
           </div>
 
           {source === 'spotify' ? (
             /* ── Spotify ── */
             !authenticated ? (
-              <LoginButton authenticated={authenticated} loading={loading} onLogin={login} onLogout={logout} />
-            ) : !spotifyPlayer.ready ? (
-              <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                Waiting for Spotify device…
+              <LoginButton authenticated={authenticated} loading={loading} onLogin={handleLogin} onLogout={logout} />
+            ) : !spotifyPlayer.track ? (
+              <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
+                In your Spotify app, select <strong style={{ color: '#aaa' }}>Party Display</strong> as the playing device.
               </p>
             ) : null
           ) : source === 'local' ? (
@@ -627,7 +666,7 @@ export default function ControlPanel() {
                 </p>
               )}
             </>
-          ) : (
+          ) : source === 'dlna' ? (
             /* ── DLNA ── */
             <>
               {!dlnaBrowserMusic.server ? (
@@ -724,6 +763,16 @@ export default function ControlPanel() {
                 </>
               )}
             </>
+          ) : (
+            /* ── External ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ margin: 0, color: '#aaa', fontSize: 12 }}>
+                Captures audio from any app playing on this system.
+              </p>
+              <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
+                No track info or lyrics. Playback hotkeys send system-wide media keys.
+              </p>
+            </div>
           )}
 
           {/* ── Zone 2: Playback — always visible ─────────────────────── */}
@@ -739,7 +788,9 @@ export default function ControlPanel() {
               prevTrack={player.prevTrack}
               seek={player.seek}
               toggleShuffle={player.toggleShuffle}
+              hideShuffle={source === 'external'}
             />
+            {source !== 'external' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="range" min={0} max={1} step={0.02}
@@ -751,6 +802,7 @@ export default function ControlPanel() {
                 {Math.round(player.volume * 100)}%
               </span>
             </div>
+            )}
           </div>
         </Card>
 

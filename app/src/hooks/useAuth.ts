@@ -15,6 +15,7 @@ import {
 export interface AuthState {
   authenticated: boolean
   accessToken: string | null
+  clientId: string | null
   loading: boolean
   error: string | null
 }
@@ -23,13 +24,27 @@ export function useAuth() {
   const [state, setState] = useState<AuthState>({
     authenticated: false,
     accessToken: null,
+    clientId: null,
     loading: true,
     error: null,
   })
 
+  function isInvalidClient(e: unknown) {
+    return /invalid_client/i.test(String(e))
+  }
+
+  async function clearInvalidClient() {
+    await invoke('clear_tokens').catch(() => {})
+    await invoke('clear_client_id').catch(() => {})
+    clientIdRef.current = null
+    setState({ authenticated: false, accessToken: null, clientId: null, loading: false,
+      error: 'Invalid Spotify Client ID — please re-enter it.' })
+  }
+
   const verifierRef  = useRef<string | null>(null)
   const stateRef     = useRef<string | null>(null)
   const loggedOutRef = useRef(false)
+  const clientIdRef  = useRef<string | null>(null)
 
   // ── Persist + update state ────────────────────────────────────────────────
 
@@ -40,27 +55,36 @@ export function useAuth() {
       expires_at:    expiresAt(raw.expires_in),
     }
     await invoke('store_tokens', { tokens: payload })
-    setState({ authenticated: true, accessToken: raw.access_token, loading: false, error: null })
+    setState(s => ({ ...s, authenticated: true, accessToken: raw.access_token, loading: false, error: null }))
   }
 
-  // ── On mount: load persisted tokens, refresh if expired ─────────────────
+  // ── On mount: load clientId then bootstrap tokens ────────────────────────
 
   useEffect(() => {
     async function bootstrap() {
       try {
+        const clientId = await invoke<string | null>('load_client_id')
+        clientIdRef.current = clientId
+        if (!clientId) {
+          setState(s => ({ ...s, clientId: null, loading: false }))
+          return
+        }
+        setState(s => ({ ...s, clientId }))
+
         const stored = await invoke<TokenPayload | null>('load_tokens')
         if (!stored) {
           setState(s => ({ ...s, loading: false }))
           return
         }
         if (Date.now() < stored.expires_at) {
-          setState({ authenticated: true, accessToken: stored.access_token, loading: false, error: null })
+          setState(s => ({ ...s, authenticated: true, accessToken: stored.access_token, loading: false, error: null }))
           return
         }
-        const refreshed = await refreshAccessToken(stored.refresh_token)
+        const refreshed = await refreshAccessToken(clientId, stored.refresh_token)
         await persistTokens({ ...refreshed, refresh_token: refreshed.refresh_token ?? stored.refresh_token })
       } catch (e) {
-        setState({ authenticated: false, accessToken: null, loading: false, error: String(e) })
+        if (isInvalidClient(e)) { await clearInvalidClient(); return }
+        setState({ authenticated: false, accessToken: null, clientId: clientIdRef.current, loading: false, error: String(e) })
       }
     }
     bootstrap()
@@ -70,7 +94,7 @@ export function useAuth() {
 
   useEffect(() => {
     const unlisten = listen<{ code: string; state: string }>('oauth-code', ({ payload }) => {
-      if (!verifierRef.current || !stateRef.current) return
+      if (!verifierRef.current || !stateRef.current || !clientIdRef.current) return
       if (payload.state !== stateRef.current) {
         setState(s => ({ ...s, loading: false, error: 'OAuth state mismatch — rejecting callback' }))
         verifierRef.current = null
@@ -78,11 +102,15 @@ export function useAuth() {
         return
       }
       const verifier = verifierRef.current
+      const clientId = clientIdRef.current
       verifierRef.current = null
       stateRef.current = null
-      exchangeCode(payload.code, verifier)
+      exchangeCode(clientId, payload.code, verifier)
         .then(persistTokens)
-        .catch(e => setState(s => ({ ...s, loading: false, error: String(e) })))
+        .catch(async e => {
+          if (isInvalidClient(e)) { await clearInvalidClient(); return }
+          setState(s => ({ ...s, loading: false, error: String(e) }))
+        })
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
@@ -93,13 +121,16 @@ export function useAuth() {
     if (!state.authenticated) return
 
     async function doRefresh() {
+      const clientId = clientIdRef.current
+      if (!clientId) return
       try {
         const stored = await invoke<TokenPayload | null>('load_tokens')
         if (!stored || loggedOutRef.current) return
-        const refreshed = await refreshAccessToken(stored.refresh_token)
+        const refreshed = await refreshAccessToken(clientId, stored.refresh_token)
         if (loggedOutRef.current) return
         await persistTokens({ ...refreshed, refresh_token: refreshed.refresh_token ?? stored.refresh_token })
       } catch (e) {
+        if (isInvalidClient(e)) { await clearInvalidClient(); return }
         console.error('Auto-refresh failed:', e)
       }
     }
@@ -129,20 +160,20 @@ export function useAuth() {
   // When authenticated is false, accessToken is null and the early-return guard fires.
   }, [state.accessToken])
 
-  // ── login / logout ────────────────────────────────────────────────────────
+  // ── login / logout / saveClientId ─────────────────────────────────────────
 
   const login = useCallback(async () => {
+    const clientId = clientIdRef.current
+    if (!clientId) return
     loggedOutRef.current = false
     setState(s => ({ ...s, loading: true, error: null }))
     try {
       const { verifier, challenge } = await generatePkce()
-      const state = generateState()
+      const oauthState = generateState()
       verifierRef.current = verifier
-      stateRef.current    = state
+      stateRef.current    = oauthState
       await invoke('start_oauth_callback_server')
-      await open(buildAuthUrl(challenge, state))
-      // Re-enable the button once the browser tab is open so the user can
-      // retry if they close the tab without completing auth.
+      await open(buildAuthUrl(clientId, challenge, oauthState))
       setState(s => ({ ...s, loading: false }))
     } catch (e) {
       setState(s => ({ ...s, loading: false, error: String(e) }))
@@ -152,8 +183,16 @@ export function useAuth() {
   const logout = useCallback(async () => {
     loggedOutRef.current = true
     await invoke('clear_tokens')
-    setState({ authenticated: false, accessToken: null, loading: false, error: null })
+    setState(s => ({ ...s, authenticated: false, accessToken: null, loading: false, error: null }))
   }, [])
 
-  return { ...state, login, logout }
+  const saveClientId = useCallback(async (id: string) => {
+    await invoke('store_client_id', { clientId: id })
+    clientIdRef.current = id
+    setState(s => ({ ...s, clientId: id }))
+  }, [])
+
+  const invalidateClientId = useCallback(async () => { await clearInvalidClient() }, [])
+
+  return { ...state, login, logout, saveClientId, invalidateClientId }
 }
