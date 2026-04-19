@@ -111,11 +111,20 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
   useEffect(() => {
     if (!state.ready) return
     const id = setInterval(() => {
-      const player = playerRef.current as any
-      if (!player) return
-      player.getVolume().then((vol: number) => {
-        setState(s => Math.abs(s.volume - vol) > 0.005 ? { ...s, volume: vol } : s)
-      }).catch(() => {})
+      const token = accessTokenRef.current
+      if (!token) return
+      fetch('https://api.spotify.com/v1/me/player', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.status === 200 ? r.json() : null)
+        .then((data: any) => {
+          const pct = data?.device?.volume_percent
+          if (pct != null) {
+            const vol = pct / 100
+            setState(s => Math.abs(s.volume - vol) > 0.005 ? { ...s, volume: vol } : s)
+          }
+        })
+        .catch(() => {})
     }, 2000)
     return () => clearInterval(id)
   }, [state.ready])

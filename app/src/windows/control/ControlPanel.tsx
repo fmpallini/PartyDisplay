@@ -98,7 +98,7 @@ function readSlideshowConfig(): SlideshowConfig {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ControlPanel() {
-  const { authenticated, loading, accessToken, clientId, error: authError, login, logout, saveClientId, invalidateClientId } = useAuth()
+  const { authenticated, loading, accessToken, clientId, error: authError, login, logout, saveClientId, invalidateClientId, refreshTokens } = useAuth()
   const [captureError, setCaptureError]       = useState<string | null>(null)
   const [config, setConfigState]              = useState<SlideshowConfig>(readSlideshowConfig)
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
@@ -125,7 +125,7 @@ export default function ControlPanel() {
   const [qrDataUrl, setQrDataUrl]           = useState<string | null>(null)
   const remoteEnabledRef = useRef(false)
 
-  const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null, invalidateClientId)
+  const spotifyPlayer = useSpotifyPlayer(authenticated ? accessToken : null)
   const localPlayer   = useLocalPlayer(localPlaylist, source === 'local', 'pd_local_player')
 
   const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
@@ -619,15 +619,11 @@ export default function ControlPanel() {
             /* ── Spotify ── */
             !authenticated ? (
               <LoginButton authenticated={authenticated} loading={loading} onLogin={handleLogin} onLogout={logout} />
-            ) : !spotifyPlayer.ready ? (
-              <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                Waiting for Spotify device…
-              </p>
-            ) : (
+            ) : !spotifyPlayer.track ? (
               <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
                 In your Spotify app, select <strong style={{ color: '#aaa' }}>Party Display</strong> as the playing device.
               </p>
-            )
+            ) : null
           ) : source === 'local' ? (
             /* ── Local Files ── */
             <>

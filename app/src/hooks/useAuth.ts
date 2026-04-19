@@ -194,5 +194,23 @@ export function useAuth() {
 
   const invalidateClientId = useCallback(async () => { await clearInvalidClient() }, [])
 
-  return { ...state, login, logout, saveClientId, invalidateClientId }
+  // Called by the SDK on authentication_error — refresh token before giving up.
+  // If refresh succeeds, accessToken state changes and the player re-initializes.
+  // Only clears session if the refresh itself fails.
+  const refreshTokens = useCallback(async () => {
+    const clientId = clientIdRef.current
+    if (!clientId) return
+    try {
+      const stored = await invoke<TokenPayload | null>('load_tokens')
+      if (!stored) return
+      const refreshed = await refreshAccessToken(clientId, stored.refresh_token)
+      await persistTokens({ ...refreshed, refresh_token: refreshed.refresh_token ?? stored.refresh_token })
+    } catch (e) {
+      if (isInvalidClient(e)) { await clearInvalidClient(); return }
+      await invoke('clear_tokens').catch(() => {})
+      setState(s => ({ ...s, authenticated: false, accessToken: null, loading: false, error: String(e) }))
+    }
+  }, [])
+
+  return { ...state, login, logout, saveClientId, invalidateClientId, refreshTokens }
 }
