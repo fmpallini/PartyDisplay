@@ -30,12 +30,12 @@ export function ClientIdSetup({ onSave, onBack }: Props) {
       const valid = await validateClientId(trimmed)
       if (!valid) {
         setError('Invalid Client ID — not recognized by Spotify. Double-check and try again.')
-        setSaving(false)
         return
       }
       await onSave(trimmed)
     } catch (e) {
       setError(String(e))
+    } finally {
       setSaving(false)
     }
   }

@@ -98,7 +98,7 @@ function readSlideshowConfig(): SlideshowConfig {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ControlPanel() {
-  const { authenticated, loading, accessToken, clientId, error: authError, login, logout, saveClientId, invalidateClientId, refreshTokens } = useAuth()
+  const { authenticated, loading, accessToken, clientId, error: authError, login, logout, saveClientId } = useAuth()
   const [captureError, setCaptureError]       = useState<string | null>(null)
   const [config, setConfigState]              = useState<SlideshowConfig>(readSlideshowConfig)
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>(readDisplaySettings)
@@ -538,7 +538,7 @@ export default function ControlPanel() {
 
   const [showClientIdSetup, setShowClientIdSetup] = useState(false)
 
-  async function handleLogin() {
+  function handleLogin() {
     if (!clientId) { setShowClientIdSetup(true); return }
     login()
   }
