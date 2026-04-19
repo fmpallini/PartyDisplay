@@ -623,7 +623,11 @@ export default function ControlPanel() {
               <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
                 Waiting for Spotify device…
               </p>
-            ) : null
+            ) : (
+              <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
+                In your Spotify app, select <strong style={{ color: '#aaa' }}>Party Display</strong> as the playing device.
+              </p>
+            )
           ) : source === 'local' ? (
             /* ── Local Files ── */
             <>

@@ -8,9 +8,17 @@ interface Props {
 }
 
 export function ClientIdSetup({ onSave, onBack }: Props) {
-  const [value, setValue]   = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState<string | null>(null)
+  const [value, setValue]     = useState('')
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState<string | null>(null)
+  const [copied, setCopied]   = useState(false)
+
+  function copyRedirectUri() {
+    navigator.clipboard.writeText('http://127.0.0.1:7357/callback').then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   const trimmed = value.trim()
 
@@ -78,14 +86,27 @@ export function ClientIdSetup({ onSave, onBack }: Props) {
         </div>
         <div style={{ color: '#ccc' }}>2. Fill in any <strong style={{ color: '#fff' }}>App name</strong> and <strong style={{ color: '#fff' }}>description</strong></div>
         <div style={{ color: '#ccc' }}>3. Set the <strong style={{ color: '#fff' }}>Redirect URI</strong> to:</div>
-        <div style={{
-          background: '#111', borderRadius: '4px', padding: '6px 10px', margin: '4px 0 8px',
-          color: '#f0f0f0', fontSize: '11px', userSelect: 'all',
-        }}>
-          http://127.0.0.1:7357/callback
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 8px' }}>
+          <div style={{
+            background: '#111', borderRadius: '4px', padding: '6px 10px', flex: 1,
+            color: '#f0f0f0', fontSize: '11px', userSelect: 'all',
+          }}>
+            http://127.0.0.1:7357/callback
+          </div>
+          <button
+            onClick={copyRedirectUri}
+            style={{
+              background: copied ? '#1db95422' : '#222', border: `1px solid ${copied ? '#1db954' : '#444'}`,
+              borderRadius: '4px', color: copied ? '#1db954' : '#aaa', cursor: 'pointer',
+              fontSize: '11px', padding: '5px 8px', fontFamily: 'inherit', flexShrink: 0,
+              transition: 'all 0.15s',
+            }}
+          >
+            {copied ? '✓ Copied' : 'Copy'}
+          </button>
         </div>
         <div style={{ color: '#ccc' }}>4. Under <em>"Which API/SDKs are you planning to use?"</em> check <strong style={{ color: '#fff' }}>Web Playback SDK</strong></div>
-        <div style={{ color: '#ccc' }}>5. Save, then copy the <strong style={{ color: '#fff' }}>Client ID</strong> from the app settings</div>
+        <div style={{ color: '#ccc' }}>5. Check Spotify terms checkbox, click Save, then copy the <strong style={{ color: '#fff' }}>Client ID</strong> from the app settings</div>
         <div style={{ color: '#ccc' }}>6. Paste it below</div>
       </div>
 
