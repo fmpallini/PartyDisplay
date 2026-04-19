@@ -80,6 +80,7 @@ export async function refreshAccessToken(clientId: string, refresh_token: string
 // Returns true if clientId is recognized by Spotify.
 // Uses a dummy authorization_code grant — invalid_client = bad ID, invalid_grant = good ID.
 export async function validateClientId(clientId: string): Promise<boolean> {
+  if (!/^[0-9a-f]{32}$/i.test(clientId)) return false
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

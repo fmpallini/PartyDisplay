@@ -107,8 +107,8 @@ export function useAuth() {
       stateRef.current = null
       exchangeCode(clientId, payload.code, verifier)
         .then(persistTokens)
-        .catch(e => {
-          if (isInvalidClient(e)) { clearInvalidClient(); return }
+        .catch(async e => {
+          if (isInvalidClient(e)) { await clearInvalidClient(); return }
           setState(s => ({ ...s, loading: false, error: String(e) }))
         })
     })

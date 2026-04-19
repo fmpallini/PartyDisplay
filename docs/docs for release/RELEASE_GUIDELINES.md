@@ -13,7 +13,7 @@ Then run `npm install` to update `package-lock.json`.
 
 ### Pre-work
 
-Confirm the user has recently run `/simplify`, `/security-review`, and a bug search for all changes since the last tag. **If not, run them now.**
+Confirm the user has recently run `/simplify`, `/security-review`, and a `bug search` for all changes since the last tag. **If not, run whats missing now.**
 
 ### Release procedure
 

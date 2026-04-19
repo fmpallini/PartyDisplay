@@ -28,23 +28,17 @@ The app is built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK
 ### 1. Create a Spotify app
 
 1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new app
-2. In the app settings, add this redirect URI:
+2. Fill in any app name and description
+3. Set the redirect URI to:
    ```
    http://127.0.0.1:7357/callback
    ```
-3. Copy your **Client ID**
+4. Under "Which API/SDKs are you planning to use?" check **Web Playback SDK**
+5. Save, then copy your **Client ID** from the app settings
 
-### 2. Configure the environment
+The Client ID is entered directly in the app on first launch — no environment file needed.
 
-Create a file at `app/.env.local`:
-
-```
-VITE_SPOTIFY_CLIENT_ID=your_client_id_here
-```
-
-> This file is gitignored and never committed. It is the only configuration required.
-
-### 3. Install dependencies and run
+### 2. Install dependencies and run
 
 ```bash
 cd app
@@ -52,7 +46,7 @@ npm install
 npm run tauri dev
 ```
 
-### 4. Build for release
+### 3. Build for release
 
 ```bash
 cd app
@@ -147,7 +141,6 @@ vcup2/
 │   │   └── windows/            # Entry points: control panel + display window
 │   ├── src-tauri/              # Rust backend
 │   │   └── src/                # main · auth · audio · slideshow · system · window_manager · dlna · dlna_proxy
-│   ├── .env.local              # ← YOU CREATE THIS (gitignored)
 │   └── package.json
 ├── presets/                    # MilkDrop preset JSONs (bundled next to exe at release)
 ├── docs/
@@ -161,7 +154,8 @@ vcup2/
 
 ## Key features
 
-- **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts
+- **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts; Client ID entered at runtime via a guided setup screen (no build-time configuration needed)
+- **External audio source** — pass-through mode that forwards system-wide media and volume keys (play/pause, next/prev, volume up/down) via Windows virtual-key codes; WASAPI loopback still drives the visualizer
 - **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
 - **DLNA / UPnP media** — discovers UPnP/DLNA servers on the local network; browse their containers directly in the control panel; stream audio tracks and photos from any DLNA server (NAS, media server, etc.) via a local HTTP proxy that handles range requests for seeking
 - **Photo slideshow** — watches a local folder or a DLNA container for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
