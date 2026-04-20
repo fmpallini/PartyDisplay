@@ -51,7 +51,9 @@ export function useVisualizer(
     let cancelled = false
 
     async function init() {
-      const butterchurn = (await import('butterchurn')).default
+      const mod = await import('butterchurn')
+      const butterchurn = [mod, mod.default, (mod.default as any)?.default]
+        .find((x): x is typeof mod.default => typeof x?.createVisualizer === 'function')!
       const ctx = new AudioContext()
       audioCtxRef.current = ctx
 
