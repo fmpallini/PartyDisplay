@@ -100,7 +100,7 @@ export function useVisualizer(
     const unlisten = listen<number[]>('pcm-data', ({ payload }) => {
       workletRef.current?.port.postMessage(new Float32Array(payload))
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   const notifyResize = useCallback((w: number, h: number) => {
