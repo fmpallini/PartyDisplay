@@ -584,6 +584,7 @@
   // ── CONFIG ──────────────────────────────────────────────────────────────
   // WebSocket port — must match the server started in the Tauri app
   const WS_PORT = 9091;
+  const VIZ_MODES = ['photos', 'visualizer', 'split'];
 
   // ── STATE ────────────────────────────────────────────────────────────────
   const state = {
@@ -738,9 +739,8 @@
         updateSlideIcon();
         break;
       case 'toggle-viz-mode': {
-        const modes = ['photos', 'visualizer', 'split'];
-        const idx = modes.indexOf(state.vizMode);
-        state.vizMode = modes[(idx + 1) % modes.length];
+        const idx = VIZ_MODES.indexOf(state.vizMode);
+        state.vizMode = VIZ_MODES[(idx + 1) % VIZ_MODES.length];
         updateVizModeUI();
         break;
       }

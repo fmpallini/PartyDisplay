@@ -278,6 +278,7 @@ fn main() {
 
                 app.handle().listen("display-settings-changed", move |event| {
                     if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload()) {
+                        let mut changed = false;
                         let msg = {
                             let mut s = app_state_ds.lock().unwrap();
                             for (key, field) in [
@@ -289,14 +290,18 @@ fn main() {
                             ] {
                                 if let Some(v) = payload.get(field).and_then(|v| v.as_bool()) {
                                     s.toggles.insert(key.to_string(), v);
+                                    changed = true;
                                 }
                             }
                             if let Some(v) = payload.get("visualizerMode").and_then(|v| v.as_str()) {
                                 s.viz_mode = v.to_string();
+                                changed = true;
                             }
-                            remote_server::build_full_state(&s)
+                            changed.then(|| remote_server::build_full_state(&s))
                         };
-                        let _ = tx_ds.send(msg);
+                        if let Some(msg) = msg {
+                            let _ = tx_ds.send(msg);
+                        }
                     }
                 });
 

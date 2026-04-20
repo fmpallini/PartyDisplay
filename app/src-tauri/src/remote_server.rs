@@ -14,6 +14,7 @@ use tokio::sync::{broadcast, watch};
 
 const HTML: &str = include_str!("../../../remote/index.html");
 const PORT: u16 = 9091;
+const VIZ_MODES: [&str; 3] = ["photos", "visualizer", "split"];
 
 // ── Shared state ─────────────────────────────────────────────────────────────
 
@@ -190,9 +191,8 @@ fn dispatch_action(action: &str, state: &ServerState) {
                 )
             }
             "toggle-viz-mode" => {
-                let modes = ["photos", "visualizer", "split"];
-                let idx = modes.iter().position(|&m| m == s.viz_mode.as_str()).unwrap_or(0);
-                s.viz_mode = modes[(idx + 1) % modes.len()].to_string();
+                let idx = VIZ_MODES.iter().position(|&m| m == s.viz_mode.as_str()).unwrap_or(0);
+                s.viz_mode = VIZ_MODES[(idx + 1) % VIZ_MODES.len()].to_string();
                 Some(serde_json::json!({ "type": "viz-mode", "mode": s.viz_mode }).to_string())
             }
             "toggle-track" | "toggle-lyrics" | "toggle-clock" | "toggle-battery"
