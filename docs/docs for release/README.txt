@@ -1,4 +1,4 @@
-Party Display v0.9.5 — Windows 64-bit Portable
+Party Display v0.9.6 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
