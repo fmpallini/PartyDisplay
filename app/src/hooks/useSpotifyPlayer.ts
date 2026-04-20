@@ -17,9 +17,10 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
     ready: false, deviceId: null, track: null, paused: true, positionMs: 0, volume: 0.8,
     shuffle: false, error: null,
   })
-  const playerRef       = useRef<SpotifyPlayer | null>(null)
-  const pausedRef       = useRef(true)
-  const accessTokenRef  = useRef(accessToken)
+  const playerRef        = useRef<SpotifyPlayer | null>(null)
+  const pausedRef        = useRef(true)
+  const accessTokenRef   = useRef(accessToken)
+  const lastVolumeSetRef = useRef(0)
   pausedRef.current      = state.paused
   accessTokenRef.current = accessToken
 
@@ -113,6 +114,7 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
       const token = accessTokenRef.current
       if (!token) return
       fetchDeviceVolume(token, vol => {
+        if (Date.now() - lastVolumeSetRef.current < 3000) return
         setState(s => Math.abs(s.volume - vol) > 0.005 ? { ...s, volume: vol } : s)
       })
     }, 2000)
@@ -128,6 +130,7 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
     setState(s => ({ ...s, positionMs: ms }))
   }, [])
   const setVolume  = useCallback((v: number) => {
+    lastVolumeSetRef.current = Date.now()
     p()?.setVolume(v)
     setState(s => ({ ...s, volume: v }))
   }, [])
