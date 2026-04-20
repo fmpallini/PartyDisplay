@@ -17,11 +17,23 @@ const PORT: u16 = 9091;
 
 // ── Shared state ─────────────────────────────────────────────────────────────
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Serialize)]
 pub struct RemoteAppState {
     pub playing: bool,
     pub slideshow_paused: bool,
     pub toggles: HashMap<String, bool>,
+    pub viz_mode: String,
+}
+
+impl Default for RemoteAppState {
+    fn default() -> Self {
+        Self {
+            playing: false,
+            slideshow_paused: false,
+            toggles: HashMap::new(),
+            viz_mode: "photos".to_string(),
+        }
+    }
 }
 
 pub struct RemoteState {
@@ -73,12 +85,13 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
-fn build_full_state(s: &RemoteAppState) -> String {
+pub(crate) fn build_full_state(s: &RemoteAppState) -> String {
     serde_json::json!({
         "type": "full-state",
         "playing": s.playing,
         "slideshowPaused": s.slideshow_paused,
         "toggles": s.toggles,
+        "vizMode": s.viz_mode,
     })
     .to_string()
 }
@@ -175,6 +188,12 @@ fn dispatch_action(action: &str, state: &ServerState) {
                     serde_json::json!({ "type": "slideshow-state", "paused": s.slideshow_paused })
                         .to_string(),
                 )
+            }
+            "toggle-viz-mode" => {
+                let modes = ["photos", "visualizer", "split"];
+                let idx = modes.iter().position(|&m| m == s.viz_mode.as_str()).unwrap_or(0);
+                s.viz_mode = modes[(idx + 1) % modes.len()].to_string();
+                Some(serde_json::json!({ "type": "viz-mode", "mode": s.viz_mode }).to_string())
             }
             "toggle-track" | "toggle-lyrics" | "toggle-clock" | "toggle-battery"
             | "toggle-photos" => {
