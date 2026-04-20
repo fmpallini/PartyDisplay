@@ -14,7 +14,7 @@ use tokio::sync::{broadcast, watch};
 
 const HTML: &str = include_str!("../../../remote/index.html");
 const PORT: u16 = 9091;
-const VIZ_MODES: [&str; 3] = ["photos", "visualizer", "split"];
+pub const VIZ_MODES: [&str; 3] = ["photos", "visualizer", "split"];
 
 // ── Shared state ─────────────────────────────────────────────────────────────
 

@@ -294,8 +294,10 @@ fn main() {
                                 }
                             }
                             if let Some(v) = payload.get("visualizerMode").and_then(|v| v.as_str()) {
-                                s.viz_mode = v.to_string();
-                                changed = true;
+                                if remote_server::VIZ_MODES.contains(&v) {
+                                    s.viz_mode = v.to_string();
+                                    changed = true;
+                                }
                             }
                             changed.then(|| remote_server::build_full_state(&s))
                         };
