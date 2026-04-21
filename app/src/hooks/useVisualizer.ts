@@ -6,7 +6,7 @@ import { invoke } from '@tauri-apps/api/core'
 const BLEND_SECONDS = 2.7
 
 export function useVisualizer(
-  canvasRef: RefObject<HTMLCanvasElement>,
+  canvasRef: RefObject<HTMLCanvasElement | null>,
   presetIndex: number,
 ) {
   const vizRef           = useRef<import('butterchurn').Visualizer | null>(null)
