@@ -118,6 +118,9 @@ export function useDisplayWindow() {
     emit('fullscreen-changed', { fullscreen }).catch(() => {})
   }, [fullscreen, isOpen])
 
+  const selectMonitor   = useCallback((name: string) => setSelectedMonitor(name), [])
+  const applyFullscreen = useCallback((fs: boolean)  => setFullscreen(fs), [])
+
   const openWindow = useCallback(async (monName?: string, fs?: boolean) => {
     const mon = monName ?? selectedMonitor
     const goFs = fs ?? fullscreen
@@ -144,9 +147,9 @@ export function useDisplayWindow() {
     monitors,
     isOpen,
     selectedMonitor,
-    setSelectedMonitor,
+    selectMonitor,
     fullscreen,
-    setFullscreen,
+    setFullscreen: applyFullscreen,
     openWindow,
     closeWindow,
     error,
