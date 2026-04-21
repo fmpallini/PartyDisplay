@@ -10,10 +10,14 @@ on:
 
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       security-events: write
+
+    strategy:
+      matrix:
+        language: [javascript, rust]
 
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +25,8 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: javascript
+          languages: ${{ matrix.language }}
+          build-mode: none
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
