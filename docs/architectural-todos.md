@@ -6,6 +6,8 @@ Items skipped during simplify pass — require larger refactors. Decide before n
 
 ## 1. `src-tauri/src/window_manager.rs` — Multiple file reads per operation
 
+> **Resolved:** 2026-04-20 — `snapshot_window_state` now returns the `DisplayState` it writes; callers reuse it instead of calling `load_state_file` again.
+
 **What:** Window manager reads config/state files multiple times per request instead of loading once and passing around.
 
 **Impact:**
@@ -32,6 +34,8 @@ Items skipped during simplify pass — require larger refactors. Decide before n
 
 ## 3. `app/src/hooks/useDisplayWindow.ts` — Raw setter exposure
 
+> **Resolved:** 2026-04-20 — `setSelectedMonitor`/`setFullscreen` raw dispatchers wrapped in typed `useCallback` actions; `selectMonitor` exported by name.
+
 **What:** Hook exposes raw internal setState or direct ref setters through its return value, leaking implementation details to consumers.
 
 **Impact:**
@@ -45,6 +49,8 @@ Items skipped during simplify pass — require larger refactors. Decide before n
 
 ## 4. `app/src/hooks/useLocalPlayer.ts` — `shuffleOn` state consolidation
 
+> **Resolved:** 2026-04-20 — `shuffleOn` removed; `PlayerState.shuffle` is now the single source of truth, initialized from localStorage and toggled via `setState`.
+
 **What:** Shuffle state lives in a separate `useState` (`shuffleOn`) alongside the main `PlayerState` object which also has a `shuffle` field. Two sources of truth — hook merges them on return.
 
 **Impact:**
@@ -57,6 +63,8 @@ Items skipped during simplify pass — require larger refactors. Decide before n
 ---
 
 ## 5. `app/src/hooks/useHotkeys.ts` — Parameter sprawl
+
+> **Resolved:** Already done — hook accepts a typed `Handlers` config object; call site passes an object literal. No changes needed.
 
 **What:** Hook accepts many individual props/params instead of a config object. New keybindings require adding new parameters.
 
