@@ -11,13 +11,17 @@
 
 Then run `npm install` to update `package-lock.json`.
 
-### Pre-work — run ALL three before proceeding
+### Pre-work — run ALL four before proceeding
 
-**P1. Simplify** — invoke `/simplify` skill. Fix any issues found. Commit.
+**P1. Dependency updates** — update all npm and Cargo dependencies:
+- `cd app && npm update && npm outdated` — install any remaining major-version bumps manually, run `tsc --noEmit` after, fix any type errors, commit.
+- `cd app/src-tauri && cargo update` — then run `cargo audit`. Fix or document any HIGH vulnerabilities (if transitive/upstream-blocked, note them explicitly). Commit.
 
-**P2. Security review** — invoke `/security-review` skill. Fix any HIGH/MEDIUM findings. Commit.
+**P2. Simplify** — invoke `/simplify` skill. Fix any issues found. Commit.
 
-**P3. Bug search** — spawn an Explore agent to hunt logic bugs, race conditions, null checks, and edge cases in all files changed since the last tag. Fix any real bugs found. Commit.
+**P3. Security review** — invoke `/security-review` skill. Fix any HIGH/MEDIUM findings. Commit.
+
+**P4. Bug search** — spawn an Explore agent to hunt logic bugs, race conditions, null checks, and edge cases in all files changed since the last tag. Fix any real bugs found. Commit.
 
 Do not skip or batch these. Each must complete and be committed before moving to the release procedure.
 
