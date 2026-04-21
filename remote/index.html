@@ -399,6 +399,31 @@
     .btn-toggle.active .btn-label { color: #8b45d0; }
     .btn-toggle:active { box-shadow: 0 1px 0 #221830 inset, 0 -1px 0 #080510 inset, 0 1px 0 #080510, 0 2px 4px rgba(0,0,0,0.3); }
 
+    /* ── VIZ MODE 3-STATE COLORS ── */
+    .btn-viz-mode[data-viz-state="photos"] {
+      background: linear-gradient(160deg, #0e1a20, #081018);
+      box-shadow: 0 1px 0 #102030 inset, 0 -1px 0 #040810 inset, 0 4px 0 #040810,
+                  0 0 18px rgba(0,180,216,0.25), 0 6px 12px rgba(0,0,0,0.4);
+    }
+    .btn-viz-mode[data-viz-state="photos"] .btn-icon { color: var(--slide-clr); }
+    .btn-viz-mode[data-viz-state="photos"] .btn-label { color: var(--slide-dim); }
+
+    .btn-viz-mode[data-viz-state="visualizer"] {
+      background: linear-gradient(160deg, #221510, #1a0e08);
+      box-shadow: 0 1px 0 #3a2010 inset, 0 -1px 0 #0a0503 inset, 0 4px 0 #0a0503,
+                  0 0 18px rgba(255,90,30,0.25), 0 6px 12px rgba(0,0,0,0.4);
+    }
+    .btn-viz-mode[data-viz-state="visualizer"] .btn-icon { color: var(--music-clr); }
+    .btn-viz-mode[data-viz-state="visualizer"] .btn-label { color: var(--music-dim); }
+
+    .btn-viz-mode[data-viz-state="split"] {
+      background: linear-gradient(160deg, #1e1030, #160c24);
+      box-shadow: 0 1px 0 #3a2050 inset, 0 -1px 0 #0c0818 inset, 0 4px 0 #0c0818,
+                  0 0 18px rgba(168,85,247,0.25), 0 6px 12px rgba(0,0,0,0.4);
+    }
+    .btn-viz-mode[data-viz-state="split"] .btn-icon { color: var(--toggle-clr); }
+    .btn-viz-mode[data-viz-state="split"] .btn-label { color: #8b45d0; }
+
     /* ── FEEDBACK TOAST ── */
     .toast {
       position: fixed;
@@ -523,9 +548,9 @@
     <div class="section-label">Display</div>
 
     <div class="toggle-grid">
-      <button class="btn btn-toggle" data-action="toggle-viz-mode" data-toggle="viz-mode">
+      <button class="btn btn-toggle btn-viz-mode" data-action="toggle-viz-mode" data-viz-state="photos">
         <span class="btn-icon">🎨</span>
-        <span class="btn-label">Viz Mode</span>
+        <span class="btn-label">Photos</span>
       </button>
       <button class="btn btn-toggle" data-action="toggle-track" data-toggle="track">
         <span class="btn-icon">🎵</span>
@@ -559,14 +584,15 @@
   // ── CONFIG ──────────────────────────────────────────────────────────────
   // WebSocket port — must match the server started in the Tauri app
   const WS_PORT = 9091;
+  const VIZ_MODES = ['photos', 'visualizer', 'split'];
 
   // ── STATE ────────────────────────────────────────────────────────────────
   const state = {
     connected: false,
     playing: false,
     slideshowPaused: false,
+    vizMode: 'photos',
     toggles: {
-      'viz-mode': false,
       track: false,
       lyrics: false,
       clock: false,
@@ -649,11 +675,16 @@
           updateToggleUI(msg.key);
         }
         break;
+      case 'viz-mode':
+        state.vizMode = msg.mode;
+        updateVizModeUI();
+        break;
       case 'full-state':
         // initial sync blob
         if (msg.playing !== undefined)        { state.playing = msg.playing; updatePlayIcon(); }
         if (msg.slideshowPaused !== undefined) { state.slideshowPaused = msg.slideshowPaused; updateSlideIcon(); }
         if (msg.toggles)                       { Object.assign(state.toggles, msg.toggles); syncAllToggles(); }
+        if (msg.vizMode !== undefined)         { state.vizMode = msg.vizMode; updateVizModeUI(); }
         break;
     }
   }
@@ -674,6 +705,14 @@
   function updateSlideIcon() {
     slideIcon.textContent = state.slideshowPaused ? '▶' : '⏸';
     slideLabel.textContent = state.slideshowPaused ? 'Resume' : 'Pause';
+  }
+
+  function updateVizModeUI() {
+    const btn = document.querySelector('[data-action="toggle-viz-mode"]');
+    if (!btn) return;
+    btn.dataset.vizState = state.vizMode;
+    const labels = { photos: 'Photos', visualizer: 'Viz', split: 'Split' };
+    btn.querySelector('.btn-label').textContent = labels[state.vizMode] || state.vizMode;
   }
 
   function updateToggleUI(key) {
@@ -699,10 +738,12 @@
         state.slideshowPaused = !state.slideshowPaused;
         updateSlideIcon();
         break;
-      case 'toggle-viz-mode':
-        state.toggles['viz-mode'] = !state.toggles['viz-mode'];
-        updateToggleUI('viz-mode');
+      case 'toggle-viz-mode': {
+        const idx = VIZ_MODES.indexOf(state.vizMode);
+        state.vizMode = VIZ_MODES[(idx + 1) % VIZ_MODES.length];
+        updateVizModeUI();
         break;
+      }
       case 'toggle-track':
         state.toggles.track = !state.toggles.track;
         updateToggleUI('track');
@@ -743,6 +784,7 @@
   });
 
   // ── INIT ──────────────────────────────────────────────────────────────────
+  updateVizModeUI();
   connect();
 </script>
 </body>

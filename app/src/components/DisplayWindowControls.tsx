@@ -5,7 +5,7 @@ import { message } from '@tauri-apps/plugin-dialog'
 export function DisplayWindowControls() {
   const {
     monitors, isOpen,
-    selectedMonitor, setSelectedMonitor,
+    selectedMonitor, selectMonitor,
     fullscreen, setFullscreen,
     openWindow, closeWindow, error,
   } = useDisplayWindow()
@@ -18,7 +18,7 @@ export function DisplayWindowControls() {
         {monitors.length > 1 && (
           <select
             value={selectedMonitor ?? ''}
-            onChange={e => setSelectedMonitor(e.target.value)}
+            onChange={e => selectMonitor(e.target.value)}
             style={selectStyle}
           >
             {monitors.map(m => (

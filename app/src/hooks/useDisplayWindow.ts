@@ -67,7 +67,6 @@ export function useDisplayWindow() {
       invoke<MonitorInfo[]>('get_monitors').then(newMons => {
         if (isCancelled) return
         setMonitors(prev => {
-          // Check if the monitor list actually changed
           const prevNames = prev.map(m => m.name).sort().join(',')
           const newNames = newMons.map(m => m.name).sort().join(',')
           if (prevNames === newNames) return prev // No change, avoid re-render
@@ -95,7 +94,6 @@ export function useDisplayWindow() {
       })
     }
 
-    // Start polling
     pollMonitors()
 
     return () => {
@@ -119,6 +117,9 @@ export function useDisplayWindow() {
     invoke('set_display_fullscreen', { fullscreen }).catch(() => {})
     emit('fullscreen-changed', { fullscreen }).catch(() => {})
   }, [fullscreen, isOpen])
+
+  const selectMonitor   = useCallback((name: string) => setSelectedMonitor(name), [])
+  const applyFullscreen = useCallback((fs: boolean)  => setFullscreen(fs), [])
 
   const openWindow = useCallback(async (monName?: string, fs?: boolean) => {
     const mon = monName ?? selectedMonitor
@@ -146,9 +147,9 @@ export function useDisplayWindow() {
     monitors,
     isOpen,
     selectedMonitor,
-    setSelectedMonitor,
+    selectMonitor,
     fullscreen,
-    setFullscreen,
+    setFullscreen: applyFullscreen,
     openWindow,
     closeWindow,
     error,

@@ -47,8 +47,8 @@ fn write_state_file(app: &AppHandle, state: &DisplayState) {
 
 /// Called from window event listener to snapshot current windowed state.
 /// When fullscreen, preserves the previous windowed size so restoring works.
-pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) {
-    let Ok(is_fs) = win.is_fullscreen() else { return };
+pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) -> DisplayState {
+    let Ok(is_fs) = win.is_fullscreen() else { return DisplayState::default() };
     let existing = load_state_file(app);
     let monitor_name = win
         .current_monitor().ok().flatten()
@@ -67,6 +67,7 @@ pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) {
         DisplayState { x, y, width: w, height: h, fullscreen: false, monitor_name, is_open: existing.is_open }
     };
     write_state_file(app, &state);
+    state
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
@@ -166,8 +167,7 @@ pub fn open_display_window(
     }
 
     // Snapshot after opening and mark as open
-    snapshot_window_state(&app, &win);
-    let mut state = load_state_file(&app);
+    let mut state = snapshot_window_state(&app, &win);
     state.is_open = true;
     write_state_file(&app, &state);
 
@@ -180,8 +180,7 @@ pub fn open_display_window(
 pub fn close_display_window(app: AppHandle) -> Result<(), String> {
     let win = app.get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
-    snapshot_window_state(&app, &win);
-    let mut state = load_state_file(&app);
+    let mut state = snapshot_window_state(&app, &win);
     state.is_open = false;
     write_state_file(&app, &state);
     win.hide().map_err(|e| e.to_string())?;
@@ -193,8 +192,7 @@ pub fn close_display_window(app: AppHandle) -> Result<(), String> {
 /// Hides the window instead of destroying it, saves is_open = false, and
 /// emits an event so the control panel can update its button.
 pub fn handle_display_close_requested(app: &AppHandle, win: &WebviewWindow) {
-    snapshot_window_state(app, win);
-    let mut state = load_state_file(app);
+    let mut state = snapshot_window_state(app, win);
     state.is_open = false;
     write_state_file(app, &state);
     let _ = win.hide();

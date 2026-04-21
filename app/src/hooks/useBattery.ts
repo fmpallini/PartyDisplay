@@ -14,7 +14,11 @@ export function useBattery(pollIntervalMs = 30_000): BatteryStatus {
 
   useEffect(() => {
     function poll() {
-      invoke<BatteryStatus>('get_battery_status').then(setStatus).catch(console.error)
+      invoke<BatteryStatus>('get_battery_status')
+        .then(next => setStatus(prev =>
+          prev.level === next.level && prev.charging === next.charging && prev.available === next.available ? prev : next
+        ))
+        .catch(console.error)
     }
     poll()
     const id = setInterval(poll, pollIntervalMs)

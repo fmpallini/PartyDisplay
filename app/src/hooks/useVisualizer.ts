@@ -3,15 +3,8 @@ import type { RefObject } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 
-/**
- * Manages the Butterchurn visualizer lifecycle for a given canvas element.
- * Creates an AudioContext + AudioWorklet on mount, loads presets from the
- * Tauri `get_presets` command, feeds incoming `pcm-data` events into the
- * worklet, and drives Butterchurn's render loop.
- *
- * Preset cycling is driven externally: the caller passes a new `presetIndex`
- * prop and the hook syncs with a 2.7-second blend transition.
- */
+const BLEND_SECONDS = 2.7
+
 export function useVisualizer(
   canvasRef: RefObject<HTMLCanvasElement>,
   presetIndex: number,
@@ -20,28 +13,25 @@ export function useVisualizer(
   const audioCtxRef      = useRef<AudioContext | null>(null)
   const workletRef       = useRef<AudioWorkletNode | null>(null)
   const rafRef           = useRef<number>(0)
-  // Track which preset index was last loaded so we can distinguish first
-  // load (blend=0) from user-driven changes (blend=2.7 seconds).
+  // Distinguish first load (blend=0) from user-driven changes (blend=BLEND_SECONDS).
   const lastLoadedRef    = useRef<number>(-1)
   const [presets, setPresets] = useState<{ name: string; data: Record<string, unknown> }[]>([])
   const [presetsLoaded, setPresetsLoaded] = useState(false)
 
-  // Load preset list once on mount
+  const clampIdx = (i: number) => Math.max(0, Math.min(i, presets.length - 1))
+
   useEffect(() => {
     invoke<{ name: string; content: string }[]>('get_presets')
       .then(raw => {
-        const loaded = raw
-          .filter(({ content }) => {
-            try { JSON.parse(content); return true } catch { return false }
-          })
-          .map(({ name, content }) => ({ name, data: JSON.parse(content) as Record<string, unknown> }))
+        const loaded = raw.flatMap(({ name, content }) => {
+          try { return [{ name, data: JSON.parse(content) as Record<string, unknown> }] } catch { return [] }
+        })
         setPresets(loaded)
         setPresetsLoaded(true)
       })
       .catch(e => { console.error('[useVisualizer] get_presets failed:', e); setPresetsLoaded(true) })
   }, [])
 
-  // Initialize Butterchurn when canvas + presets are ready
   useEffect(() => {
     const canvasOrNull = canvasRef.current
     if (!canvasOrNull || presets.length === 0) return
@@ -51,7 +41,9 @@ export function useVisualizer(
     let cancelled = false
 
     async function init() {
-      const butterchurn = (await import('butterchurn')).default
+      const mod = await import('butterchurn')
+      const butterchurn = [mod, mod.default, (mod.default as any)?.default]
+        .find((x): x is typeof mod.default => typeof x?.createVisualizer === 'function')!
       const ctx = new AudioContext()
       audioCtxRef.current = ctx
 
@@ -68,7 +60,7 @@ export function useVisualizer(
       viz.connectAudio(worklet)
       vizRef.current = viz
 
-      const idx = Math.max(0, Math.min(presetIndex, presets.length - 1))
+      const idx = clampIdx(presetIndex)
       viz.loadPreset(presets[idx].data, 0)
       lastLoadedRef.current = idx
 
@@ -90,31 +82,25 @@ export function useVisualizer(
       vizRef.current      = null
       lastLoadedRef.current = -1
     }
-    // Re-run only when the canvas element or preset list changes.
-    // presetIndex changes are handled by the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasRef, presets])
 
-  // Sync external preset index changes with a blend transition.
-  // Skips the initial load (already handled in the init effect above).
   useEffect(() => {
     const viz = vizRef.current
     if (!viz || presets.length === 0) return
-    const idx = Math.max(0, Math.min(presetIndex, presets.length - 1))
-    if (idx === lastLoadedRef.current) return   // already loaded — skip
+    const idx = clampIdx(presetIndex)
+    if (idx === lastLoadedRef.current) return
     lastLoadedRef.current = idx
-    viz.loadPreset(presets[idx].data, 2.7)
+    viz.loadPreset(presets[idx].data, BLEND_SECONDS)
   }, [presetIndex, presets])
 
-  // Forward PCM events from Tauri → AudioWorklet
   useEffect(() => {
     const unlisten = listen<number[]>('pcm-data', ({ payload }) => {
       workletRef.current?.port.postMessage(new Float32Array(payload))
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
-  // Notify Butterchurn when the canvas is resized
   const notifyResize = useCallback((w: number, h: number) => {
     vizRef.current?.setRendererSize(w, h)
   }, [])

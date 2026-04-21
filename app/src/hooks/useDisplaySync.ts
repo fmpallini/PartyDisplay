@@ -66,7 +66,7 @@ export function useDisplaySync(
       }
     })
     return () => {
-      unlisten.then(fn => fn())
+      unlisten.then(fn => fn()).catch(() => {})
       if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
     }
   }, [])
@@ -79,7 +79,7 @@ export function useDisplaySync(
       setPreviousPhoto(null)
       setTransitioning(false)
     })
-    return () => { unlisten.then(fn => fn()) }
+    return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
 
   return { currentPhoto, previousPhoto, transitioning, activeEffect }

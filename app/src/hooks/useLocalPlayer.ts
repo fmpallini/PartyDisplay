@@ -45,7 +45,7 @@ export function useLocalPlayer(
   // ── Restore persisted shuffle on first mount ──────────────────────────────
   const initShuffle = persistKey ? safeBool(localStorage.getItem(`${persistKey}_shuffle`), true) : false
 
-  const [state, setState] = useState<PlayerState>(IDLE_STATE)
+  const [state, setState] = useState<PlayerState>(() => ({ ...IDLE_STATE, shuffle: initShuffle }))
 
   const audioRef     = useRef<HTMLAudioElement>(new Audio())
   const indexRef     = useRef(0)
@@ -56,19 +56,17 @@ export function useLocalPlayer(
   activeRef.current = active
 
   // ── Shuffle ───────────────────────────────────────────────────────────────
-  const [shuffleOn, setShuffleOn] = useState(initShuffle)
-
   // Persist shuffle whenever it changes
   useEffect(() => {
-    if (persistKey) localStorage.setItem(`${persistKey}_shuffle`, String(shuffleOn))
-  }, [shuffleOn, persistKey])
+    if (persistKey) localStorage.setItem(`${persistKey}_shuffle`, String(state.shuffle))
+  }, [state.shuffle, persistKey])
 
   // workingOrder maps position (0…n-1) → actual playlist index.
   // Recomputed whenever playlist reference or shuffleOn changes.
   const workingOrder = useMemo<number[]>(() => {
     const indices = Array.from({ length: playlist.length }, (_, i) => i)
-    return shuffleOn ? shuffle(indices) : indices
-  }, [playlist, shuffleOn])
+    return state.shuffle ? shuffle(indices) : indices
+  }, [playlist, state.shuffle])
 
   const workingOrderRef = useRef(workingOrder)
   workingOrderRef.current = workingOrder
@@ -209,6 +207,7 @@ export function useLocalPlayer(
       audio.removeEventListener('error',          onError)
       audio.pause()
       audio.src = ''
+      if (albumArtRef.current) { URL.revokeObjectURL(albumArtRef.current); albumArtRef.current = '' }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlist, loadIndex])
@@ -220,7 +219,7 @@ export function useLocalPlayer(
     if (playlist.length === 0) {
       audioRef.current.pause()
       audioRef.current.src = ''   // prevent stale error events firing into an empty playlist
-      setState(IDLE_STATE)
+      setState(s => ({ ...IDLE_STATE, shuffle: s.shuffle }))
       return
     }
     // The listener-effect cleanup pauses the audio element before re-registering
@@ -285,8 +284,8 @@ export function useLocalPlayer(
   }, [])
 
   const toggleShuffle = useCallback(() => {
-    setShuffleOn(s => !s)
+    setState(s => ({ ...s, shuffle: !s.shuffle }))
   }, [])
 
-  return { ...state, shuffle: shuffleOn, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
+  return { ...state, togglePlay, nextTrack, prevTrack, seek, setVolume, toggleShuffle }
 }

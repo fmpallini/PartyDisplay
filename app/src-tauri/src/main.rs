@@ -253,6 +253,8 @@ fn main() {
                 let app_state_pb = Arc::clone(&remote.app_state);
                 let tx_ss = remote.tx.clone();
                 let app_state_ss = Arc::clone(&remote.app_state);
+                let tx_ds = remote.tx.clone();
+                let app_state_ds = Arc::clone(&remote.app_state);
 
                 app.handle().listen("playback-tick", move |event| {
                     if let Ok(payload) =
@@ -271,6 +273,37 @@ fn main() {
                             serde_json::json!({ "type": "playback-state", "paused": paused })
                                 .to_string();
                         let _ = tx_pb.send(msg);
+                    }
+                });
+
+                app.handle().listen("display-settings-changed", move |event| {
+                    if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload()) {
+                        let mut changed = false;
+                        let msg = {
+                            let mut s = app_state_ds.lock().unwrap();
+                            for (key, field) in [
+                                ("track",   "trackOverlayVisible"),
+                                ("lyrics",  "lyricsVisible"),
+                                ("clock",   "clockWeatherVisible"),
+                                ("battery", "batteryVisible"),
+                                ("photos",  "photoCounterVisible"),
+                            ] {
+                                if let Some(v) = payload.get(field).and_then(|v| v.as_bool()) {
+                                    s.toggles.insert(key.to_string(), v);
+                                    changed = true;
+                                }
+                            }
+                            if let Some(v) = payload.get("visualizerMode").and_then(|v| v.as_str()) {
+                                if remote_server::VIZ_MODES.contains(&v) {
+                                    s.viz_mode = v.to_string();
+                                    changed = true;
+                                }
+                            }
+                            changed.then(|| remote_server::build_full_state(&s))
+                        };
+                        if let Some(msg) = msg {
+                            let _ = tx_ds.send(msg);
+                        }
                     }
                 });
 
