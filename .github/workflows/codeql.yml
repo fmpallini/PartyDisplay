@@ -11,7 +11,7 @@ on:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.language == 'rust' && 'windows-latest' || 'ubuntu-latest' }}
     permissions:
       security-events: write
 
@@ -26,7 +26,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.language == 'rust' && 'autobuild' || 'none' }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
