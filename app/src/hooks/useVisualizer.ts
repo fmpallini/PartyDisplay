@@ -23,11 +23,9 @@ export function useVisualizer(
   useEffect(() => {
     invoke<{ name: string; content: string }[]>('get_presets')
       .then(raw => {
-        const loaded = raw
-          .filter(({ content }) => {
-            try { JSON.parse(content); return true } catch { return false }
-          })
-          .map(({ name, content }) => ({ name, data: JSON.parse(content) as Record<string, unknown> }))
+        const loaded = raw.flatMap(({ name, content }) => {
+          try { return [{ name, data: JSON.parse(content) as Record<string, unknown> }] } catch { return [] }
+        })
         setPresets(loaded)
         setPresetsLoaded(true)
       })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { safeBool, safeNum } from '../../lib/utils'
+import { safeBool, safeEnum, safeNum } from '../../lib/utils'
 import { KEYS } from '../../lib/storage-keys'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
@@ -90,7 +90,7 @@ const sourcePill = (active: boolean): React.CSSProperties => ({
 function readSlideshowConfig(): SlideshowConfig {
   return {
     fixedSec:   safeNum(localStorage.getItem(KEYS.slideshowFixedSec), DEFAULT_SLIDESHOW_CONFIG.fixedSec),
-    order:      (localStorage.getItem(KEYS.slideshowOrder) as SlideshowConfig['order']) ?? DEFAULT_SLIDESHOW_CONFIG.order,
+    order:      safeEnum(localStorage.getItem(KEYS.slideshowOrder), ['shuffle', 'alpha'] as const, DEFAULT_SLIDESHOW_CONFIG.order),
     subfolders: safeBool(localStorage.getItem(KEYS.slideshowSubfolders), DEFAULT_SLIDESHOW_CONFIG.subfolders),
   }
 }
@@ -108,7 +108,7 @@ export default function ControlPanel() {
   const [presetNames, setPresetNames] = useState<string[]>([])
 
   const [source, setSource] = useState<'spotify' | 'local' | 'dlna' | 'external'>(
-    () => (localStorage.getItem(KEYS.audioSource) as 'spotify' | 'local' | 'dlna' | 'external') ?? 'spotify'
+    () => safeEnum(localStorage.getItem(KEYS.audioSource), ['spotify', 'local', 'dlna', 'external'] as const, 'spotify')
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
     () => localStorage.getItem(KEYS.localAudioFolder)
@@ -131,7 +131,7 @@ export default function ControlPanel() {
   const dlnaBrowserMusic = useDlnaBrowser('pd_dlna_music')
 
   const [photoSource, setPhotoSourceState] = useState<'local' | 'dlna'>(
-    () => (localStorage.getItem(KEYS.photoSource) as 'local' | 'dlna') ?? 'local'
+    () => safeEnum(localStorage.getItem(KEYS.photoSource), ['local', 'dlna'] as const, 'local')
   )
   const dlnaBrowserPhotos = useDlnaBrowser('pd_dlna_photos')
 

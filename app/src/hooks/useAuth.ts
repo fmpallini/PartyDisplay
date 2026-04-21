@@ -63,15 +63,16 @@ export function useAuth() {
   useEffect(() => {
     async function bootstrap() {
       try {
-        const clientId = await invoke<string | null>('load_client_id')
+        const [clientId, stored] = await Promise.all([
+          invoke<string | null>('load_client_id'),
+          invoke<TokenPayload | null>('load_tokens'),
+        ])
         clientIdRef.current = clientId
         if (!clientId) {
           setState(s => ({ ...s, clientId: null, loading: false }))
           return
         }
         setState(s => ({ ...s, clientId }))
-
-        const stored = await invoke<TokenPayload | null>('load_tokens')
         if (!stored) {
           setState(s => ({ ...s, loading: false }))
           return

@@ -209,6 +209,7 @@ export function useLocalPlayer(
       audio.removeEventListener('error',          onError)
       audio.pause()
       audio.src = ''
+      if (albumArtRef.current) { URL.revokeObjectURL(albumArtRef.current); albumArtRef.current = '' }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlist, loadIndex])

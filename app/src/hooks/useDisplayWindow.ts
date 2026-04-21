@@ -67,7 +67,6 @@ export function useDisplayWindow() {
       invoke<MonitorInfo[]>('get_monitors').then(newMons => {
         if (isCancelled) return
         setMonitors(prev => {
-          // Check if the monitor list actually changed
           const prevNames = prev.map(m => m.name).sort().join(',')
           const newNames = newMons.map(m => m.name).sort().join(',')
           if (prevNames === newNames) return prev // No change, avoid re-render
@@ -95,7 +94,6 @@ export function useDisplayWindow() {
       })
     }
 
-    // Start polling
     pollMonitors()
 
     return () => {

@@ -28,10 +28,11 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
   useEffect(() => {
     const id = setInterval(() => {
       if (!pausedRef.current) {
-        setState(s => ({
-          ...s,
-          positionMs: s.track ? Math.min(s.positionMs + 500, s.track.duration) : s.positionMs,
-        }))
+        setState(s => {
+          if (!s.track) return s
+          const next = Math.min(s.positionMs + 500, s.track.duration)
+          return next === s.positionMs ? s : { ...s, positionMs: next }
+        })
       }
     }, 500)
     return () => clearInterval(id)
