@@ -22,7 +22,7 @@ rupnp               = "1"
 roxmltree           = "0.20"
 futures             = "0.3"
 tokio               = { version = "1", features = ["time", "net", "io-util", "sync"] }
-axum               = { version = "0.7", features = ["ws"] }
+axum               = { version = "0.8", features = ["ws"] }
 local-ip-address   = "0.6"
 enigo = "0.6.1"
 
