@@ -60,4 +60,4 @@ Move zip to `release/` at repo root.
 
 **7. Tag — `vX.Y.Z`**
 
-**8. Give user manual GitHub release publish instructions**
+**8. Confirm the proposed release notes than do a release through gh cli**
