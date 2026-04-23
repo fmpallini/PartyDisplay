@@ -62,7 +62,11 @@ pub fn stop_smtc_listener(state: tauri::State<'_, SmtcState>) -> Result<(), Stri
 }
 
 async fn smtc_poll_loop(app: AppHandle, mut stop_rx: oneshot::Receiver<()>) {
+    // Initialize Windows Runtime on this thread (required for WinRT APIs)
+    let _ = unsafe { windows::Win32::System::Com::CoInitializeEx(None, windows::Win32::System::Com::COINIT_MULTITHREADED) };
     let mut last_track: Option<(String, String)> = None;
+    // Poll immediately so track info appears without a 1s delay
+    poll_smtc(&app, &mut last_track).await;
     loop {
         tokio::select! {
             _ = &mut stop_rx => break,
@@ -119,7 +123,7 @@ async fn try_poll_smtc(
         *last_track = Some(track_key);
         let album_art = get_thumbnail(&props).await.unwrap_or_default();
         let _ = app.emit("smtc-track-changed", Some(SmtcTrackInfo {
-            id:          String::new(),
+            id:          format!("{}:{}", title, artist),
             name:        title,
             artists:     artist,
             album_art,
@@ -152,13 +156,14 @@ async fn get_thumbnail(
 
     let mut bytes = vec![0u8; size as usize];
     reader.ReadBytes(&mut bytes).ok()?;
+    reader.DetachStream().ok();
 
     let mime = if bytes.starts_with(b"\xff\xd8\xff") {
         "image/jpeg"
     } else if bytes.starts_with(b"\x89PNG") {
         "image/png"
     } else {
-        "image/png"
+        return None;
     };
 
     Some(format!(
