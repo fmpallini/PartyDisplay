@@ -4,7 +4,6 @@ use base64::{Engine as _, engine::general_purpose};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::oneshot;
 
-// Matches TrackInfo shape expected by the frontend (player-types.ts)
 #[derive(serde::Serialize, Clone)]
 struct SmtcTrackInfo {
     id:        String,
@@ -12,7 +11,7 @@ struct SmtcTrackInfo {
     artists:   String,
     #[serde(rename = "albumArt")]
     album_art: String,
-    duration:  u64,  // ms
+    duration:  u64,
     #[serde(rename = "positionMs")]
     position_ms: u64,
 }
@@ -39,7 +38,6 @@ pub async fn start_smtc_listener(
     state: tauri::State<'_, SmtcState>,
 ) -> Result<(), String> {
     let mut guard = state.stop_tx.lock().unwrap();
-    // Stop any existing polling thread before starting a new one
     if let Some(tx) = guard.take() {
         let _ = tx.send(());
     }
@@ -64,7 +62,7 @@ pub fn stop_smtc_listener(state: tauri::State<'_, SmtcState>) -> Result<(), Stri
 }
 
 async fn smtc_poll_loop(app: AppHandle, mut stop_rx: oneshot::Receiver<()>) {
-    let mut last_track: Option<(String, String)> = None; // (title, artist)
+    let mut last_track: Option<(String, String)> = None;
     loop {
         tokio::select! {
             _ = &mut stop_rx => break,
@@ -80,7 +78,6 @@ async fn poll_smtc(app: &AppHandle, last_track: &mut Option<(String, String)>) {
         Ok(()) => {}
         Err(e) => {
             eprintln!("[SMTC] poll error: {e:?}");
-            // Any error = no usable session → clear display
             if last_track.is_some() {
                 *last_track = None;
                 let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);
@@ -103,7 +100,6 @@ async fn try_poll_smtc(
     let title  = props.Title()?.to_string();
     let artist = props.Artist()?.to_string();
 
-    // Empty title = app registered SMTC but isn't playing anything meaningful
     if title.is_empty() {
         if last_track.is_some() {
             *last_track = None;
@@ -112,7 +108,6 @@ async fn try_poll_smtc(
         return Ok(());
     }
 
-    // Convert 100-nanosecond WinRT ticks to milliseconds
     let position_ms = (timeline.Position()?.Duration.max(0) / 10_000) as u64;
     let duration_ms = (timeline.EndTime()?.Duration.max(0) / 10_000) as u64;
 
@@ -153,7 +148,6 @@ async fn get_thumbnail(
     let mut bytes = vec![0u8; size as usize];
     reader.ReadBytes(&mut bytes).ok()?;
 
-    // Detect MIME type from magic bytes to build a correct data URL
     let mime = if bytes.starts_with(b"\xff\xd8\xff") {
         "image/jpeg"
     } else if bytes.starts_with(b"\x89PNG") {
