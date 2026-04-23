@@ -92,9 +92,12 @@ async fn try_poll_smtc(
 ) -> windows::core::Result<()> {
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
 
-    let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()?.await?;
+    let manager_op = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()?;
+    let manager = tokio::task::block_in_place(|| manager_op.get())?;
     let session = manager.GetCurrentSession()?;
-    let props    = session.TryGetMediaPropertiesAsync()?.await?;
+
+    let props_op = session.TryGetMediaPropertiesAsync()?;
+    let props = tokio::task::block_in_place(|| props_op.get())?;
     let timeline = session.GetTimelineProperties()?;
 
     let title  = props.Title()?.to_string();
@@ -136,14 +139,16 @@ async fn get_thumbnail(
     use windows::Storage::Streams::DataReader;
 
     let thumb_ref = props.Thumbnail().ok()?;
-    let stream    = thumb_ref.OpenReadAsync().ok()?.await.ok()?;
+    let stream_op = thumb_ref.OpenReadAsync().ok()?;
+    let stream = tokio::task::block_in_place(|| stream_op.get()).ok()?;
     let size      = stream.Size().ok()? as u32;
     if size == 0 {
         return None;
     }
 
     let reader = DataReader::CreateDataReader(&stream).ok()?;
-    reader.LoadAsync(size).ok()?.await.ok()?;
+    let load_op = reader.LoadAsync(size).ok()?;
+    tokio::task::block_in_place(|| load_op.get()).ok()?;
 
     let mut bytes = vec![0u8; size as usize];
     reader.ReadBytes(&mut bytes).ok()?;

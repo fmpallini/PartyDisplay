@@ -11,6 +11,7 @@ mod slideshow;
 mod system;
 mod presets;
 mod window_manager;
+mod smtc;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -187,6 +188,7 @@ fn main() {
     tauri::Builder::default()
         .manage(Arc::clone(&slideshow_state))
         .manage(remote_server::RemoteState::default())
+        .manage(smtc::SmtcState::default())
         // single-instance MUST be registered before deep-link so it can intercept
         // the second process launch (which carries the party-display://callback URL)
         // and forward it to the running instance instead of opening a new window.
@@ -241,6 +243,8 @@ fn main() {
             system::trigger_cast_flyout,
             remote_server::start_remote_server,
             remote_server::stop_remote_server,
+            smtc::start_smtc_listener,
+            smtc::stop_smtc_listener,
         ])
         .setup(|app| {
             // Start the DLNA HTTP proxy server (http://127.0.0.1:29341/...)
