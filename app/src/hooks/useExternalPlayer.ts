@@ -1,14 +1,44 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import type { PlayerState, PlayerControls } from '../lib/player-types'
+import { listen } from '@tauri-apps/api/event'
+import type { PlayerState, PlayerControls, TrackInfo } from '../lib/player-types'
 
 function mediaKey(key: string) {
   invoke('send_media_key', { key }).catch(e => console.error('[ExternalPlayer]', e))
 }
 
 export function useExternalPlayer(active: boolean): PlayerState & PlayerControls {
-  // Local paused toggle — mirrors what we send, since we can't read system state.
   const [paused, setPaused] = useState(false)
+  const [track, setTrack] = useState<TrackInfo | null>(null)
+  const [positionMs, setPositionMs] = useState(0)
+
+  useEffect(() => {
+    if (!active) return
+
+    invoke('start_smtc_listener').catch(e =>
+      console.error('[ExternalPlayer] SMTC start failed:', e)
+    )
+
+    let unlistenTrack: (() => void) | undefined
+    let unlistenPos:   (() => void) | undefined
+
+    listen<TrackInfo | null>('smtc-track-changed', (e) => {
+      setTrack(e.payload)
+      if (e.payload === null) setPositionMs(0)
+    }).then(fn => { unlistenTrack = fn })
+
+    listen<{ positionMs: number }>('smtc-position-update', (e) => {
+      setPositionMs(e.payload.positionMs)
+    }).then(fn => { unlistenPos = fn })
+
+    return () => {
+      invoke('stop_smtc_listener').catch(() => {})
+      unlistenTrack?.()
+      unlistenPos?.()
+      setTrack(null)
+      setPositionMs(0)
+    }
+  }, [active])
 
   const togglePlay = useCallback(() => {
     mediaKey('play_pause')
@@ -21,9 +51,9 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
   return {
     ready:      active,
     deviceId:   null,
-    track:      null,
+    track,
     paused,
-    positionMs: 0,
+    positionMs,
     volume:     1,
     shuffle:    false,
     error:      null,
