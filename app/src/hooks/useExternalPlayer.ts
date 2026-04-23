@@ -21,17 +21,19 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
 
     let unlistenTrack: (() => void) | undefined
     let unlistenPos:   (() => void) | undefined
+    let cancelled = false
 
     listen<TrackInfo | null>('smtc-track-changed', (e) => {
       setTrack(e.payload)
       if (e.payload === null) setPositionMs(0)
-    }).then(fn => { unlistenTrack = fn })
+    }).then(fn => { if (cancelled) fn(); else unlistenTrack = fn })
 
     listen<{ positionMs: number }>('smtc-position-update', (e) => {
       setPositionMs(e.payload.positionMs)
-    }).then(fn => { unlistenPos = fn })
+    }).then(fn => { if (cancelled) fn(); else unlistenPos = fn })
 
     return () => {
+      cancelled = true
       invoke('stop_smtc_listener').catch(() => {})
       unlistenTrack?.()
       unlistenPos?.()
