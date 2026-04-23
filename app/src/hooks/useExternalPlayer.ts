@@ -25,11 +25,19 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
 
     listen<TrackInfo | null>('smtc-track-changed', (e) => {
       setTrack(e.payload)
-      if (e.payload === null) setPositionMs(0)
+      if (e.payload === null) {
+        setPositionMs(0)
+        setPaused(true)
+      } else if (e.payload.isPlaying !== undefined) {
+        setPaused(!e.payload.isPlaying)
+      }
     }).then(fn => { if (cancelled) fn(); else unlistenTrack = fn })
 
-    listen<{ positionMs: number }>('smtc-position-update', (e) => {
+    listen<{ positionMs: number; isPlaying?: boolean }>('smtc-position-update', (e) => {
       setPositionMs(e.payload.positionMs)
+      if (e.payload.isPlaying !== undefined) {
+        setPaused(!e.payload.isPlaying)
+      }
     }).then(fn => { if (cancelled) fn(); else unlistenPos = fn })
 
     return () => {

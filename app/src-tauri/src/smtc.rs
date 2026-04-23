@@ -14,12 +14,16 @@ struct SmtcTrackInfo {
     duration:  u64,
     #[serde(rename = "positionMs")]
     position_ms: u64,
+    #[serde(rename = "isPlaying")]
+    is_playing: bool,
 }
 
 #[derive(serde::Serialize, Clone)]
 struct SmtcPositionUpdate {
     #[serde(rename = "positionMs")]
     position_ms: u64,
+    #[serde(rename = "isPlaying")]
+    is_playing: bool,
 }
 
 pub struct SmtcState {
@@ -98,16 +102,28 @@ async fn try_poll_smtc(
 
     let manager_op = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()?;
     let manager = tokio::task::block_in_place(|| manager_op.get())?;
-    let session = manager.GetCurrentSession()?;
+
+    // GetCurrentSession returns Err with S_OK (0x0) when no media session is active —
+    // null COM interface pointer, not a real failure. Treat any error here as "no session".
+    let session = match manager.GetCurrentSession() {
+        Ok(s) => s,
+        Err(_) => {
+            if last_track.is_some() {
+                *last_track = None;
+                let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);
+            }
+            return Ok(());
+        }
+    };
 
     let props_op = session.TryGetMediaPropertiesAsync()?;
     let props = tokio::task::block_in_place(|| props_op.get())?;
     let timeline = session.GetTimelineProperties()?;
 
-    let title  = props.Title()?.to_string();
-    let artist = props.Artist()?.to_string();
+    let raw_title  = props.Title()?.to_string();
+    let raw_artist = props.Artist()?.to_string();
 
-    if title.is_empty() {
+    if raw_title.is_empty() {
         if last_track.is_some() {
             *last_track = None;
             let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);
@@ -115,8 +131,16 @@ async fn try_poll_smtc(
         return Ok(());
     }
 
+    let (title, artist) = normalize_browser_track(&raw_title, &raw_artist);
+
     let position_ms = (timeline.Position()?.Duration.max(0) / 10_000) as u64;
     let duration_ms = (timeline.EndTime()?.Duration.max(0) / 10_000) as u64;
+
+    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionPlaybackStatus;
+    let is_playing = session.GetPlaybackInfo()
+        .and_then(|info| info.PlaybackStatus())
+        .map(|s| s == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing)
+        .unwrap_or(true);
 
     let track_key = (title.clone(), artist.clone());
     if last_track.as_ref() != Some(&track_key) {
@@ -129,12 +153,104 @@ async fn try_poll_smtc(
             album_art,
             duration:    duration_ms,
             position_ms,
+            is_playing,
         }));
     }
 
-    let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms });
+    let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms, is_playing });
 
     Ok(())
+}
+
+/// Returns true when the SMTC artist field is a YouTube channel name rather than a
+/// real artist name (e.g. "ArtistVEVO", "Artist - Topic", "ArtistOfficial").
+fn is_channel_artist(artist: &str) -> bool {
+    let a = artist.to_lowercase();
+    a.ends_with("vevo") || a.ends_with(" - topic") || a.ends_with("official")
+}
+
+/// Strips well-known YouTube noise suffixes from a song title so that LRCLIB
+/// lookups match. Only strips parenthesised/bracketed tokens — bare words are
+/// left alone to avoid false positives.
+///
+/// Examples:
+///   "You Shook Me All Night Long (Official Video)"  → "You Shook Me All Night Long"
+///   "bad guy (Audio)"                               → "bad guy"
+///   "Bohemian Rhapsody (Remastered 2011)"           → "Bohemian Rhapsody"
+fn strip_title_noise(title: &str) -> String {
+    // Lowercase keywords that, when the sole content of (...) or [...], should be removed.
+    const NOISE: &[&str] = &[
+        "official video", "official music video", "official audio",
+        "official lyric video", "official visualizer", "official",
+        "lyric video", "lyrics", "lyric", "audio",
+        "music video", "video", "visualizer",
+        "hd", "hq", "4k", "720p", "1080p",
+        "explicit", "explicit version", "clean", "radio edit",
+        "album version", "single version",
+    ];
+
+    let mut s = title.trim().to_string();
+    loop {
+        let before = s.clone();
+
+        // Strip trailing (...) or [...] whose lowercased content matches a noise token
+        // OR is a remaster/remastered pattern: "Remaster", "Remastered", "2011 Remaster", etc.
+        for (open, close) in [('(', ')'), ('[', ']')] {
+            if s.ends_with(close) {
+                if let Some(pos) = s.rfind(open) {
+                    let inner = s[pos + 1..s.len() - 1].trim().to_lowercase();
+                    let is_noise = NOISE.contains(&inner.as_str())
+                        || inner.contains("remaster")
+                        || inner.contains("re-master");
+                    if is_noise {
+                        s = s[..pos].trim_end().to_string();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if s == before {
+            break;
+        }
+    }
+    s
+}
+
+/// Normalises track info from browser SMTC sessions.
+///
+/// Handles:
+/// - YouTube Music: artist = "Artist - Topic", title = "Artist - Song"
+/// - VEVO channels:  artist = "ArtistVEVO",    title = "Artist - Song"
+/// - Title noise:    "(Official Video)", "(Lyrics)", "(Remastered 2011)", etc.
+fn normalize_browser_track(title: &str, artist: &str) -> (String, String) {
+    // Clean known channel suffixes from the SMTC artist field
+    let clean_artist = artist
+        .strip_suffix(" - Topic")
+        .or_else(|| artist.strip_suffix("VEVO"))
+        .or_else(|| artist.strip_suffix("Official"))
+        .unwrap_or(artist)
+        .trim()
+        .to_string();
+
+    let channel = is_channel_artist(artist);
+
+    // Split "Artist - Song Title" from the title field:
+    // - always split when artist is a channel name (VEVO / Topic / Official)
+    // - also split when the left side matches the cleaned artist name exactly
+    let (raw_name, final_artist) = if let Some(dash) = title.find(" - ") {
+        let left  = title[..dash].trim();
+        let right = title[dash + 3..].trim();
+        if !right.is_empty() && (channel || left.eq_ignore_ascii_case(&clean_artist)) {
+            (right.to_string(), left.to_string())
+        } else {
+            (title.to_string(), clean_artist)
+        }
+    } else {
+        (title.to_string(), clean_artist)
+    };
+
+    (strip_title_noise(&raw_name), final_artist)
 }
 
 async fn get_thumbnail(

@@ -4,6 +4,7 @@ export interface TrackInfo {
   artists:  string
   albumArt: string   // URL or data URL; empty string if absent
   duration: number   // ms
+  isPlaying?: boolean
 }
 
 export interface PlayerState {
