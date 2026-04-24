@@ -155,7 +155,7 @@ vcup2/
 ## Key features
 
 - **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts; Client ID entered at runtime via a guided setup screen (no build-time configuration needed)
-- **External audio source** — pass-through mode that forwards system-wide media and volume keys (play/pause, next/prev, volume up/down) via Windows virtual-key codes; WASAPI loopback still drives the visualizer
+- **External audio source** — pass-through mode that forwards system-wide media and volume keys (play/pause, next/prev, volume up/down) via Windows virtual-key codes; WASAPI loopback still drives the visualizer; song info (title, artist, album art) and lyrics fetched automatically via Windows System Media Transport Controls (SMTC) — requires Windows 10 build 1903+
 - **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
 - **DLNA / UPnP media** — discovers UPnP/DLNA servers on the local network; browse their containers directly in the control panel; stream audio tracks and photos from any DLNA server (NAS, media server, etc.) via a local HTTP proxy that handles range requests for seeking
 - **Photo slideshow** — watches a local folder or a DLNA container for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit

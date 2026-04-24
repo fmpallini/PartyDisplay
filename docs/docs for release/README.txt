@@ -1,4 +1,4 @@
-Party Display v0.9.7 — Windows 64-bit Portable
+Party Display v0.9.8 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -6,7 +6,9 @@ Party Display v0.9.7 — Windows 64-bit Portable
 
 
 REQUIREMENTS
-  - Windows 10 (build 1803+) or Windows 11
+  - Windows 10 (build 1903+) or Windows 11
+      Note: External source song info requires build 1903+ (May 2019 Update).
+      Older builds can still run the app but will not show track metadata in External mode.
   - Microsoft Edge WebView2 Runtime
       Already installed on all Windows 11 machines and most Windows 10 machines.
       If missing, download from:
@@ -63,7 +65,21 @@ HOW TO RUN
   - Pass-through mode for any audio playing on your PC
   - Numpad +/- send system-wide volume keys; 4/5/6 send media keys
   - WASAPI loopback still drives the visualizer
-  - No track metadata displayed (album art / lyrics unavailable)
+  - Song info (title, artist, album art) and lyrics fetched automatically when the
+    active player registers with the Windows System Media Transport Controls (SMTC)
+  - "Active player" = the media session Windows considers current (last interacted with)
+
+  Supported players (register with SMTC automatically):
+    Spotify desktop, Chrome, Edge, Firefox, Windows Media Player,
+    Groove Music, VLC 3.x+, most modern UWP/store media apps
+
+  Not supported (SMTC not registered — song info stays blank):
+    Old VLC versions (pre-3.0), some games and legacy audio players,
+    command-line players, and apps that output audio without using the
+    Windows media session API
+
+  If the active player is unsupported or nothing is playing, any previously
+  displayed song info is cleared immediately — no stale data is shown.
 
  LOCAL FILES
   - Play audio files from a local folder through the built-in HTML5 player
@@ -191,6 +207,20 @@ HOW TO RUN
     uncompressed video and audio for the visualizer is to use a direct HDMI
     cable, or a dedicated high-bitrate streaming solution like Sunshine/Moonlight.
 
+  Song info / lyrics not showing in External mode
+    Your media player must register with Windows System Media Transport Controls.
+    Check whether Windows itself shows the media overlay (e.g. the volume
+    flyout shows a Now Playing card). If it does not appear there, Party Display
+    cannot read metadata from that app either.
+    Switch focus to your media player (click its window) so Windows picks it as
+    the active session, then switch back to Party Display.
+
+  Lyrics out of sync / Progress bar shows wrong time (YouTube in Browser)
+    Browsers (like Chrome or Edge) sometimes have bugs where they fail to update
+    the Windows media timeline correctly when you open a new YouTube video, or
+    they continue counting from the previous video's position. This causes the
+    progress bar and lyrics in Party Display to be completely out of sync.
+
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
     This clears all saved settings and Spotify tokens and closes the app.
@@ -202,3 +232,16 @@ HOW TO RUN
 
     This clears all saved settings and Spotify credentials.
     Relaunch the app manually afterwards.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CREDITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ VISUALIZER PRESETS
+  The bundled presets (presets\ folder) are sourced from the
+  butterchurn-presets npm package — a free, open-source WebGL
+  reimplementation of MilkDrop, the iconic Winamp visualizer plugin
+  originally created by Ryan Geiss.
+
+  More info: https://butterchurnviz.com

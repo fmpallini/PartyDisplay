@@ -1,16 +1,5 @@
 ## Release Guidelines
 
-### Version bump — 4 files only
-
-| File | Field |
-|------|-------|
-| `app/package.json` | `"version"` |
-| `app/src-tauri/Cargo.toml` | `version` |
-| `app/src-tauri/tauri.conf.json` | `"version"` |
-| `app/src-tauri/Cargo.lock` | `version` under `name = "party-display"` |
-
-Then run `npm install` to update `package-lock.json`.
-
 ### Pre-work — run ALL four before proceeding
 
 **P1. Dependency updates** — update all npm and Cargo dependencies:
@@ -29,7 +18,9 @@ Do not skip or batch these. Each must complete and be committed before moving to
 
 **1. Validate version**
 - Read `app/package.json` for current version.
-- `git tag` — confirm `vX.Y.Z` does not already exist.
+- `git tag` — check if `vX.Y.Z` already exists.
+  - If tag **exists**: follow [`VERSION_BUMP.md`](VERSION_BUMP.md) to bump, then re-read the new version and continue.
+  - If tag **does not exist**: current version is unreleased, no bump needed.
 - `git log --oneline origin/master..HEAD` — confirm unreleased commits exist.
 - Stop and report if any check fails.
 

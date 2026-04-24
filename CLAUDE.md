@@ -1,2 +1,2 @@
-If the user asks you to do a **release**, a **build** or just **bump version**, read the full procedure at:
-[`docs/docs for release/RELEASE_GUIDELINES.md`](docs/docs%20for%20release/RELEASE_GUIDELINES.md) and follow it exactly.
+- **bump version** only → read [`docs/docs for release/VERSION_BUMP.md`](docs/docs%20for%20release/VERSION_BUMP.md) and follow it exactly.
+- **release** or **build** → read [`docs/docs for release/RELEASE_GUIDELINES.md`](docs/docs%20for%20release/RELEASE_GUIDELINES.md) and follow it exactly (it includes the version bump step).
