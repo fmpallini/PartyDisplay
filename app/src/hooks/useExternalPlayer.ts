@@ -31,8 +31,8 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
         setPositionMs(0)
         setPaused(true)
       } else {
-        if ((e.payload as any).positionMs !== undefined) {
-          const pos = (e.payload as any).positionMs
+        if (e.payload.positionMs !== undefined) {
+          const pos = e.payload.positionMs
           
           // Chrome/YouTube often fails to reset the timeline position when a video changes.
           // Instead, it just keeps ticking up from the previous video's position.
