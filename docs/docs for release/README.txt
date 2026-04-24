@@ -209,7 +209,7 @@ HOW TO RUN
 
   Song info / lyrics not showing in External mode
     Your media player must register with Windows System Media Transport Controls.
-    Check whether Windows itself shows the media overlay (Win + K or the volume
+    Check whether Windows itself shows the media overlay (e.g. the volume
     flyout shows a Now Playing card). If it does not appear there, Party Display
     cannot read metadata from that app either.
     Switch focus to your media player (click its window) so Windows picks it as
@@ -220,9 +220,6 @@ HOW TO RUN
     the Windows media timeline correctly when you open a new YouTube video, or
     they continue counting from the previous video's position. This causes the
     progress bar and lyrics in Party Display to be completely out of sync.
-    To fix this, simply pause and unpause the YouTube video, or click anywhere
-    on the video's progress bar. This forces the browser to push the real,
-    correct timestamp to Windows.
 
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
