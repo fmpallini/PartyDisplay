@@ -770,7 +770,7 @@ export default function ControlPanel() {
                 Captures audio from any app playing on this system.
               </p>
               <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
-                No track info or lyrics. Playback hotkeys send system-wide media keys.
+                Party Display will try to get the track info from Windows System Media Transport Controls (mostly modern desktop players support it like modern browsers). Playback hotkeys send system-wide media keys.
               </p>
             </div>
           )}
