@@ -215,6 +215,15 @@ HOW TO RUN
     Switch focus to your media player (click its window) so Windows picks it as
     the active session, then switch back to Party Display.
 
+  Lyrics out of sync / Progress bar shows wrong time (YouTube in Browser)
+    Browsers (like Chrome or Edge) sometimes have bugs where they fail to update
+    the Windows media timeline correctly when you open a new YouTube video, or
+    they continue counting from the previous video's position. This causes the
+    progress bar and lyrics in Party Display to be completely out of sync.
+    To fix this, simply pause and unpause the YouTube video, or click anywhere
+    on the video's progress bar. This forces the browser to push the real,
+    correct timestamp to Windows.
+
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
     This clears all saved settings and Spotify tokens and closes the app.
