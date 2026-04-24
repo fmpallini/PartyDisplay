@@ -3313,7 +3313,7 @@ dependencies = [
 
 [[package]]
 name = "party-display"
-version = "0.9.7"
+version = "0.9.8"
 dependencies = [
  "axum",
  "base64 0.22.1",
