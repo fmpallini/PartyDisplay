@@ -241,7 +241,7 @@ fn normalize_browser_track(title: &str, artist: &str) -> (String, String) {
     let (raw_name, final_artist) = if let Some(dash) = title.find(" - ") {
         let left  = title[..dash].trim();
         let right = title[dash + 3..].trim();
-        if !right.is_empty() && (channel || left.eq_ignore_ascii_case(&clean_artist)) {
+        if !left.is_empty() && !right.is_empty() && (channel || left.eq_ignore_ascii_case(&clean_artist)) {
             (right.to_string(), left.to_string())
         } else {
             (title.to_string(), clean_artist)
