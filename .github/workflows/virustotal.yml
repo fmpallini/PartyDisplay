@@ -41,33 +41,50 @@ jobs:
 
           for FILE in $FILES; do
             NAME=$(basename "$FILE")
-            echo "Uploading $NAME to VirusTotal..."
-
             SHA=$(sha256sum "$FILE" | awk '{print $1}')
+            FILE_SHA=$SHA
+            echo "Checking VirusTotal for $NAME ($SHA)..."
 
-            UPLOAD=$(curl -s -X POST "https://www.virustotal.com/api/v3/files" \
-              -H "x-apikey: $VT_API_KEY" \
-              -F "file=@$FILE")
-            ANALYSIS_ID=$(echo "$UPLOAD" | jq -r '.data.id')
+            EXISTING=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://www.virustotal.com/api/v3/files/$SHA" \
+              -H "x-apikey: $VT_API_KEY")
 
-            echo "Polling analysis $ANALYSIS_ID..."
-            for i in $(seq 1 24); do
-              sleep 30
-              RESULT=$(curl -s "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+            if [ "$EXISTING" = "200" ]; then
+              echo "File already known to VirusTotal — fetching cached report..."
+              RESULT=$(curl -s "https://www.virustotal.com/api/v3/files/$SHA" \
                 -H "x-apikey: $VT_API_KEY")
-              STATUS=$(echo "$RESULT" | jq -r '.data.attributes.status')
-              echo "  attempt $i: $STATUS"
-              if [ "$STATUS" = "completed" ]; then
-                MALICIOUS=$(echo "$RESULT" | jq '.data.attributes.stats.malicious')
-                SUSPICIOUS=$(echo "$RESULT" | jq '.data.attributes.stats.suspicious')
-                TOTAL=$(echo "$RESULT" | jq '[.data.attributes.stats | to_entries[].value] | add')
-                [ "$MALICIOUS" -gt "$MAX_MALICIOUS" ] && MAX_MALICIOUS=$MALICIOUS
-                [ "$SUSPICIOUS" -gt "$MAX_SUSPICIOUS" ] && MAX_SUSPICIOUS=$SUSPICIOUS
-                TOTAL_ENGINES=$TOTAL
-                FILE_SHA=$SHA
-                break
-              fi
-            done
+              MALICIOUS=$(echo "$RESULT" | jq '.data.attributes.last_analysis_stats.malicious')
+              SUSPICIOUS=$(echo "$RESULT" | jq '.data.attributes.last_analysis_stats.suspicious')
+              TOTAL=$(echo "$RESULT" | jq '[.data.attributes.last_analysis_stats | to_entries[].value] | add')
+            else
+              echo "Uploading $NAME to VirusTotal..."
+              UPLOAD=$(curl -s -X POST "https://www.virustotal.com/api/v3/files" \
+                -H "x-apikey: $VT_API_KEY" \
+                -F "file=@$FILE")
+              ANALYSIS_ID=$(echo "$UPLOAD" | jq -r '.data.id')
+
+              echo "Polling analysis $ANALYSIS_ID..."
+              MALICIOUS=0
+              SUSPICIOUS=0
+              TOTAL=0
+              for i in $(seq 1 24); do
+                sleep 30
+                RESULT=$(curl -s "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+                  -H "x-apikey: $VT_API_KEY")
+                STATUS=$(echo "$RESULT" | jq -r '.data.attributes.status')
+                echo "  attempt $i: $STATUS"
+                if [ "$STATUS" = "completed" ]; then
+                  MALICIOUS=$(echo "$RESULT" | jq '.data.attributes.stats.malicious')
+                  SUSPICIOUS=$(echo "$RESULT" | jq '.data.attributes.stats.suspicious')
+                  TOTAL=$(echo "$RESULT" | jq '[.data.attributes.stats | to_entries[].value] | add')
+                  break
+                fi
+              done
+            fi
+
+            [ "$MALICIOUS" -gt "$MAX_MALICIOUS" ] && MAX_MALICIOUS=$MALICIOUS
+            [ "$SUSPICIOUS" -gt "$MAX_SUSPICIOUS" ] && MAX_SUSPICIOUS=$SUSPICIOUS
+            TOTAL_ENGINES=$TOTAL
           done
 
           FLAGGED=$((MAX_MALICIOUS + MAX_SUSPICIOUS))
