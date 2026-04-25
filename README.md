@@ -129,7 +129,7 @@ The main limitation inherited from this exploration is that the spectrum analyze
 
 The two WebView2 windows are independent renderer processes that communicate through the Rust backend via Tauri IPC commands and broadcast events. The control panel owns the Spotify SDK instance and forwards playback state to the display window; the display window is purely a consumer — it renders but issues no Spotify API calls of its own.
 
-**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · RustFFT · Butterchurn · rupnp · notify · music-metadata · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
+**Tech stack:** Tauri 2 · Rust · React · TypeScript · Vite · cpal · Butterchurn · rupnp · notify · music-metadata · Spotify Web Playback SDK · Spotify Web API · LRCLIB · Open-Meteo · ip-api.com
 
 ---
 
@@ -185,7 +185,6 @@ vcup2/
 | [ip-api.com](https://ip-api.com) | IP-based geolocation for weather auto-detect |
 | [Butterchurn](https://github.com/jberg/butterchurn) | MilkDrop-style WebGL visualizer |
 | [cpal](https://github.com/RustAudio/cpal) | Cross-platform audio I/O — WASAPI loopback capture |
-| [RustFFT](https://github.com/ejmahler/RustFFT) | FFT for real-time audio analysis |
 | [rupnp](https://github.com/jakobhellermann/rupnp) | UPnP/DLNA device discovery and browsing |
 | [notify](https://github.com/notify-rs/notify) | File system watcher for photo folder |
 | [keyring-rs](https://github.com/hwchen/keyring-rs) | Secure credential storage via Windows Credential Store |

@@ -40,6 +40,7 @@ const CREDITS = [
   { name: 'keyring',                   url: 'https://github.com/hwchen/keyring-rs',     role: 'Secure token storage (Windows Credential Store)' },
   { name: 'music-metadata',            url: 'https://github.com/borewit/music-metadata', role: 'Embedded audio tag parsing (ID3, FLAC, M4A…)' },
   { name: 'React',                     url: 'https://react.dev',                        role: 'UI framework' },
+  { name: 'TypeScript',                url: 'https://www.typescriptlang.org',           role: 'Typed JavaScript' },
   { name: 'Vite',                      url: 'https://vitejs.dev',                       role: 'Frontend build tool' },
 ]
 
