@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { listen } from '@tauri-apps/api/event'
 import { SongToast } from '../../components/SongToast'
@@ -16,6 +16,8 @@ describe('SongToast', () => {
       return Promise.resolve(() => {})
     })
   })
+
+  afterEach(() => vi.useRealTimers())
 
   it('renders nothing before any track-changed event', () => {
     const { container } = render(<SongToast displayMs={3000} zoom={1} />)
@@ -59,7 +61,6 @@ describe('SongToast', () => {
     act(() => vi.advanceTimersByTime(3001))
     const toast = getToastWrapper(screen.getByText('My Song'))
     expect(toast.style.opacity).toBe('0')
-    vi.useRealTimers()
   })
 
   it('resets timer when a second track-changed fires before timeout', async () => {
@@ -75,6 +76,5 @@ describe('SongToast', () => {
     act(() => vi.advanceTimersByTime(1600))
     const toast = getToastWrapper(screen.getByText('Second'))
     expect(toast.style.opacity).toBe('1') // still visible, 1600ms < 3000ms
-    vi.useRealTimers()
   })
 })
