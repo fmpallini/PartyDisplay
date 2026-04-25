@@ -188,4 +188,58 @@ mod tests {
         let _ = fs::remove_dir(&sub);
         let _ = fs::remove_dir(&root);
     }
+
+    #[test]
+    fn collect_photos_case_insensitive_extensions() {
+        let dir = std::env::temp_dir().join("party_display_test_case");
+        fs::create_dir_all(&dir).unwrap();
+
+        let files = ["upper.JPG", "mixed.Png", "lower.webp"];
+        for name in &files {
+            fs::write(dir.join(name), b"").unwrap();
+        }
+
+        let result = collect_photos(&dir, false);
+        let names: Vec<&str> = result.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+        for f in &files { assert!(names.contains(f), "expected {f}"); }
+
+        for name in &files { let _ = fs::remove_file(dir.join(name)); }
+    }
+
+    #[test]
+    fn collect_photos_recursive_includes_subdirectory() {
+        let dir    = std::env::temp_dir().join("party_display_test_recursive2");
+        let subdir = dir.join("sub");
+        fs::create_dir_all(&subdir).unwrap();
+
+        fs::write(dir.join("top.jpg"),     b"").unwrap();
+        fs::write(subdir.join("deep.jpg"), b"").unwrap();
+
+        let flat      = collect_photos(&dir, false);
+        let recursive = collect_photos(&dir, true);
+
+        let flat_names: Vec<&str> = flat.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
+        let rec_names: Vec<&str> = recursive.iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
+
+        assert!(flat_names.contains(&"top.jpg"),  "flat: expected top.jpg");
+        assert!(!flat_names.contains(&"deep.jpg"), "flat: must not include deep.jpg");
+        assert!(rec_names.contains(&"top.jpg"),   "recursive: expected top.jpg");
+        assert!(rec_names.contains(&"deep.jpg"),  "recursive: expected deep.jpg");
+
+        let _ = fs::remove_file(dir.join("top.jpg"));
+        let _ = fs::remove_file(subdir.join("deep.jpg"));
+        let _ = fs::remove_dir(subdir);
+    }
+
+    #[test]
+    fn collect_photos_empty_dir_returns_empty() {
+        let dir = std::env::temp_dir().join("party_display_test_empty");
+        fs::create_dir_all(&dir).unwrap();
+        let result = collect_photos(&dir, false);
+        assert!(result.is_empty());
+    }
 }
