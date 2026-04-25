@@ -13,6 +13,13 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
   const [positionMs, setPositionMs] = useState(0)
   const lastBackendPosRef = useRef<number>(-1)
   const isTimelineStaleRef = useRef<boolean>(false)
+  const trackChangedAtRef = useRef<number>(-1)
+
+  // YouTube never calls setPositionState on track change — SMTC just keeps ticking the old
+  // video's position. Stale window: ignore backend position for 8s after track change.
+  // Only exit stale early if we see a large jump (>=5s), which means the user seeked.
+  const STALE_WINDOW_MS = 8_000
+  const SEEK_JUMP_MS    = 5_000
 
   useEffect(() => {
     if (!active) return
@@ -31,20 +38,18 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
         setPositionMs(0)
         setPaused(true)
       } else {
-        if (e.payload.positionMs !== undefined) {
-          const pos = e.payload.positionMs
-          
-          // Chrome/YouTube often fails to reset the timeline position when a video changes.
-          // Instead, it just keeps ticking up from the previous video's position.
-          // If the new position is within 3 seconds of the last known position, it's a stale ticking timeline.
-          if (lastBackendPosRef.current !== -1 && Math.abs(pos - lastBackendPosRef.current) < 3000) {
-            setPositionMs(0)
-            isTimelineStaleRef.current = true
-          } else {
-            setPositionMs(pos)
-            isTimelineStaleRef.current = false
-          }
-          lastBackendPosRef.current = pos
+        if (lastBackendPosRef.current === -1) {
+          // First event on app open — SMTC position is trustworthy, use it directly.
+          setPositionMs(e.payload.positionMs ?? 0)
+          isTimelineStaleRef.current = false
+          lastBackendPosRef.current = e.payload.positionMs ?? 0
+        } else {
+          // Mid-session track change — YouTube never calls setPositionState, so SMTC
+          // keeps ticking the old video's position and duration. Reset and enter stale window.
+          setPositionMs(0)
+          isTimelineStaleRef.current = true
+          trackChangedAtRef.current = Date.now()
+          lastBackendPosRef.current = e.payload.positionMs ?? lastBackendPosRef.current
         }
         if (e.payload.isPlaying !== undefined) {
           setPaused(!e.payload.isPlaying)
@@ -52,7 +57,7 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
       }
     }).then(fn => { if (cancelled) fn(); else unlistenTrack = fn })
 
-    listen<{ positionMs: number; isPlaying?: boolean }>('smtc-position-update', (e) => {
+    listen<{ positionMs: number; isPlaying?: boolean; durationMs?: number }>('smtc-position-update', (e) => {
       setPositionMs(prev => {
         const backendDiff = Math.abs(e.payload.positionMs - lastBackendPosRef.current)
 
@@ -61,16 +66,20 @@ export function useExternalPlayer(active: boolean): PlayerState & PlayerControls
         }
         lastBackendPosRef.current = e.payload.positionMs
 
-        // If the timeline was stale (Chrome bug), ignore updates until we see a large jump,
-        // which means the browser FINALLY pushed a real position update (or the user seeked).
         if (isTimelineStaleRef.current) {
-          if (backendDiff > 3000) {
-            isTimelineStaleRef.current = false // Recovered!
+          const staleDuration = Date.now() - trackChangedAtRef.current
+          const isSeek = backendDiff >= SEEK_JUMP_MS
+          const windowExpired = staleDuration >= STALE_WINDOW_MS
+          if (isSeek || windowExpired) {
+            isTimelineStaleRef.current = false
+            // durationMs from SMTC is only trustworthy when YouTube explicitly called
+            // setPositionState (i.e. a seek). On window expiry it's still the old song's value.
+            if (isSeek && e.payload.durationMs) {
+              setTrack(t => t ? { ...t, duration: e.payload.durationMs! } : t)
+            }
             return e.payload.positionMs
-          } else {
-            // Still stale. Rely completely on our local interpolation.
-            return prev
           }
+          return prev
         }
 
         // Only snap if paused, or if drift is significant (e.g. seeking)

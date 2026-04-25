@@ -24,6 +24,8 @@ struct SmtcPositionUpdate {
     position_ms: u64,
     #[serde(rename = "isPlaying")]
     is_playing: bool,
+    #[serde(rename = "durationMs")]
+    duration_ms: u64,
 }
 
 pub struct SmtcState {
@@ -157,7 +159,7 @@ async fn try_poll_smtc(
         }));
     }
 
-    let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms, is_playing });
+    let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms, is_playing, duration_ms });
 
     Ok(())
 }
