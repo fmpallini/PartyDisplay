@@ -3,6 +3,11 @@ name: VirusTotal Scan
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to scan
+        required: true
 
 jobs:
   scan:
@@ -18,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh release download "${{ github.event.release.tag_name }}" \
+          gh release download "${{ github.event.release.tag_name || inputs.tag }}" \
             --repo "${{ github.repository }}" \
             --pattern "*.zip" \
             --dir ./assets 2>/dev/null || true
@@ -78,14 +83,14 @@ jobs:
           fi
 
           # Append VirusTotal result to release body
-          CURRENT_BODY=$(gh release view "${{ github.event.release.tag_name }}" \
+          CURRENT_BODY=$(gh release view "${{ github.event.release.tag_name || inputs.tag }}" \
             --repo "${{ github.repository }}" --json body -q '.body')
 
           NOTES_FILE=$(mktemp)
           printf '%s\n\n---\n%s — [View report](%s)\n' \
             "$CURRENT_BODY" "$SUMMARY" "$VT_URL" > "$NOTES_FILE"
 
-          gh release edit "${{ github.event.release.tag_name }}" \
+          gh release edit "${{ github.event.release.tag_name || inputs.tag }}" \
             --repo "${{ github.repository }}" \
             --notes-file "$NOTES_FILE"
 
