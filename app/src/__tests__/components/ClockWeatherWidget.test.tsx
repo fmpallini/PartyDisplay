@@ -13,6 +13,7 @@ const POSITION = 'bottom-left' as const
 
 describe('ClockWeatherWidget', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-24T14:05:00Z'))
   })
