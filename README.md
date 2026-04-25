@@ -2,10 +2,9 @@
 
 > A vibe coding exercise — building a real Spotify-connected party display, driven entirely by AI agents.
 
-**dev branch status:**
-[![Tests](https://github.com/fmpallini/PartyDisplay/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/fmpallini/PartyDisplay/actions/workflows/test.yml)
-[![Dependabot Updates](https://github.com/fmpallini/PartyDisplay/actions/workflows/dependabot/dependabot-updates/badge.svg?branch=dev)](https://github.com/fmpallini/PartyDisplay/actions/workflows/dependabot/dependabot-updates)
-[![CodeQL](https://github.com/fmpallini/PartyDisplay/actions/workflows/codeql.yml/badge.svg?branch=dev)](https://github.com/fmpallini/PartyDisplay/actions/workflows/codeql.yml)
+[![Tests](https://github.com/fmpallini/PartyDisplay/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/fmpallini/PartyDisplay/actions/workflows/test.yml)
+[![Dependabot Updates](https://github.com/fmpallini/PartyDisplay/actions/workflows/dependabot/dependabot-updates/badge.svg?branch=master)](https://github.com/fmpallini/PartyDisplay/actions/workflows/dependabot/dependabot-updates)
+[![CodeQL](https://github.com/fmpallini/PartyDisplay/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/fmpallini/PartyDisplay/actions/workflows/codeql.yml)
 
 ---
 

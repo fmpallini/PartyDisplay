@@ -1,5 +1,18 @@
 ## Release Guidelines
 
+### Before anything — branch and sync check
+
+**B0. Verify dev branch** — release must start from `dev`:
+- `git branch --show-current` — must output `dev`. Stop if not.
+
+**B1. Sync with master** — ensure dev is not behind master:
+- `git fetch origin`
+- `git log --oneline HEAD..origin/master` — if any commits show, master is ahead. Rebase:
+  ```
+  git rebase origin/master
+  ```
+  Resolve any conflicts, then continue. If rebase fails, stop and report.
+
 ### Pre-work — run ALL four before proceeding
 
 **P0. Run tests** — all tests must pass before any other pre-work step:

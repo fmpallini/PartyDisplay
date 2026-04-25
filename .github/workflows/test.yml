@@ -2,8 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [dev, master]
+    branches-ignore: [master]
   pull_request:
+    branches: [master]
 
 jobs:
   frontend:
