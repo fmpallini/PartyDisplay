@@ -1,0 +1,93 @@
+name: VirusTotal Scan
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  scan:
+    name: Scan release assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download and scan assets
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          gh release download "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "*.zip" \
+            --dir ./assets 2>/dev/null || true
+
+          FILES=$(find ./assets -type f -name "*.zip")
+          if [ -z "$FILES" ]; then
+            echo "No zip assets found — skipping scan"
+            exit 0
+          fi
+
+          MAX_MALICIOUS=0
+          MAX_SUSPICIOUS=0
+          TOTAL_ENGINES=0
+          FILE_SHA=""
+
+          for FILE in $FILES; do
+            NAME=$(basename "$FILE")
+            echo "Uploading $NAME to VirusTotal..."
+
+            UPLOAD=$(curl -s -X POST "https://www.virustotal.com/api/v3/files" \
+              -H "x-apikey: $VT_API_KEY" \
+              -F "file=@$FILE")
+            ANALYSIS_ID=$(echo "$UPLOAD" | jq -r '.data.id')
+            SHA=$(echo "$UPLOAD" | jq -r '.meta.file_info.sha256 // empty')
+
+            echo "Polling analysis $ANALYSIS_ID..."
+            for i in $(seq 1 24); do
+              sleep 30
+              RESULT=$(curl -s "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+                -H "x-apikey: $VT_API_KEY")
+              STATUS=$(echo "$RESULT" | jq -r '.data.attributes.status')
+              echo "  attempt $i: $STATUS"
+              if [ "$STATUS" = "completed" ]; then
+                MALICIOUS=$(echo "$RESULT" | jq '.data.attributes.stats.malicious')
+                SUSPICIOUS=$(echo "$RESULT" | jq '.data.attributes.stats.suspicious')
+                TOTAL=$(echo "$RESULT" | jq '[.data.attributes.stats | to_entries[].value] | add')
+                [ "$MALICIOUS" -gt "$MAX_MALICIOUS" ] && MAX_MALICIOUS=$MALICIOUS
+                [ "$SUSPICIOUS" -gt "$MAX_SUSPICIOUS" ] && MAX_SUSPICIOUS=$SUSPICIOUS
+                TOTAL_ENGINES=$TOTAL
+                [ -n "$SHA" ] && FILE_SHA=$SHA
+                break
+              fi
+            done
+          done
+
+          FLAGGED=$((MAX_MALICIOUS + MAX_SUSPICIOUS))
+          if [ "$FLAGGED" -eq 0 ]; then
+            SUMMARY="✅ VirusTotal: 0/${TOTAL_ENGINES} engines flagged"
+          else
+            SUMMARY="⚠️ VirusTotal: ${FLAGGED}/${TOTAL_ENGINES} engines flagged"
+          fi
+
+          if [ -n "$FILE_SHA" ]; then
+            VT_URL="https://www.virustotal.com/gui/file/${FILE_SHA}"
+          else
+            VT_URL="https://www.virustotal.com/gui/search/github.com%2F${{ github.repository }}"
+          fi
+
+          # Append VirusTotal result to release body
+          CURRENT_BODY=$(gh release view "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" --json body -q '.body')
+
+          NEW_BODY="${CURRENT_BODY}
+
+---
+${SUMMARY} — [View report](${VT_URL})"
+
+          gh release edit "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --notes "$NEW_BODY"
+
+          echo "$SUMMARY"

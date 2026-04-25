@@ -27,13 +27,8 @@ pub struct PresetFile {
     pub content: String,
 }
 
-/// Reads all `.json` files from the presets folder next to the exe.
-/// Returns each file's name (without extension) and raw content string.
-#[tauri::command]
-pub fn get_presets() -> Vec<PresetFile> {
-    let dir = presets_dir();
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        eprintln!("presets dir not found: {}", dir.display());
+pub fn collect_presets_from_dir(dir: &std::path::Path) -> Vec<PresetFile> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return vec![];
     };
     let mut presets: Vec<PresetFile> = entries
@@ -58,4 +53,79 @@ pub fn get_presets() -> Vec<PresetFile> {
         .collect();
     presets.sort_by(|a, b| a.name.cmp(&b.name));
     presets
+}
+
+/// Reads all `.json` files from the presets folder next to the exe.
+/// Returns each file's name (without extension) and raw content string.
+#[tauri::command]
+pub fn get_presets() -> Vec<PresetFile> {
+    let dir = presets_dir();
+    if !dir.exists() {
+        eprintln!("presets dir not found: {}", dir.display());
+        return vec![];
+    }
+    collect_presets_from_dir(&dir)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn collect_only_json_files() {
+        let dir = std::env::temp_dir().join("party_display_presets_test");
+        fs::create_dir_all(&dir).unwrap();
+
+        fs::write(dir.join("alpha.json"), r#"{"name":"alpha"}"#).unwrap();
+        fs::write(dir.join("beta.json"),  r#"{"name":"beta"}"#).unwrap();
+        fs::write(dir.join("ignore.txt"), "not a preset").unwrap();
+        fs::write(dir.join("ignore.milk"), "not a preset").unwrap();
+
+        let result = collect_presets_from_dir(&dir);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].name, "alpha");
+        assert_eq!(result[1].name, "beta");
+
+        for f in ["alpha.json", "beta.json", "ignore.txt", "ignore.milk"] {
+            let _ = fs::remove_file(dir.join(f));
+        }
+    }
+
+    #[test]
+    fn collect_returns_sorted_by_name() {
+        let dir = std::env::temp_dir().join("party_display_presets_sort_test");
+        fs::create_dir_all(&dir).unwrap();
+
+        for name in ["zebra", "apple", "mango"] {
+            fs::write(dir.join(format!("{name}.json")), "{}").unwrap();
+        }
+
+        let result = collect_presets_from_dir(&dir);
+        let names: Vec<&str> = result.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, ["apple", "mango", "zebra"]);
+
+        for name in ["zebra", "apple", "mango"] {
+            let _ = fs::remove_file(dir.join(format!("{name}.json")));
+        }
+    }
+
+    #[test]
+    fn collect_returns_empty_for_nonexistent_dir() {
+        let result = collect_presets_from_dir(std::path::Path::new("/nonexistent/path/xyz"));
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn collect_reads_file_content() {
+        let dir = std::env::temp_dir().join("party_display_presets_content_test");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("test.json"), r#"{"key":"value"}"#).unwrap();
+
+        let result = collect_presets_from_dir(&dir);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].content, r#"{"key":"value"}"#);
+
+        let _ = fs::remove_file(dir.join("test.json"));
+    }
 }
