@@ -253,6 +253,16 @@ fn normalize_browser_track(title: &str, artist: &str) -> (String, String) {
     (strip_title_noise(&raw_name), final_artist)
 }
 
+fn detect_mime(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(b"\xff\xd8\xff") {
+        Some("image/jpeg")
+    } else if bytes.starts_with(b"\x89PNG") {
+        Some("image/png")
+    } else {
+        None
+    }
+}
+
 async fn get_thumbnail(
     props: &windows::Media::Control::GlobalSystemMediaTransportControlsSessionMediaProperties,
 ) -> Option<String> {
@@ -281,16 +291,6 @@ async fn get_thumbnail(
         mime,
         general_purpose::STANDARD.encode(&bytes)
     ))
-}
-
-fn detect_mime(bytes: &[u8]) -> Option<&'static str> {
-    if bytes.starts_with(b"\xff\xd8\xff") {
-        Some("image/jpeg")
-    } else if bytes.starts_with(b"\x89PNG") {
-        Some("image/png")
-    } else {
-        None
-    }
 }
 
 #[cfg(test)]
