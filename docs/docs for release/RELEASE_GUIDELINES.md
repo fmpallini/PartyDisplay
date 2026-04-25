@@ -2,6 +2,11 @@
 
 ### Pre-work — run ALL four before proceeding
 
+**P0. Run tests** — all tests must pass before any other pre-work step:
+- `cd app && npm test` — all frontend Vitest tests must pass.
+- `cd app/src-tauri && cargo test` — all Rust tests must pass.
+Do not proceed if any test fails. Fix the failure first.
+
 **P1. Dependency updates** — update all npm and Cargo dependencies:
 - `cd app && npm update && npm outdated` — install any remaining major-version bumps manually, run `tsc --noEmit` after, fix any type errors, commit.
 - `cd app/src-tauri && cargo update` — then run `cargo audit`. Fix or document any HIGH vulnerabilities (if transitive/upstream-blocked, note them explicitly). Commit.
@@ -36,7 +41,9 @@ cd app && npm run release
 
 Artifact: standalone `party-display.exe` at `src-tauri/target/release/` with `presets/` alongside it.
 
-**4. Ask user to test — do not proceed until confirmed.**
+**4. Test against release build**
+Work through every item in [`docs/testing/release-checklist.md`](../../docs/testing/release-checklist.md) using the built `party-display.exe`.
+Do not proceed until all items are checked off.
 
 **5. Package zip**
 Create `party-display-vX.Y.Z.zip` containing:
