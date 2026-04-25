@@ -48,7 +48,7 @@ describe('useSpotifyPlayer', () => {
     delete (window as any).Spotify
     delete (window as any).onSpotifyWebPlaybackSDKReady
     mockPlayer = new MockSpotifyPlayer()
-    SpotifyPlayerCtor = vi.fn(() => mockPlayer)
+    SpotifyPlayerCtor = vi.fn(function() { return mockPlayer })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       status: 200,
       json: () => Promise.resolve({ device: { volume_percent: 80 } }),

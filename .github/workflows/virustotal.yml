@@ -43,11 +43,12 @@ jobs:
             NAME=$(basename "$FILE")
             echo "Uploading $NAME to VirusTotal..."
 
+            SHA=$(sha256sum "$FILE" | awk '{print $1}')
+
             UPLOAD=$(curl -s -X POST "https://www.virustotal.com/api/v3/files" \
               -H "x-apikey: $VT_API_KEY" \
               -F "file=@$FILE")
             ANALYSIS_ID=$(echo "$UPLOAD" | jq -r '.data.id')
-            SHA=$(echo "$UPLOAD" | jq -r '.meta.file_info.sha256 // empty')
 
             echo "Polling analysis $ANALYSIS_ID..."
             for i in $(seq 1 24); do
@@ -63,7 +64,7 @@ jobs:
                 [ "$MALICIOUS" -gt "$MAX_MALICIOUS" ] && MAX_MALICIOUS=$MALICIOUS
                 [ "$SUSPICIOUS" -gt "$MAX_SUSPICIOUS" ] && MAX_SUSPICIOUS=$SUSPICIOUS
                 TOTAL_ENGINES=$TOTAL
-                [ -n "$SHA" ] && FILE_SHA=$SHA
+                FILE_SHA=$SHA
                 break
               fi
             done
@@ -76,11 +77,7 @@ jobs:
             SUMMARY="⚠️ VirusTotal: ${FLAGGED}/${TOTAL_ENGINES} engines flagged"
           fi
 
-          if [ -n "$FILE_SHA" ]; then
-            VT_URL="https://www.virustotal.com/gui/file/${FILE_SHA}"
-          else
-            VT_URL="https://www.virustotal.com/gui/search/github.com%2F${{ github.repository }}"
-          fi
+          VT_URL="https://www.virustotal.com/gui/file/${FILE_SHA}"
 
           # Append VirusTotal result to release body
           CURRENT_BODY=$(gh release view "${{ github.event.release.tag_name || inputs.tag }}" \
