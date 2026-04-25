@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PlayerControls } from '../../components/PlayerControls'
@@ -21,6 +21,8 @@ function makeProps(overrides = {}) {
 }
 
 describe('PlayerControls', () => {
+  beforeEach(() => vi.clearAllMocks())
+
   it('renders play button when paused', () => {
     render(<PlayerControls {...makeProps()} />)
     expect(screen.getByTitle('Play')).toBeInTheDocument()
