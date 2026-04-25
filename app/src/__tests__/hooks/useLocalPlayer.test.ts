@@ -30,7 +30,7 @@ let mockAudioInstance: MockAudio
 
 beforeEach(() => {
   mockAudioInstance = new MockAudio()
-  vi.stubGlobal('Audio', vi.fn(() => mockAudioInstance))
+  vi.stubGlobal('Audio', vi.fn(function() { return mockAudioInstance }))
   vi.clearAllMocks()
 })
 
