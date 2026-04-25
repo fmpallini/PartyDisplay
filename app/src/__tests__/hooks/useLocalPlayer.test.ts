@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useLocalPlayer } from '../../hooks/useLocalPlayer'
 import type { PlaylistItem } from '../../hooks/useLocalPlayer'
@@ -31,7 +31,10 @@ let mockAudioInstance: MockAudio
 beforeEach(() => {
   mockAudioInstance = new MockAudio()
   vi.stubGlobal('Audio', vi.fn(() => mockAudioInstance))
+  vi.clearAllMocks()
 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 const ITEMS: PlaylistItem[] = [
   { path: '/music/track1.mp3', title: 'Track 1', artist: 'Artist A', metadataPrefetched: true, durationMs: 60_000 },
