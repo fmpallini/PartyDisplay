@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useHotkeys } from '../../hooks/useHotkeys'
 
@@ -12,16 +12,16 @@ function fireKeyOnElement(el: HTMLElement, code: string, key: string = code) {
 
 describe('useHotkeys', () => {
   let handlers: {
-    onNext: ReturnType<typeof vi.fn>
-    onPrev: ReturnType<typeof vi.fn>
-    onTogglePause: ReturnType<typeof vi.fn>
-    onMusicToggle: ReturnType<typeof vi.fn>
-    onMusicNext: ReturnType<typeof vi.fn>
-    onMusicPrev: ReturnType<typeof vi.fn>
-    onNextPreset: ReturnType<typeof vi.fn>
-    onPrevPreset: ReturnType<typeof vi.fn>
-    onToggleFullscreen: ReturnType<typeof vi.fn>
-    onToggleLyrics: ReturnType<typeof vi.fn>
+    onNext: Mock<() => void>
+    onPrev: Mock<() => void>
+    onTogglePause: Mock<() => void>
+    onMusicToggle: Mock<() => void>
+    onMusicNext: Mock<() => void>
+    onMusicPrev: Mock<() => void>
+    onNextPreset: Mock<() => void>
+    onPrevPreset: Mock<() => void>
+    onToggleFullscreen: Mock<() => void>
+    onToggleLyrics: Mock<() => void>
   }
 
   beforeEach(() => {
