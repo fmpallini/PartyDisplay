@@ -81,13 +81,14 @@ jobs:
           CURRENT_BODY=$(gh release view "${{ github.event.release.tag_name }}" \
             --repo "${{ github.repository }}" --json body -q '.body')
 
-          NEW_BODY="${CURRENT_BODY}
-
----
-${SUMMARY} — [View report](${VT_URL})"
+          NOTES_FILE=$(mktemp)
+          printf '%s\n\n---\n%s — [View report](%s)\n' \
+            "$CURRENT_BODY" "$SUMMARY" "$VT_URL" > "$NOTES_FILE"
 
           gh release edit "${{ github.event.release.tag_name }}" \
             --repo "${{ github.repository }}" \
-            --notes "$NEW_BODY"
+            --notes-file "$NOTES_FILE"
+
+          rm -f "$NOTES_FILE"
 
           echo "$SUMMARY"
