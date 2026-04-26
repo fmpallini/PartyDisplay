@@ -17,28 +17,34 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rebase each open PR targeting master
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rebase all branches derived from master
         run: |
           set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          BRANCHES=$(gh pr list --base master --state open --json headRefName -q '.[].headRefName')
+          # All remote branches except master and HEAD pointer
+          BRANCHES=$(git branch -r \
+            | grep -v 'origin/master' \
+            | grep -v 'origin/HEAD' \
+            | sed 's|origin/||' \
+            | tr -d ' ')
 
           if [ -z "$BRANCHES" ]; then
-            echo "No open PRs targeting master — nothing to do"
+            echo "No other branches found — nothing to do"
             exit 0
           fi
 
           for BRANCH in $BRANCHES; do
-            echo "── Rebasing $BRANCH onto master ──"
-            if ! git fetch origin "$BRANCH"; then
-              echo "⚠️  Could not fetch $BRANCH — skipped"
+            # Skip branches that don't share history with master (not derived from it)
+            if ! git merge-base --is-ancestor "$(git rev-parse origin/master)" "origin/$BRANCH" 2>/dev/null \
+               && ! git merge-base --is-ancestor "origin/$BRANCH" "origin/master" 2>/dev/null; then
+              echo "⏭  $BRANCH not derived from master — skipped"
               continue
             fi
+
+            echo "── Rebasing $BRANCH onto master ──"
             git checkout -B "$BRANCH" "origin/$BRANCH"
             if git rebase origin/master; then
               git push origin "$BRANCH" --force-with-lease
