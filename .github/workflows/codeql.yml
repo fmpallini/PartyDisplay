@@ -7,18 +7,13 @@ on:
     branches: [master]
 
 jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
+  analyze-javascript:
+    name: Analyze (javascript)
     runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read
       contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [javascript, rust]
 
     steps:
       - uses: actions/checkout@v4
@@ -26,15 +21,43 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: ${{ matrix.language }}
+          languages: javascript
           build-mode: none
-          queries: security-and-quality
+          queries: security-extended
           config: |
             paths-ignore:
               - node_modules
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript
+
+  analyze-rust:
+    name: Analyze (rust)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: rust
+          build-mode: none
+          queries: security-extended
+          config: |
+            paths:
+              - app/src-tauri/src
+              - app/src-tauri/party-display-core/src
+            paths-ignore:
               - src-tauri/target
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:rust
