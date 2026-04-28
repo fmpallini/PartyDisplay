@@ -74,6 +74,7 @@ pub fn get_battery_status() -> BatteryStatus {
 
 #[tauri::command]
 pub async fn get_ip_location() -> Result<IpLocation, String> {
+    // ip-api.com only supports HTTPS on paid plans; free tier requires plain HTTP.
     let resp = reqwest::get("http://ip-api.com/json/")
         .await
         .map_err(|e| e.to_string())?;

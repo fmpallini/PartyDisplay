@@ -22,7 +22,7 @@ pub fn parse_ip_location(json: &serde_json::Value) -> Result<IpLocation, String>
     Ok(IpLocation { lat, lon, city, country })
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct BatteryStatus {
     pub level:     u8,
     pub charging:  bool,
