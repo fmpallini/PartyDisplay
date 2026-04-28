@@ -4,12 +4,12 @@ updates:
     directory: "/app"
     schedule:
       interval: "weekly"
-    target-branch: "master"
+    target-branch: "dev"
     open-pull-requests-limit: 10
 
   - package-ecosystem: "cargo"
     directory: "/app/src-tauri"
     schedule:
       interval: "weekly"
-    target-branch: "master"
+    target-branch: "dev"
     open-pull-requests-limit: 10

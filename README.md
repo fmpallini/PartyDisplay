@@ -10,7 +10,7 @@
 
 ## What is this?
 
-![Screenshot of Party Display at version v0.9.0](docs/docs%20for%20release/sample%20image.png)
+![Screenshot of Party Display at version v0.9.9](docs/docs%20for%20release/sample_image.png)
 
 Party Display is a desktop application that registers as a **Spotify Connect device** and shows a fullscreen photo slideshow on a projector or TV, synchronized to the music playing. Think of it as a smart jukebox backdrop — your photos, your playlist, your party.
 
