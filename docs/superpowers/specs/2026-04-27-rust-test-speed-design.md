@@ -137,6 +137,32 @@ Each step must compile and pass all tests before proceeding:
 
 ---
 
+## CI Changes (`codeql.yml`)
+
+Split matrix into two jobs (`analyze-javascript`, `analyze-rust`) with separate configs:
+
+- Switch `queries: security-and-quality` → `security-extended` on both (drops slow quality pack)
+- Rust job adds `paths` filter scoping analysis to `app/src-tauri/src` and `app/src-tauri/party-display-core/src`
+- `build-mode: none` retained (no compilation step needed)
+
+```yaml
+analyze-rust:
+  steps:
+    - uses: github/codeql-action/init@v4
+      with:
+        languages: rust
+        build-mode: none
+        queries: security-extended
+        config: |
+          paths:
+            - app/src-tauri/src
+            - app/src-tauri/party-display-core/src
+          paths-ignore:
+            - src-tauri/target
+```
+
+---
+
 ## CI Changes (`test.yml`)
 
 ```yaml
