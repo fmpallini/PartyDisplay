@@ -3323,6 +3323,7 @@ dependencies = [
  "keyring",
  "local-ip-address",
  "notify",
+ "party-display-core",
  "reqwest 0.12.28",
  "roxmltree 0.20.0",
  "rupnp",
@@ -3336,6 +3337,18 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tokio",
  "windows 0.61.3",
+]
+
+[[package]]
+name = "party-display-core"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest 0.12.28",
+ "roxmltree 0.20.0",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
