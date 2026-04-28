@@ -25,8 +25,11 @@ jobs:
           build-mode: none
           queries: security-extended
           config: |
+            paths:
+              - app/src
             paths-ignore:
-              - node_modules
+              - app/node_modules
+              - app/dist
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
@@ -55,7 +58,7 @@ jobs:
               - app/src-tauri/src
               - app/src-tauri/party-display-core/src
             paths-ignore:
-              - src-tauri/target
+              - app/src-tauri/target
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

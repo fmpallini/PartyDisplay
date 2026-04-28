@@ -40,7 +40,7 @@ export function DisplayWindowControls() {
       </div>
 
       {/* Open / Close row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {!isOpen ? (
           <button onClick={() => openWindow()} style={{ ...btnBase, background: '#1db954', color: '#000', fontWeight: 700 }}>
             Open Display

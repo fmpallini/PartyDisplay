@@ -1,7 +1,6 @@
 use party_display_core::dlna::{
     DlnaServer, DlnaBrowseResult, parse_didl_lite, xml_escape,
 };
-pub use party_display_core::dlna::{DlnaContainer, DlnaItem};
 
 /// SSDP M-SEARCH for UPnP MediaServer devices with a 3-second timeout.
 /// Returns an empty list (never an error) if no servers are found.
