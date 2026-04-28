@@ -4,3 +4,4 @@ pub mod smtc;
 pub mod dlna;
 pub mod local_audio;
 pub mod presets;
+pub mod slideshow;
