@@ -59,3 +59,4 @@ venv/
 # ── Claude Code ───────────────────────────────────────────────────────────────
 .claude/settings.local.json
 .worktrees/
+.github/hooks/
