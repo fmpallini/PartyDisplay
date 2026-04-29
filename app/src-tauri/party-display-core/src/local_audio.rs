@@ -21,10 +21,11 @@ fn collect_audio_files(dir: &Path, recursive: bool, out: &mut Vec<String>) {
         }
     };
     for entry in entries.flatten() {
+        let Ok(ft) = entry.file_type() else { continue };
         let path = entry.path();
-        if path.is_dir() && recursive {
+        if ft.is_dir() && recursive {
             collect_audio_files(&path, recursive, out);
-        } else if path.is_file() && is_audio_file(&path) {
+        } else if ft.is_file() && is_audio_file(&path) {
             if let Some(s) = path.to_str() {
                 out.push(s.to_owned());
             }

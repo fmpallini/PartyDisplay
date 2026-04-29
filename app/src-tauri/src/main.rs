@@ -22,15 +22,6 @@ use tauri::{Manager, Listener};
 /// thread exits, freeing port 7357 for the new server.
 static OAUTH_SERVER_GEN: AtomicUsize = AtomicUsize::new(0);
 
-/// Escape the five HTML special characters so user-controlled strings are safe
-/// to interpolate into HTML responses.
-fn html_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-     .replace('<', "&lt;")
-     .replace('>', "&gt;")
-     .replace('"', "&quot;")
-     .replace('\'', "&#39;")
-}
 
 /// Starts a one-shot HTTP server on 127.0.0.1:7357 that receives the OAuth
 /// callback from the browser, emits the code as a Tauri event, and responds
@@ -127,8 +118,7 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
 <script>try{window.close()}catch(e){}</script>
 </body></html>"#.to_string()
         } else {
-            // html_escape prevents XSS if the error value contains HTML characters.
-            let safe_err = html_escape(err_param.as_deref().unwrap_or("unknown"));
+            let safe_err = party_display_core::dlna::xml_escape(err_param.as_deref().unwrap_or("unknown"));
             format!(r#"<!doctype html><html><head><title>Party Display</title></head>
 <body style="font-family:monospace;background:#111;color:#e74c3c;display:flex;align-items:center;
 justify-content:center;height:100vh;margin:0;flex-direction:column">
