@@ -1,23 +1,29 @@
 #[derive(serde::Serialize)]
 pub struct PresetFile {
-    pub name:    String,
+    pub name: String,
     pub content: String,
 }
 
 pub fn collect_presets_from_dir(dir: &std::path::Path) -> Vec<PresetFile> {
-    let Ok(entries) = std::fs::read_dir(dir) else { return vec![]; };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return vec![];
+    };
     let mut presets: Vec<PresetFile> = entries
         .filter_map(|e| e.ok())
         .filter(|e| {
-            e.path().extension()
+            e.path()
+                .extension()
                 .and_then(|s| s.to_str())
                 .map(|s| s.eq_ignore_ascii_case("json"))
                 .unwrap_or(false)
         })
         .filter_map(|e| {
             let path = e.path();
-            let name = path.file_stem()
-                .and_then(|s| s.to_str()).unwrap_or("").to_string();
+            let name = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
             let content = std::fs::read_to_string(&path).ok()?;
             Some(PresetFile { name, content })
         })
@@ -36,7 +42,7 @@ mod tests {
         let dir = std::env::temp_dir().join("party_display_presets_test");
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("alpha.json"), r#"{"name":"alpha"}"#).unwrap();
-        fs::write(dir.join("beta.json"),  r#"{"name":"beta"}"#).unwrap();
+        fs::write(dir.join("beta.json"), r#"{"name":"beta"}"#).unwrap();
         fs::write(dir.join("ignore.txt"), "not a preset").unwrap();
         fs::write(dir.join("ignore.milk"), "not a preset").unwrap();
         let result = collect_presets_from_dir(&dir);

@@ -1,5 +1,5 @@
+pub use party_display_core::presets::{collect_presets_from_dir, PresetFile};
 use std::path::PathBuf;
-pub use party_display_core::presets::{PresetFile, collect_presets_from_dir};
 
 fn presets_dir() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {

@@ -10,14 +10,17 @@ pub fn collect_photos(folder: &std::path::Path, recursive: bool) -> Vec<PathBuf>
 }
 
 fn collect_photos_inner(folder: &std::path::Path, recursive: bool, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(folder) else { return };
+    let Ok(entries) = std::fs::read_dir(folder) else {
+        return;
+    };
     for entry in entries.flatten() {
         let Ok(ft) = entry.file_type() else { continue };
         let path = entry.path();
         if ft.is_dir() && recursive {
             collect_photos_inner(&path, recursive, out);
         } else if ft.is_file()
-            && path.extension()
+            && path
+                .extension()
                 .and_then(|e| e.to_str())
                 .map(|e| PHOTO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
                 .unwrap_or(false)
@@ -42,10 +45,16 @@ mod tests {
             fs::write(dir.join(name), b"").unwrap();
         }
         let result = collect_photos(&dir, false);
-        let names: Vec<&str> = result.iter()
-            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
-        for k in &keep { assert!(names.contains(k), "expected {k}"); }
-        for s in &skip { assert!(!names.contains(s), "did not expect {s}"); }
+        let names: Vec<&str> = result
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+        for k in &keep {
+            assert!(names.contains(k), "expected {k}");
+        }
+        for s in &skip {
+            assert!(!names.contains(s), "did not expect {s}");
+        }
         for name in keep.iter().chain(skip.iter()) {
             let _ = fs::remove_file(dir.join(name));
         }
@@ -54,17 +63,21 @@ mod tests {
     #[test]
     fn collect_photos_recursive_finds_nested() {
         let root = std::env::temp_dir().join("party_display_test_recursive");
-        let sub  = root.join("sub");
+        let sub = root.join("sub");
         fs::create_dir_all(&sub).unwrap();
         fs::write(root.join("top.jpg"), b"").unwrap();
         fs::write(sub.join("nested.png"), b"").unwrap();
         fs::write(sub.join("skip.txt"), b"").unwrap();
-        let flat      = collect_photos(&root, false);
+        let flat = collect_photos(&root, false);
         let recursive = collect_photos(&root, true);
-        let flat_names: Vec<&str> = flat.iter()
-            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
-        let rec_names: Vec<&str> = recursive.iter()
-            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
+        let flat_names: Vec<&str> = flat
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+        let rec_names: Vec<&str> = recursive
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
         assert!(flat_names.contains(&"top.jpg"));
         assert!(!flat_names.contains(&"nested.png"));
         assert!(rec_names.contains(&"top.jpg"));
@@ -82,27 +95,39 @@ mod tests {
         let dir = std::env::temp_dir().join("party_display_test_case");
         fs::create_dir_all(&dir).unwrap();
         let files = ["upper.JPG", "mixed.Png", "lower.webp"];
-        for name in &files { fs::write(dir.join(name), b"").unwrap(); }
+        for name in &files {
+            fs::write(dir.join(name), b"").unwrap();
+        }
         let result = collect_photos(&dir, false);
-        let names: Vec<&str> = result.iter()
-            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
-        for f in &files { assert!(names.contains(f), "expected {f}"); }
-        for name in &files { let _ = fs::remove_file(dir.join(name)); }
+        let names: Vec<&str> = result
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+        for f in &files {
+            assert!(names.contains(f), "expected {f}");
+        }
+        for name in &files {
+            let _ = fs::remove_file(dir.join(name));
+        }
     }
 
     #[test]
     fn collect_photos_recursive_includes_subdirectory() {
-        let dir    = std::env::temp_dir().join("party_display_test_recursive2");
+        let dir = std::env::temp_dir().join("party_display_test_recursive2");
         let subdir = dir.join("sub");
         fs::create_dir_all(&subdir).unwrap();
         fs::write(dir.join("top.jpg"), b"").unwrap();
         fs::write(subdir.join("deep.jpg"), b"").unwrap();
-        let flat      = collect_photos(&dir, false);
+        let flat = collect_photos(&dir, false);
         let recursive = collect_photos(&dir, true);
-        let flat_names: Vec<&str> = flat.iter()
-            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
-        let rec_names: Vec<&str> = recursive.iter()
-            .map(|p| p.file_name().unwrap().to_str().unwrap()).collect();
+        let flat_names: Vec<&str> = flat
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
+        let rec_names: Vec<&str> = recursive
+            .iter()
+            .map(|p| p.file_name().unwrap().to_str().unwrap())
+            .collect();
         assert!(flat_names.contains(&"top.jpg"));
         assert!(!flat_names.contains(&"deep.jpg"));
         assert!(rec_names.contains(&"top.jpg"));

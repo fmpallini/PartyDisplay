@@ -1,6 +1,4 @@
-use party_display_core::dlna::{
-    DlnaServer, DlnaBrowseResult, parse_didl_lite, xml_escape,
-};
+use party_display_core::dlna::{parse_didl_lite, xml_escape, DlnaBrowseResult, DlnaServer};
 
 /// SSDP M-SEARCH for UPnP MediaServer devices with a 3-second timeout.
 /// Returns an empty list (never an error) if no servers are found.
@@ -8,30 +6,24 @@ use party_display_core::dlna::{
 pub async fn dlna_discover() -> Vec<DlnaServer> {
     use futures::TryStreamExt;
 
-    let search_target = match "urn:schemas-upnp-org:device:MediaServer:1"
-        .parse::<rupnp::ssdp::SearchTarget>()
-    {
-        Ok(st) => st,
-        Err(e) => {
-            eprintln!("[dlna] bad search target: {e}");
-            return vec![];
-        }
-    };
+    let search_target =
+        match "urn:schemas-upnp-org:device:MediaServer:1".parse::<rupnp::ssdp::SearchTarget>() {
+            Ok(st) => st,
+            Err(e) => {
+                eprintln!("[dlna] bad search target: {e}");
+                return vec![];
+            }
+        };
 
     let mut servers = Vec::new();
     match rupnp::discover(&search_target, std::time::Duration::from_secs(3)).await {
         Ok(stream) => {
             futures::pin_mut!(stream);
-            loop {
-                match stream.try_next().await {
-                    Ok(Some(device)) => {
-                        servers.push(DlnaServer {
-                            name:     device.friendly_name().to_owned(),
-                            location: device.url().to_string(),
-                        });
-                    }
-                    Ok(None) | Err(_) => break,
-                }
+            while let Ok(Some(device)) = stream.try_next().await {
+                servers.push(DlnaServer {
+                    name: device.friendly_name().to_owned(),
+                    location: device.url().to_string(),
+                });
             }
         }
         Err(e) => eprintln!("[dlna] discovery error: {e}"),
@@ -43,7 +35,10 @@ pub async fn dlna_discover() -> Vec<DlnaServer> {
 /// Use container_id = "0" for the root container (DLNA spec).
 /// Returns parsed containers and items; returns Err on network/SOAP failure.
 #[tauri::command]
-pub async fn dlna_browse(location: String, container_id: String) -> Result<DlnaBrowseResult, String> {
+pub async fn dlna_browse(
+    location: String,
+    container_id: String,
+) -> Result<DlnaBrowseResult, String> {
     use tokio::time::{timeout, Duration};
 
     let safe_id = xml_escape(&container_id);

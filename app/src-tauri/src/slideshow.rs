@@ -1,17 +1,17 @@
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use serde::Serialize;
-use tauri::Emitter;
 use party_display_core::slideshow::collect_photos;
+use serde::Serialize;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Emitter;
 
 #[derive(Default)]
 pub struct SlideshowState {
-    pub folder:    Mutex<Option<PathBuf>>,
-    pub photos:    Mutex<Vec<PathBuf>>,
-    pub watcher:   Mutex<Option<RecommendedWatcher>>,
+    pub folder: Mutex<Option<PathBuf>>,
+    pub photos: Mutex<Vec<PathBuf>>,
+    pub watcher: Mutex<Option<RecommendedWatcher>>,
     pub recursive: Mutex<bool>,
 }
 
@@ -33,12 +33,21 @@ pub fn watch_folder(
     }
 
     let photos = collect_photos(&folder, recursive);
-    { *state.folder.lock().unwrap_or_else(|e| e.into_inner())    = Some(folder.clone()); }
-    { *state.photos.lock().unwrap_or_else(|e| e.into_inner())    = photos.clone(); }
-    { *state.recursive.lock().unwrap_or_else(|e| e.into_inner()) = recursive; }
+    {
+        *state.folder.lock().unwrap_or_else(|e| e.into_inner()) = Some(folder.clone());
+    }
+    {
+        *state.photos.lock().unwrap_or_else(|e| e.into_inner()) = photos.clone();
+    }
+    {
+        *state.recursive.lock().unwrap_or_else(|e| e.into_inner()) = recursive;
+    }
 
     let payload = PhotoListPayload {
-        paths: photos.iter().map(|p| p.to_string_lossy().into_owned()).collect(),
+        paths: photos
+            .iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect(),
     };
     app.emit("photo-list", payload).map_err(|e| e.to_string())?;
 
@@ -63,12 +72,18 @@ pub fn watch_folder(
                         return;
                     }
                     last_emit_ms.store(now_ms, Ordering::Relaxed);
-                    let is_recursive = *state_arc.recursive.lock().unwrap_or_else(|e| e.into_inner());
+                    let is_recursive = *state_arc
+                        .recursive
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     let new_photos = collect_photos(&folder2, is_recursive);
                     let mut p = state_arc.photos.lock().unwrap_or_else(|e| e.into_inner());
                     *p = new_photos.clone();
                     let payload = PhotoListPayload {
-                        paths: new_photos.iter().map(|p| p.to_string_lossy().into_owned()).collect(),
+                        paths: new_photos
+                            .iter()
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .collect(),
                     };
                     let _ = app2.emit("photo-list", payload);
                 }
@@ -83,7 +98,9 @@ pub fn watch_folder(
     } else {
         RecursiveMode::NonRecursive
     };
-    watcher.watch(&folder, watch_mode).map_err(|e| e.to_string())?;
+    watcher
+        .watch(&folder, watch_mode)
+        .map_err(|e| e.to_string())?;
 
     *state.watcher.lock().unwrap_or_else(|e| e.into_inner()) = Some(watcher);
     Ok(())

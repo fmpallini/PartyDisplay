@@ -5,13 +5,30 @@ pub fn is_channel_artist(artist: &str) -> bool {
 
 pub fn strip_title_noise(title: &str) -> String {
     const NOISE: &[&str] = &[
-        "official video", "official music video", "official audio",
-        "official lyric video", "official visualizer", "official",
-        "lyric video", "lyrics", "lyric", "audio",
-        "music video", "video", "visualizer",
-        "hd", "hq", "4k", "720p", "1080p",
-        "explicit", "explicit version", "clean", "radio edit",
-        "album version", "single version",
+        "official video",
+        "official music video",
+        "official audio",
+        "official lyric video",
+        "official visualizer",
+        "official",
+        "lyric video",
+        "lyrics",
+        "lyric",
+        "audio",
+        "music video",
+        "video",
+        "visualizer",
+        "hd",
+        "hq",
+        "4k",
+        "720p",
+        "1080p",
+        "explicit",
+        "explicit version",
+        "clean",
+        "radio edit",
+        "album version",
+        "single version",
     ];
     let mut s = title.trim().to_string();
     loop {
@@ -30,7 +47,9 @@ pub fn strip_title_noise(title: &str) -> String {
                 }
             }
         }
-        if s == before { break; }
+        if s == before {
+            break;
+        }
     }
     s
 }
@@ -45,9 +64,10 @@ pub fn normalize_browser_track(title: &str, artist: &str) -> (String, String) {
         .to_string();
     let channel = is_channel_artist(artist);
     let (raw_name, final_artist) = if let Some(dash) = title.find(" - ") {
-        let left  = title[..dash].trim();
+        let left = title[..dash].trim();
         let right = title[dash + 3..].trim();
-        if !left.is_empty() && !right.is_empty()
+        if !left.is_empty()
+            && !right.is_empty()
             && (channel || left.eq_ignore_ascii_case(&clean_artist))
         {
             (right.to_string(), left.to_string())
@@ -83,7 +103,8 @@ mod tests {
 
     #[test]
     fn normalize_splits_title_when_topic_channel() {
-        let (title, artist) = normalize_browser_track("Real Artist - Song Name", "Real Artist - Topic");
+        let (title, artist) =
+            normalize_browser_track("Real Artist - Song Name", "Real Artist - Topic");
         assert_eq!(title, "Song Name");
         assert_eq!(artist, "Real Artist");
     }
@@ -128,12 +149,18 @@ mod tests {
 
     #[test]
     fn strip_noise_remastered_with_year() {
-        assert_eq!(strip_title_noise("Classic Track (Remastered 2011)"), "Classic Track");
+        assert_eq!(
+            strip_title_noise("Classic Track (Remastered 2011)"),
+            "Classic Track"
+        );
     }
 
     #[test]
     fn strip_noise_official_audio() {
-        assert_eq!(strip_title_noise("Song Title (Official Audio)"), "Song Title");
+        assert_eq!(
+            strip_title_noise("Song Title (Official Audio)"),
+            "Song Title"
+        );
     }
 
     #[test]

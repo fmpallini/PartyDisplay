@@ -2,9 +2,9 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct IpLocation {
-    pub lat:     f64,
-    pub lon:     f64,
-    pub city:    String,
+    pub lat: f64,
+    pub lon: f64,
+    pub city: String,
     pub country: String,
 }
 
@@ -15,17 +15,32 @@ pub fn parse_ip_location(json: &serde_json::Value) -> Result<IpLocation, String>
             json["message"].as_str().unwrap_or("unknown"),
         ));
     }
-    let lat     = json["lat"]    .as_f64() .ok_or_else(|| "missing lat".to_string())?;
-    let lon     = json["lon"]    .as_f64() .ok_or_else(|| "missing lon".to_string())?;
-    let city    = json["city"]   .as_str() .ok_or_else(|| "missing city".to_string())?   .to_string();
-    let country = json["country"].as_str() .ok_or_else(|| "missing country".to_string())?.to_string();
-    Ok(IpLocation { lat, lon, city, country })
+    let lat = json["lat"]
+        .as_f64()
+        .ok_or_else(|| "missing lat".to_string())?;
+    let lon = json["lon"]
+        .as_f64()
+        .ok_or_else(|| "missing lon".to_string())?;
+    let city = json["city"]
+        .as_str()
+        .ok_or_else(|| "missing city".to_string())?
+        .to_string();
+    let country = json["country"]
+        .as_str()
+        .ok_or_else(|| "missing country".to_string())?
+        .to_string();
+    Ok(IpLocation {
+        lat,
+        lon,
+        city,
+        country,
+    })
 }
 
 #[derive(Debug, Serialize, Clone)]
 pub struct BatteryStatus {
-    pub level:     u8,
-    pub charging:  bool,
+    pub level: u8,
+    pub charging: bool,
     pub available: bool,
 }
 
@@ -52,7 +67,10 @@ mod tests {
     fn parse_fails_when_status_is_not_success() {
         let j = json!({ "status": "fail", "message": "private range" });
         let err = parse_ip_location(&j).unwrap_err();
-        assert!(err.contains("private range"), "expected 'private range' in: {err}");
+        assert!(
+            err.contains("private range"),
+            "expected 'private range' in: {err}"
+        );
     }
 
     #[test]

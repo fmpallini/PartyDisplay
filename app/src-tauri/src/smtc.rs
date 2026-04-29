@@ -1,18 +1,18 @@
+use base64::{engine::general_purpose, Engine as _};
+use party_display_core::smtc::{detect_mime, normalize_browser_track};
 use std::sync::Mutex;
 use std::time::Duration;
-use base64::{Engine as _, engine::general_purpose};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::oneshot;
-use party_display_core::smtc::{normalize_browser_track, detect_mime};
 
 #[derive(serde::Serialize, Clone)]
 struct SmtcTrackInfo {
-    id:        String,
-    name:      String,
-    artists:   String,
+    id: String,
+    name: String,
+    artists: String,
     #[serde(rename = "albumArt")]
     album_art: String,
-    duration:  u64,
+    duration: u64,
     #[serde(rename = "positionMs")]
     position_ms: u64,
     #[serde(rename = "isPlaying")]
@@ -35,13 +35,15 @@ pub struct SmtcState {
 
 impl Default for SmtcState {
     fn default() -> Self {
-        Self { stop_tx: Mutex::new(None) }
+        Self {
+            stop_tx: Mutex::new(None),
+        }
     }
 }
 
 #[tauri::command]
 pub async fn start_smtc_listener(
-    app:   AppHandle,
+    app: AppHandle,
     state: tauri::State<'_, SmtcState>,
 ) -> Result<(), String> {
     let mut guard = state.stop_tx.lock().unwrap();
@@ -70,9 +72,14 @@ pub fn stop_smtc_listener(state: tauri::State<'_, SmtcState>) -> Result<(), Stri
 
 async fn smtc_poll_loop(app: AppHandle, mut stop_rx: oneshot::Receiver<()>) {
     // Initialize Windows Runtime on this thread (required for WinRT APIs)
-    let _ = unsafe { windows::Win32::System::Com::CoInitializeEx(None, windows::Win32::System::Com::COINIT_MULTITHREADED) };
-    let mut last_track:    Option<(String, String)> = None;
-    let mut last_position: Option<(u64, bool)>      = None;
+    let _ = unsafe {
+        windows::Win32::System::Com::CoInitializeEx(
+            None,
+            windows::Win32::System::Com::COINIT_MULTITHREADED,
+        )
+    };
+    let mut last_track: Option<(String, String)> = None;
+    let mut last_position: Option<(u64, bool)> = None;
     poll_smtc(&app, &mut last_track, &mut last_position).await;
     loop {
         tokio::select! {
@@ -84,13 +91,17 @@ async fn smtc_poll_loop(app: AppHandle, mut stop_rx: oneshot::Receiver<()>) {
     }
 }
 
-async fn poll_smtc(app: &AppHandle, last_track: &mut Option<(String, String)>, last_position: &mut Option<(u64, bool)>) {
+async fn poll_smtc(
+    app: &AppHandle,
+    last_track: &mut Option<(String, String)>,
+    last_position: &mut Option<(u64, bool)>,
+) {
     match try_poll_smtc(app, last_track, last_position).await {
         Ok(()) => {}
         Err(e) => {
             eprintln!("[SMTC] poll error: {e:?}");
             if last_track.is_some() {
-                *last_track    = None;
+                *last_track = None;
                 *last_position = None;
                 let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);
             }
@@ -99,8 +110,8 @@ async fn poll_smtc(app: &AppHandle, last_track: &mut Option<(String, String)>, l
 }
 
 async fn try_poll_smtc(
-    app:           &AppHandle,
-    last_track:    &mut Option<(String, String)>,
+    app: &AppHandle,
+    last_track: &mut Option<(String, String)>,
     last_position: &mut Option<(u64, bool)>,
 ) -> windows::core::Result<()> {
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
@@ -125,7 +136,7 @@ async fn try_poll_smtc(
     let props = tokio::task::block_in_place(|| props_op.get())?;
     let timeline = session.GetTimelineProperties()?;
 
-    let raw_title  = props.Title()?.to_string();
+    let raw_title = props.Title()?.to_string();
     let raw_artist = props.Artist()?.to_string();
 
     if raw_title.is_empty() {
@@ -142,7 +153,8 @@ async fn try_poll_smtc(
     let duration_ms = (timeline.EndTime()?.Duration.max(0) / 10_000) as u64;
 
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionPlaybackStatus;
-    let is_playing = session.GetPlaybackInfo()
+    let is_playing = session
+        .GetPlaybackInfo()
         .and_then(|info| info.PlaybackStatus())
         .map(|s| s == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing)
         .unwrap_or(true);
@@ -151,21 +163,31 @@ async fn try_poll_smtc(
     if last_track.as_ref() != Some(&track_key) {
         *last_track = Some(track_key);
         let album_art = get_thumbnail(&props).await.unwrap_or_default();
-        let _ = app.emit("smtc-track-changed", Some(SmtcTrackInfo {
-            id:          format!("{}:{}", title, artist),
-            name:        title,
-            artists:     artist,
-            album_art,
-            duration:    duration_ms,
-            position_ms,
-            is_playing,
-        }));
+        let _ = app.emit(
+            "smtc-track-changed",
+            Some(SmtcTrackInfo {
+                id: format!("{}:{}", title, artist),
+                name: title,
+                artists: artist,
+                album_art,
+                duration: duration_ms,
+                position_ms,
+                is_playing,
+            }),
+        );
     }
 
     let pos_key = (position_ms, is_playing);
     if last_position.as_ref() != Some(&pos_key) {
         *last_position = Some(pos_key);
-        let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms, is_playing, duration_ms });
+        let _ = app.emit(
+            "smtc-position-update",
+            SmtcPositionUpdate {
+                position_ms,
+                is_playing,
+                duration_ms,
+            },
+        );
     }
 
     Ok(())
@@ -179,7 +201,7 @@ async fn get_thumbnail(
     let thumb_ref = props.Thumbnail().ok()?;
     let stream_op = thumb_ref.OpenReadAsync().ok()?;
     let stream = tokio::task::block_in_place(|| stream_op.get()).ok()?;
-    let size      = stream.Size().ok()? as u32;
+    let size = stream.Size().ok()? as u32;
     if size == 0 {
         return None;
     }

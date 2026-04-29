@@ -1,14 +1,16 @@
 use std::fs;
 use std::path::Path;
 
-const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "wav", "ogg", "flac", "m4a", "aac", "opus",
-];
+const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "ogg", "flac", "m4a", "aac", "opus"];
 
 fn is_audio_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .map(|e| AUDIO_EXTENSIONS.iter().any(|&ext| e.eq_ignore_ascii_case(ext)))
+        .map(|e| {
+            AUDIO_EXTENSIONS
+                .iter()
+                .any(|&ext| e.eq_ignore_ascii_case(ext))
+        })
         .unwrap_or(false)
 }
 
@@ -57,7 +59,10 @@ mod tests {
 
     fn unique_test_dir(suffix: &str) -> std::path::PathBuf {
         use std::time::{SystemTime, UNIX_EPOCH};
-        let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().subsec_nanos();
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .subsec_nanos();
         std::env::temp_dir().join(format!("pd_test_{}_{}", suffix, ts))
     }
 
@@ -66,9 +71,15 @@ mod tests {
         let dir = unique_test_dir("audio");
         fs::create_dir_all(&dir).unwrap();
         for name in &["charlie.mp3", "alpha.flac", "bravo.wav"] {
-            File::create(dir.join(name)).unwrap().write_all(b"").unwrap();
+            File::create(dir.join(name))
+                .unwrap()
+                .write_all(b"")
+                .unwrap();
         }
-        File::create(dir.join("ignore.txt")).unwrap().write_all(b"").unwrap();
+        File::create(dir.join("ignore.txt"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
 
         let result = scan_audio_folder(dir.to_str().unwrap().to_owned(), false).unwrap();
 
@@ -85,8 +96,14 @@ mod tests {
         let dir = unique_test_dir("audio_rec");
         let sub = dir.join("sub");
         fs::create_dir_all(&sub).unwrap();
-        File::create(dir.join("root.mp3")).unwrap().write_all(b"").unwrap();
-        File::create(sub.join("nested.mp3")).unwrap().write_all(b"").unwrap();
+        File::create(dir.join("root.mp3"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
+        File::create(sub.join("nested.mp3"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
 
         let result = scan_audio_folder(dir.to_str().unwrap().to_owned(), true).unwrap();
         assert_eq!(result.len(), 2);
@@ -99,8 +116,14 @@ mod tests {
         let dir = unique_test_dir("audio_norec");
         let sub = dir.join("sub");
         fs::create_dir_all(&sub).unwrap();
-        File::create(dir.join("root.mp3")).unwrap().write_all(b"").unwrap();
-        File::create(sub.join("nested.mp3")).unwrap().write_all(b"").unwrap();
+        File::create(dir.join("root.mp3"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
+        File::create(sub.join("nested.mp3"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
 
         let result = scan_audio_folder(dir.to_str().unwrap().to_owned(), false).unwrap();
         assert_eq!(result.len(), 1);
@@ -118,8 +141,14 @@ mod tests {
     fn test_scan_case_insensitive_extensions() {
         let dir = unique_test_dir("audio_case");
         fs::create_dir_all(&dir).unwrap();
-        File::create(dir.join("track.MP3")).unwrap().write_all(b"").unwrap();
-        File::create(dir.join("track.Flac")).unwrap().write_all(b"").unwrap();
+        File::create(dir.join("track.MP3"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
+        File::create(dir.join("track.Flac"))
+            .unwrap()
+            .write_all(b"")
+            .unwrap();
 
         let result = scan_audio_folder(dir.to_str().unwrap().to_owned(), false).unwrap();
         assert_eq!(result.len(), 2);

@@ -1,27 +1,26 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod auth;
-mod media_keys;
-mod remote_server;
 mod audio;
+mod auth;
 mod dlna;
 mod dlna_proxy;
 mod local_audio;
-mod slideshow;
-mod system;
+mod media_keys;
 mod presets;
-mod window_manager;
+mod remote_server;
+mod slideshow;
 mod smtc;
+mod system;
+mod window_manager;
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tauri::{Manager, Listener};
+use std::sync::Arc;
+use tauri::{Listener, Manager};
 
 /// Monotonic counter: each call to `start_oauth_callback_server` bumps this.
 /// The spawned thread compares its snapshot — if it no longer matches, the
 /// thread exits, freeing port 7357 for the new server.
 static OAUTH_SERVER_GEN: AtomicUsize = AtomicUsize::new(0);
-
 
 /// Starts a one-shot HTTP server on 127.0.0.1:7357 that receives the OAuth
 /// callback from the browser, emits the code as a Tauri event, and responds
@@ -49,10 +48,17 @@ fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
         const BIND_RETRIES: u32 = 10;
         let mut listener_opt: Option<TcpListener> = None;
         for i in 0..BIND_RETRIES {
-            if i > 0 { std::thread::sleep(Duration::from_millis(100)); }
-            if OAUTH_SERVER_GEN.load(Ordering::SeqCst) != my_gen { return; }
+            if i > 0 {
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            if OAUTH_SERVER_GEN.load(Ordering::SeqCst) != my_gen {
+                return;
+            }
             match TcpListener::bind("127.0.0.1:7357") {
-                Ok(l)  => { listener_opt = Some(l); break; }
+                Ok(l) => {
+                    listener_opt = Some(l);
+                    break;
+                }
                 Err(e) => {
                     if i == BIND_RETRIES - 1 {
                         eprintln!("OAuth server bind error: {e}");
@@ -63,7 +69,7 @@ fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
         }
         let listener = match listener_opt {
             Some(l) => l,
-            None    => return,
+            None => return,
         };
         listener.set_nonblocking(true).ok();
 
@@ -71,14 +77,21 @@ fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
         // or the 5-minute timeout elapses (user abandoned the login flow).
         let deadline = Instant::now() + Duration::from_secs(300);
         let mut stream = loop {
-            if OAUTH_SERVER_GEN.load(Ordering::SeqCst) != my_gen { return; }
-            if Instant::now() > deadline { return; }
+            if OAUTH_SERVER_GEN.load(Ordering::SeqCst) != my_gen {
+                return;
+            }
+            if Instant::now() > deadline {
+                return;
+            }
             match listener.accept() {
                 Ok((s, _)) => break s,
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     std::thread::sleep(Duration::from_millis(100));
                 }
-                Err(e) => { eprintln!("OAuth accept error: {e}"); return; }
+                Err(e) => {
+                    eprintln!("OAuth accept error: {e}");
+                    return;
+                }
             }
         };
 
@@ -96,13 +109,17 @@ fn start_oauth_callback_server(app: tauri::AppHandle) -> Result<(), String> {
         let mut state: Option<String> = None;
 
         if let Some(first_line) = request.lines().next() {
-            if let Some(query) = first_line.split('?').nth(1).and_then(|s| s.split(' ').next()) {
+            if let Some(query) = first_line
+                .split('?')
+                .nth(1)
+                .and_then(|s| s.split(' ').next())
+            {
                 for pair in query.split('&') {
                     let mut kv = pair.splitn(2, '=');
                     match (kv.next(), kv.next()) {
-                        (Some("code"),  Some(v)) => code      = Some(v.to_string()),
+                        (Some("code"), Some(v)) => code = Some(v.to_string()),
                         (Some("error"), Some(v)) => err_param = Some(v.to_string()),
-                        (Some("state"), Some(v)) => state     = Some(v.to_string()),
+                        (Some("state"), Some(v)) => state = Some(v.to_string()),
                         _ => {}
                     }
                 }
@@ -116,14 +133,18 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
 <h2 style="margin:0 0 8px">&#x2705; Connected to Spotify!</h2>
 <p style="color:#aaa;margin:0">You can close this tab.</p>
 <script>try{window.close()}catch(e){}</script>
-</body></html>"#.to_string()
+</body></html>"#
+                .to_string()
         } else {
-            let safe_err = party_display_core::dlna::xml_escape(err_param.as_deref().unwrap_or("unknown"));
-            format!(r#"<!doctype html><html><head><title>Party Display</title></head>
+            let safe_err =
+                party_display_core::dlna::xml_escape(err_param.as_deref().unwrap_or("unknown"));
+            format!(
+                r#"<!doctype html><html><head><title>Party Display</title></head>
 <body style="font-family:monospace;background:#111;color:#e74c3c;display:flex;align-items:center;
 justify-content:center;height:100vh;margin:0;flex-direction:column">
 <h2>&#x274C; Auth error: {safe_err}</h2><p style="color:#aaa">You can close this tab.</p>
-</body></html>"#)
+</body></html>"#
+            )
         };
 
         let response = format!(
@@ -135,13 +156,19 @@ justify-content:center;height:100vh;margin:0;flex-direction:column">
         }
 
         #[derive(serde::Serialize, Clone)]
-        struct OAuthPayload { code: String, state: String }
+        struct OAuthPayload {
+            code: String,
+            state: String,
+        }
 
         if let Some(c) = code {
-            let _ = app.emit("oauth-code", OAuthPayload {
-                code:  c,
-                state: state.unwrap_or_default(),
-            });
+            let _ = app.emit(
+                "oauth-code",
+                OAuthPayload {
+                    code: c,
+                    state: state.unwrap_or_default(),
+                },
+            );
         }
     });
     Ok(())
@@ -158,9 +185,7 @@ fn exit_app() {
 #[tauri::command]
 fn clear_webview_data() {
     if let Ok(local) = std::env::var("LOCALAPPDATA") {
-        let _ = std::fs::remove_dir_all(
-            std::path::Path::new(&local).join("com.partydisplay.app")
-        );
+        let _ = std::fs::remove_dir_all(std::path::Path::new(&local).join("com.partydisplay.app"));
     }
 }
 
@@ -189,7 +214,8 @@ fn main() {
             // the args here. We must re-emit the deep-link event ourselves because
             // tauri-plugin-deep-link only processes args at its own startup — it never
             // sees the second process's args unless we forward them.
-            let urls: Vec<String> = args.iter()
+            let urls: Vec<String> = args
+                .iter()
                 .filter(|a| a.starts_with("party-display://"))
                 .cloned()
                 .collect();
@@ -251,8 +277,7 @@ fn main() {
                 let app_state_ds = Arc::clone(&remote.app_state);
 
                 app.handle().listen("playback-tick", move |event| {
-                    if let Ok(payload) =
-                        serde_json::from_str::<serde_json::Value>(event.payload())
+                    if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload())
                     {
                         let paused = payload
                             .get("paused")
@@ -260,57 +285,64 @@ fn main() {
                             .unwrap_or(true);
                         let mut s = app_state_pb.lock().unwrap();
                         let playing = !paused;
-                        if s.playing == playing { return; }
+                        if s.playing == playing {
+                            return;
+                        }
                         s.playing = playing;
                         drop(s);
-                        let msg =
-                            serde_json::json!({ "type": "playback-state", "paused": paused })
-                                .to_string();
+                        let msg = serde_json::json!({ "type": "playback-state", "paused": paused })
+                            .to_string();
                         let _ = tx_pb.send(msg);
                     }
                 });
 
-                app.handle().listen("display-settings-changed", move |event| {
-                    if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload()) {
-                        let mut changed = false;
-                        let msg = {
-                            let mut s = app_state_ds.lock().unwrap();
-                            for (key, field) in [
-                                ("track",   "trackOverlayVisible"),
-                                ("lyrics",  "lyricsVisible"),
-                                ("clock",   "clockWeatherVisible"),
-                                ("battery", "batteryVisible"),
-                                ("photos",  "photoCounterVisible"),
-                            ] {
-                                if let Some(v) = payload.get(field).and_then(|v| v.as_bool()) {
-                                    s.toggles.insert(key.to_string(), v);
-                                    changed = true;
+                app.handle()
+                    .listen("display-settings-changed", move |event| {
+                        if let Ok(payload) =
+                            serde_json::from_str::<serde_json::Value>(event.payload())
+                        {
+                            let mut changed = false;
+                            let msg = {
+                                let mut s = app_state_ds.lock().unwrap();
+                                for (key, field) in [
+                                    ("track", "trackOverlayVisible"),
+                                    ("lyrics", "lyricsVisible"),
+                                    ("clock", "clockWeatherVisible"),
+                                    ("battery", "batteryVisible"),
+                                    ("photos", "photoCounterVisible"),
+                                ] {
+                                    if let Some(v) = payload.get(field).and_then(|v| v.as_bool()) {
+                                        s.toggles.insert(key.to_string(), v);
+                                        changed = true;
+                                    }
                                 }
-                            }
-                            if let Some(v) = payload.get("visualizerMode").and_then(|v| v.as_str()) {
-                                if remote_server::VIZ_MODES.contains(&v) {
-                                    s.viz_mode = v.to_string();
-                                    changed = true;
+                                if let Some(v) =
+                                    payload.get("visualizerMode").and_then(|v| v.as_str())
+                                {
+                                    if remote_server::VIZ_MODES.contains(&v) {
+                                        s.viz_mode = v.to_string();
+                                        changed = true;
+                                    }
                                 }
+                                changed.then(|| remote_server::build_full_state(&s))
+                            };
+                            if let Some(msg) = msg {
+                                let _ = tx_ds.send(msg);
                             }
-                            changed.then(|| remote_server::build_full_state(&s))
-                        };
-                        if let Some(msg) = msg {
-                            let _ = tx_ds.send(msg);
                         }
-                    }
-                });
+                    });
 
                 app.handle().listen("slideshow-state", move |event| {
-                    if let Ok(payload) =
-                        serde_json::from_str::<serde_json::Value>(event.payload())
+                    if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload())
                     {
                         let paused = payload
                             .get("paused")
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false);
                         let mut s = app_state_ss.lock().unwrap();
-                        if s.slideshow_paused == paused { return; }
+                        if s.slideshow_paused == paused {
+                            return;
+                        }
                         s.slideshow_paused = paused;
                         drop(s);
                         let msg =
@@ -341,7 +373,7 @@ fn main() {
                 if let Ok(Some(monitor)) = control.current_monitor() {
                     let scale = monitor.scale_factor();
                     let logical_h = monitor.size().height as f64 / scale;
-                    let target_h = (logical_h - 80.0).min(1020.0).max(970.0);
+                    let target_h = (logical_h - 80.0).clamp(970.0, 1020.0);
                     let _ = control.set_size(tauri::Size::Logical(tauri::LogicalSize {
                         width: 400.0,
                         height: target_h,
@@ -353,8 +385,7 @@ fn main() {
                 let app_handle2 = app.handle().clone();
                 display.on_window_event(move |event| {
                     match event {
-                        tauri::WindowEvent::Resized(_)
-                        | tauri::WindowEvent::Moved(_) => {
+                        tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
                             if let Some(w) = app_handle2.get_webview_window("display") {
                                 window_manager::snapshot_window_state(&app_handle2, &w);
                             }

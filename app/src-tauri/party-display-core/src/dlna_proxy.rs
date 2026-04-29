@@ -1,3 +1,4 @@
+use futures::StreamExt;
 /// Minimal HTTP proxy that allows the WebView2 webview to stream DLNA media.
 ///
 /// The custom-scheme protocol approach (`register_asynchronous_uri_scheme_protocol`)
@@ -14,14 +15,13 @@
 /// so seeking works.
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
-use futures::StreamExt;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 fn get_client() -> &'static reqwest::Client {
-    CLIENT.get_or_init(|| reqwest::Client::new())
+    CLIENT.get_or_init(reqwest::Client::new)
 }
 
 /// Port the proxy server listens on.  Must match the CSP and the TS constant.
@@ -35,7 +35,7 @@ pub async fn start() {
         return;
     }
     let listener = match TcpListener::bind(("127.0.0.1", PORT)).await {
-        Ok(l)  => l,
+        Ok(l) => l,
         Err(e) => {
             eprintln!("[dlna_proxy] bind 127.0.0.1:{PORT} failed: {e}");
             return;
@@ -44,8 +44,10 @@ pub async fn start() {
     eprintln!("[dlna_proxy] listening on 127.0.0.1:{PORT}");
     loop {
         match listener.accept().await {
-            Ok((stream, _)) => { tokio::spawn(handle(stream)); }
-            Err(e)          => eprintln!("[dlna_proxy] accept error: {e}"),
+            Ok((stream, _)) => {
+                tokio::spawn(handle(stream));
+            }
+            Err(e) => eprintln!("[dlna_proxy] accept error: {e}"),
         }
     }
 }
@@ -61,14 +63,14 @@ fn is_private_lan_url(url: &str) -> bool {
     let ip_str = host.split(':').next().unwrap_or("");
     let ip: std::net::Ipv4Addr = match ip_str.parse() {
         Ok(ip) => ip,
-        Err(_) => return false,  // hostnames not accepted — DLNA URLs are always bare IPs
+        Err(_) => return false, // hostnames not accepted — DLNA URLs are always bare IPs
     };
     let [a, b, c, _] = ip.octets();
     matches!(
         (a, b, c),
         (10, _, _)                          // 10.0.0.0/8
         | (172, 16..=31, _)                 // 172.16.0.0/12
-        | (192, 168, _)                     // 192.168.0.0/16
+        | (192, 168, _) // 192.168.0.0/16
     )
 }
 
@@ -78,15 +80,21 @@ async fn handle(stream: tokio::net::TcpStream) {
 
     // Read request line
     let mut req_line = String::new();
-    if reader.read_line(&mut req_line).await.is_err() { return; }
+    if reader.read_line(&mut req_line).await.is_err() {
+        return;
+    }
 
     // Read headers — capture Range if present
     let mut range_hdr: Option<String> = None;
     loop {
         let mut header = String::new();
-        if reader.read_line(&mut header).await.is_err() { break; }
+        if reader.read_line(&mut header).await.is_err() {
+            break;
+        }
         let trimmed = header.trim_end();
-        if trimmed.is_empty() { break; }
+        if trimmed.is_empty() {
+            break;
+        }
         if trimmed.to_lowercase().starts_with("range:") {
             range_hdr = Some(trimmed["range:".len()..].trim().to_owned());
         }
@@ -95,7 +103,7 @@ async fn handle(stream: tokio::net::TcpStream) {
     // req_line: "GET /192.168.x.x:8200/MediaItems/xyz.mp3 HTTP/1.1"
     let path = match req_line.split_whitespace().nth(1) {
         Some(p) => p.to_owned(),
-        None    => return,
+        None => return,
     };
 
     // path starts with '/', so "http:/" + path == "http://192.168.x.x:8200/..."
@@ -105,10 +113,16 @@ async fn handle(stream: tokio::net::TcpStream) {
     // Blocks cloud-metadata endpoints (169.254.169.254) and loopback self-requests.
     if !is_private_lan_url(&target_url) {
         let msg = "403 target host is not a private LAN address";
-        let _ = writer.write_all(
-            format!("HTTP/1.1 403 Forbidden\r\nContent-Length: {}\r\n\r\n{}", msg.len(), msg)
+        let _ = writer
+            .write_all(
+                format!(
+                    "HTTP/1.1 403 Forbidden\r\nContent-Length: {}\r\n\r\n{}",
+                    msg.len(),
+                    msg
+                )
                 .as_bytes(),
-        ).await;
+            )
+            .await;
         return;
     }
 
@@ -121,41 +135,70 @@ async fn handle(stream: tokio::net::TcpStream) {
     match req.send().await {
         Ok(resp) => {
             let status = resp.status().as_u16();
-            let ct = resp.headers().get("content-type")
+            let ct = resp
+                .headers()
+                .get("content-type")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("application/octet-stream")
                 .to_owned();
-            let cl = resp.headers().get("content-length")
-                .and_then(|v| v.to_str().ok()).map(str::to_owned);
-            let cr = resp.headers().get("content-range")
-                .and_then(|v| v.to_str().ok()).map(str::to_owned);
-            let ar = resp.headers().get("accept-ranges")
-                .and_then(|v| v.to_str().ok()).map(str::to_owned);
+            let cl = resp
+                .headers()
+                .get("content-length")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned);
+            let cr = resp
+                .headers()
+                .get("content-range")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned);
+            let ar = resp
+                .headers()
+                .get("accept-ranges")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned);
 
             let mut hdr = format!(
                 "HTTP/1.1 {status}\r\nContent-Type: {ct}\r\nAccess-Control-Allow-Origin: *\r\n"
             );
-            if let Some(v) = cl { hdr += &format!("Content-Length: {v}\r\n"); }
-            if let Some(v) = cr { hdr += &format!("Content-Range: {v}\r\n"); }
-            if let Some(v) = ar { hdr += &format!("Accept-Ranges: {v}\r\n"); }
+            if let Some(v) = cl {
+                hdr += &format!("Content-Length: {v}\r\n");
+            }
+            if let Some(v) = cr {
+                hdr += &format!("Content-Range: {v}\r\n");
+            }
+            if let Some(v) = ar {
+                hdr += &format!("Accept-Ranges: {v}\r\n");
+            }
             hdr += "\r\n";
 
             // Stream chunks as they arrive — never buffer the entire file in memory.
-            if writer.write_all(hdr.as_bytes()).await.is_err() { return; }
+            if writer.write_all(hdr.as_bytes()).await.is_err() {
+                return;
+            }
             let mut stream = resp.bytes_stream();
             while let Some(chunk) = stream.next().await {
                 match chunk {
-                    Ok(bytes) => { if writer.write_all(&bytes).await.is_err() { return; } }
+                    Ok(bytes) => {
+                        if writer.write_all(&bytes).await.is_err() {
+                            return;
+                        }
+                    }
                     Err(_) => return,
                 }
             }
         }
         Err(e) => {
             let msg = e.to_string();
-            let _ = writer.write_all(
-                format!("HTTP/1.1 502 Bad Gateway\r\nContent-Length: {}\r\n\r\n{}", msg.len(), msg)
+            let _ = writer
+                .write_all(
+                    format!(
+                        "HTTP/1.1 502 Bad Gateway\r\nContent-Length: {}\r\n\r\n{}",
+                        msg.len(),
+                        msg
+                    )
                     .as_bytes(),
-            ).await;
+                )
+                .await;
         }
     }
 }
@@ -183,7 +226,9 @@ mod tests {
 
     #[test]
     fn blocks_link_local_metadata() {
-        assert!(!is_private_lan_url("http://169.254.169.254/latest/meta-data/"));
+        assert!(!is_private_lan_url(
+            "http://169.254.169.254/latest/meta-data/"
+        ));
         assert!(!is_private_lan_url("http://169.254.0.1/x"));
     }
 

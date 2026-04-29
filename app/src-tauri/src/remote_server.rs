@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use axum::{
-    Router,
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     extract::State,
     response::IntoResponse,
     routing::get,
+    Router,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
@@ -79,10 +79,7 @@ async fn serve_html() -> impl IntoResponse {
     axum::response::Html(HTML)
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<ServerState>,
-) -> impl IntoResponse {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<ServerState>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
@@ -99,7 +96,7 @@ pub(crate) fn build_full_state(s: &RemoteAppState) -> String {
 
 async fn handle_socket(mut socket: WebSocket, state: ServerState) {
     let full_state = build_full_state(&state.app_state.lock().unwrap());
-    if socket.send(Message::Text(full_state.into())).await.is_err() {
+    if socket.send(Message::Text(full_state)).await.is_err() {
         return;
     }
 
@@ -127,14 +124,14 @@ async fn handle_socket(mut socket: WebSocket, state: ServerState) {
             broadcast_result = rx.recv() => {
                 match broadcast_result {
                     Ok(broadcast_msg) => {
-                        if socket.send(Message::Text(broadcast_msg.into())).await.is_err() {
+                        if socket.send(Message::Text(broadcast_msg)).await.is_err() {
                             break;
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                         // Re-send full state to resync the client after dropped messages.
                         let resync = build_full_state(&state.app_state.lock().unwrap());
-                        if socket.send(Message::Text(resync.into())).await.is_err() {
+                        if socket.send(Message::Text(resync)).await.is_err() {
                             break;
                         }
                     }
@@ -154,26 +151,28 @@ struct WsCommand {
 
 fn dispatch_action(action: &str, state: &ServerState) {
     let hotkey = match action {
-        "prev-track"      => "music-prev",
-        "play-pause"      => "music-toggle",
-        "next-track"      => "music-next",
-        "vol-up"          => "vol-up",
-        "vol-down"        => "vol-down",
-        "prev-photo"      => "prev",
-        "next-photo"      => "next",
+        "prev-track" => "music-prev",
+        "play-pause" => "music-toggle",
+        "next-track" => "music-next",
+        "vol-up" => "vol-up",
+        "vol-down" => "vol-down",
+        "prev-photo" => "prev",
+        "next-photo" => "next",
         "pause-slideshow" => "pause",
-        "prev-preset"     => "prev-preset",
-        "next-preset"     => "next-preset",
+        "prev-preset" => "prev-preset",
+        "next-preset" => "next-preset",
         "toggle-viz-mode" => "cycle-viz-mode",
-        "toggle-track"    => "track",
-        "toggle-lyrics"   => "lyrics",
-        "toggle-clock"    => "clock",
-        "toggle-battery"  => "battery",
-        "toggle-photos"   => "counter",
+        "toggle-track" => "track",
+        "toggle-lyrics" => "lyrics",
+        "toggle-clock" => "clock",
+        "toggle-battery" => "battery",
+        "toggle-photos" => "counter",
         _ => return,
     };
 
-    let _ = state.app.emit("display-hotkey", serde_json::json!({ "action": hotkey }));
+    let _ = state
+        .app
+        .emit("display-hotkey", serde_json::json!({ "action": hotkey }));
 
     // Optimistic state tracking so WS clients stay in sync with remote-driven changes.
     let broadcast_msg = {
@@ -181,7 +180,10 @@ fn dispatch_action(action: &str, state: &ServerState) {
         match action {
             "play-pause" => {
                 s.playing = !s.playing;
-                Some(serde_json::json!({ "type": "playback-state", "paused": !s.playing }).to_string())
+                Some(
+                    serde_json::json!({ "type": "playback-state", "paused": !s.playing })
+                        .to_string(),
+                )
             }
             "pause-slideshow" => {
                 s.slideshow_paused = !s.slideshow_paused;
@@ -191,23 +193,29 @@ fn dispatch_action(action: &str, state: &ServerState) {
                 )
             }
             "toggle-viz-mode" => {
-                let idx = VIZ_MODES.iter().position(|&m| m == s.viz_mode.as_str()).unwrap_or(0);
+                let idx = VIZ_MODES
+                    .iter()
+                    .position(|&m| m == s.viz_mode.as_str())
+                    .unwrap_or(0);
                 s.viz_mode = VIZ_MODES[(idx + 1) % VIZ_MODES.len()].to_string();
                 Some(serde_json::json!({ "type": "viz-mode", "mode": s.viz_mode }).to_string())
             }
             "toggle-track" | "toggle-lyrics" | "toggle-clock" | "toggle-battery"
             | "toggle-photos" => {
                 let key = match action {
-                    "toggle-track"   => "track",
-                    "toggle-lyrics"  => "lyrics",
-                    "toggle-clock"   => "clock",
+                    "toggle-track" => "track",
+                    "toggle-lyrics" => "lyrics",
+                    "toggle-clock" => "clock",
                     "toggle-battery" => "battery",
-                    "toggle-photos"  => "photos",
+                    "toggle-photos" => "photos",
                     _ => unreachable!(),
                 };
                 let val = !s.toggles.get(key).copied().unwrap_or(false);
                 s.toggles.insert(key.to_string(), val);
-                Some(serde_json::json!({ "type": "toggle-state", "key": key, "value": val }).to_string())
+                Some(
+                    serde_json::json!({ "type": "toggle-state", "key": key, "value": val })
+                        .to_string(),
+                )
             }
             _ => None,
         }
@@ -245,9 +253,16 @@ pub fn start_remote_server(
     // Bind synchronously so port-in-use errors surface immediately to the caller.
     let std_listener = std::net::TcpListener::bind(format!("0.0.0.0:{PORT}"))
         .map_err(|e| format!("Could not start server: {e}"))?;
-    std_listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+    std_listener
+        .set_nonblocking(true)
+        .map_err(|e| e.to_string())?;
 
-    let server_state = ServerState { tx, app_state, app, shutdown_rx };
+    let server_state = ServerState {
+        tx,
+        app_state,
+        app,
+        shutdown_rx,
+    };
     let router = Router::new()
         .route("/", get(serve_html))
         .route("/ws", get(ws_handler))
@@ -255,7 +270,9 @@ pub fn start_remote_server(
 
     let handle = tauri::async_runtime::spawn(async move {
         match tokio::net::TcpListener::from_std(std_listener) {
-            Ok(listener) => { let _ = axum::serve(listener, router).await; }
+            Ok(listener) => {
+                let _ = axum::serve(listener, router).await;
+            }
             Err(e) => eprintln!("[remote_server] Failed to create async listener: {e}"),
         }
     });
