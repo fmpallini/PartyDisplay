@@ -61,6 +61,20 @@ The output binary will be at `app/src-tauri/target/release/party-display.exe`.
 
 > **Note:** The first Rust build takes several minutes — subsequent builds are incremental.
 
+### 4. Run tests
+
+**Frontend** (Vitest):
+```bash
+cd app
+npm test
+```
+
+**Backend** (Rust):
+```bash
+cd app/src-tauri
+cargo test --workspace
+```
+
 ---
 
 ## This is a vibe coding exercise
