@@ -85,6 +85,9 @@ const sourcePill = (active: boolean): React.CSSProperties => ({
   fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
 })
 
+const DLNA_PROXY = 'http://127.0.0.1:29341'
+const toDlnaProxy = (url: string) => `${DLNA_PROXY}/${url.replace(/^https?:\/\//, '')}`
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function readSlideshowConfig(): SlideshowConfig {
@@ -139,13 +142,6 @@ export default function ControlPanel() {
     setPhotoSourceState(s)
     localStorage.setItem(KEYS.photoSource, s)
   }
-  // DLNA HTTP URLs are routed through a local proxy server (127.0.0.1:29341)
-  // so the webview can load them without CSP / WebView2 mixed-content issues.
-  // The proxy strips its own host:port from the request path and re-fetches
-  // the original URL via reqwest, forwarding Range headers for seeking.
-  const DLNA_PROXY = 'http://127.0.0.1:29341'
-  const toDlnaProxy = (url: string) => `${DLNA_PROXY}/${url.replace(/^https?:\/\//, '')}`
-
   // Memoized so useLocalPlayer's playlist-change effect doesn't fire every render
   const dlnaPlaylist = useMemo<PlaylistItem[]>(() => {
     const filtered = dlnaBrowserMusic.items.filter(item => item.mime.startsWith('audio/'))
@@ -816,28 +812,10 @@ export default function ControlPanel() {
           {/* Source toggle — always first */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Source</span>
-            <button
-              style={{
-                background: photoSource === 'local' ? '#1db95418' : 'none',
-                border: `1px solid ${photoSource === 'local' ? '#1db95444' : '#2a2a2a'}`,
-                color: photoSource === 'local' ? '#1db954' : '#555',
-                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-              }}
-              onClick={() => setPhotoSource('local')}
-            >
+            <button style={sourcePill(photoSource === 'local')} onClick={() => setPhotoSource('local')}>
               Local Folder
             </button>
-            <button
-              style={{
-                background: photoSource === 'dlna' ? '#1db95418' : 'none',
-                border: `1px solid ${photoSource === 'dlna' ? '#1db95444' : '#2a2a2a'}`,
-                color: photoSource === 'dlna' ? '#1db954' : '#555',
-                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-              }}
-              onClick={() => setPhotoSource('dlna')}
-            >
+            <button style={sourcePill(photoSource === 'dlna')} onClick={() => setPhotoSource('dlna')}>
               DLNA Server
             </button>
           </div>
@@ -931,11 +909,11 @@ export default function ControlPanel() {
                   ))}
                   {(() => {
                     const photoCount = dlnaBrowserPhotos.items.filter(i => i.mime.startsWith('image/')).length
-                    return photoCount > 0
-                      ? <p style={{ margin: 0, color: '#555', fontSize: 11 }}>{photoCount} photo(s) loaded</p>
-                      : (!dlnaBrowserPhotos.loading && dlnaBrowserPhotos.containers.length === 0
-                          ? <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
-                          : null)
+                    if (photoCount > 0)
+                      return <p style={{ margin: 0, color: '#555', fontSize: 11 }}>{photoCount} photo(s) loaded</p>
+                    if (!dlnaBrowserPhotos.loading && dlnaBrowserPhotos.containers.length === 0)
+                      return <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
+                    return null
                   })()}
                 </>
               )}

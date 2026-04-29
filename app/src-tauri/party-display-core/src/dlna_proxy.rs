@@ -13,9 +13,16 @@
 /// URL via reqwest, forwarding Range / Content-Range / Accept-Ranges headers
 /// so seeking works.
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 use futures::StreamExt;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
+
+static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn get_client() -> &'static reqwest::Client {
+    CLIENT.get_or_init(|| reqwest::Client::new())
+}
 
 /// Port the proxy server listens on.  Must match the CSP and the TS constant.
 pub const PORT: u16 = 29341;
@@ -105,18 +112,7 @@ async fn handle(stream: tokio::net::TcpStream) {
         return;
     }
 
-    let client = match reqwest::Client::builder().build() {
-        Ok(c)  => c,
-        Err(e) => {
-            let msg = e.to_string();
-            let _ = writer.write_all(
-                format!("HTTP/1.1 500 Internal Server Error\r\nContent-Length: {}\r\n\r\n{}", msg.len(), msg)
-                    .as_bytes(),
-            ).await;
-            return;
-        }
-    };
-
+    let client = get_client();
     let mut req = client.get(&target_url);
     if let Some(r) = range_hdr {
         req = req.header("Range", r);

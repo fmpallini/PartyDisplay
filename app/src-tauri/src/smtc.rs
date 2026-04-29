@@ -71,26 +71,27 @@ pub fn stop_smtc_listener(state: tauri::State<'_, SmtcState>) -> Result<(), Stri
 async fn smtc_poll_loop(app: AppHandle, mut stop_rx: oneshot::Receiver<()>) {
     // Initialize Windows Runtime on this thread (required for WinRT APIs)
     let _ = unsafe { windows::Win32::System::Com::CoInitializeEx(None, windows::Win32::System::Com::COINIT_MULTITHREADED) };
-    let mut last_track: Option<(String, String)> = None;
-    // Poll immediately so track info appears without a 1s delay
-    poll_smtc(&app, &mut last_track).await;
+    let mut last_track:    Option<(String, String)> = None;
+    let mut last_position: Option<(u64, bool)>      = None;
+    poll_smtc(&app, &mut last_track, &mut last_position).await;
     loop {
         tokio::select! {
             _ = &mut stop_rx => break,
             _ = tokio::time::sleep(Duration::from_secs(1)) => {
-                poll_smtc(&app, &mut last_track).await;
+                poll_smtc(&app, &mut last_track, &mut last_position).await;
             }
         }
     }
 }
 
-async fn poll_smtc(app: &AppHandle, last_track: &mut Option<(String, String)>) {
-    match try_poll_smtc(app, last_track).await {
+async fn poll_smtc(app: &AppHandle, last_track: &mut Option<(String, String)>, last_position: &mut Option<(u64, bool)>) {
+    match try_poll_smtc(app, last_track, last_position).await {
         Ok(()) => {}
         Err(e) => {
             eprintln!("[SMTC] poll error: {e:?}");
             if last_track.is_some() {
-                *last_track = None;
+                *last_track    = None;
+                *last_position = None;
                 let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);
             }
         }
@@ -98,8 +99,9 @@ async fn poll_smtc(app: &AppHandle, last_track: &mut Option<(String, String)>) {
 }
 
 async fn try_poll_smtc(
-    app:        &AppHandle,
-    last_track: &mut Option<(String, String)>,
+    app:           &AppHandle,
+    last_track:    &mut Option<(String, String)>,
+    last_position: &mut Option<(u64, bool)>,
 ) -> windows::core::Result<()> {
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
 
@@ -160,7 +162,11 @@ async fn try_poll_smtc(
         }));
     }
 
-    let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms, is_playing, duration_ms });
+    let pos_key = (position_ms, is_playing);
+    if last_position.as_ref() != Some(&pos_key) {
+        *last_position = Some(pos_key);
+        let _ = app.emit("smtc-position-update", SmtcPositionUpdate { position_ms, is_playing, duration_ms });
+    }
 
     Ok(())
 }

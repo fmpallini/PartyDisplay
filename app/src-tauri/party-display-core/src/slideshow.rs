@@ -12,10 +12,11 @@ pub fn collect_photos(folder: &std::path::Path, recursive: bool) -> Vec<PathBuf>
 fn collect_photos_inner(folder: &std::path::Path, recursive: bool, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(folder) else { return };
     for entry in entries.flatten() {
+        let Ok(ft) = entry.file_type() else { continue };
         let path = entry.path();
-        if path.is_dir() && recursive {
+        if ft.is_dir() && recursive {
             collect_photos_inner(&path, recursive, out);
-        } else if path.is_file()
+        } else if ft.is_file()
             && path.extension()
                 .and_then(|e| e.to_str())
                 .map(|e| PHOTO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
