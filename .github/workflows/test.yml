@@ -39,8 +39,8 @@ jobs:
         with:
           workspaces: app/src-tauri
       - uses: taiki-e/install-action@nextest
-      - name: Run core tests
-        run: cargo nextest run -p party-display-core
+      - name: Run tests
+        run: cargo nextest run --workspace
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: sccache
