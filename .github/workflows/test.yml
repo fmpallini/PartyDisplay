@@ -32,8 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: mozilla-actions/sccache-action@v0.0.5
-        continue-on-error: true
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/src-tauri
@@ -41,6 +39,4 @@ jobs:
       - name: Run tests
         run: cargo nextest run --workspace
         env:
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: sccache
           CARGO_BUILD_JOBS: "2"
