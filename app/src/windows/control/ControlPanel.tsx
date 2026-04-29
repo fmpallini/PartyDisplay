@@ -777,10 +777,10 @@ export default function ControlPanel() {
 
           {/* ── Zone 2: Playback — always visible ─────────────────────── */}
           <div style={{ borderTop: '1px solid #1e1e1e', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <NowPlaying track={player.track} paused={player.paused} />
+            <NowPlaying track={player.track} />
             <PlayerControls
               track={player.track}
-              paused={player.paused}
+             
               positionMs={player.positionMs}
               shuffle={player.shuffle}
               togglePlay={player.togglePlay}

@@ -24,7 +24,7 @@ function mockInvoke(opts: {
 }) {
   const monitors = opts.monitors ?? [PRIMARY]
   const state    = opts.state    ?? EMPTY_STATE
-  vi.mocked(invoke).mockImplementation((cmd: string, _args?: unknown) => {
+  vi.mocked(invoke).mockImplementation((cmd: string) => {
     if (cmd === 'get_monitors')          return Promise.resolve(monitors)
     if (cmd === 'load_display_state')    return Promise.resolve(state)
     if (cmd === 'open_display_window')   return Promise.resolve(opts.openResult ?? undefined)

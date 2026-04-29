@@ -7,7 +7,8 @@
     "build": "tsc && vite build",
     "tauri": "tauri",
     "release": "tauri build && node -e \"require('fs').cpSync('../presets', 'src-tauri/target/release/presets', {recursive: true, force: true})\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint src"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -21,6 +22,7 @@
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6",
     "@testing-library/react": "^16",
@@ -30,8 +32,11 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6",
     "esbuild": "^0.28.0",
+    "eslint": "^10.2.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.1",
     "vite": "^8",
     "vitest": "^4.1.5"
   }
