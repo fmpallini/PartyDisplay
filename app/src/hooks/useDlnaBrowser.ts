@@ -160,3 +160,5 @@ export function useDlnaBrowser(storageKey: string) {
     selectServer, browse, back, reset,
   }
 }
+
+export type DlnaBrowserState = ReturnType<typeof useDlnaBrowser>

@@ -5,10 +5,10 @@ export type VisualizerMode        = 'photos' | 'visualizer' | 'split'
 export type VisualizerPresetOrder  = 'alpha' | 'shuffle'
 export type VisualizerPresetChange = 'manual' | 'music' | 'timer'
 
-const VISUALIZER_MODE_VALUES          = ['photos', 'visualizer', 'split'] as const
-const VISUALIZER_SIDE_VALUES          = ['left', 'right'] as const
-const VISUALIZER_PRESET_ORDER_VALUES  = ['alpha', 'shuffle'] as const
-const VISUALIZER_PRESET_CHANGE_VALUES = ['manual', 'music', 'timer'] as const
+export const VISUALIZER_MODE_VALUES          = ['photos', 'visualizer', 'split'] as const
+export const VISUALIZER_SIDE_VALUES          = ['left', 'right'] as const
+export const VISUALIZER_PRESET_ORDER_VALUES  = ['alpha', 'shuffle'] as const
+export const VISUALIZER_PRESET_CHANGE_VALUES = ['manual', 'music', 'timer'] as const
 
 export type TransitionEffect =
   | 'fade'
