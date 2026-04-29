@@ -9,25 +9,25 @@ const TRACK: TrackInfo = {
 
 describe('NowPlaying', () => {
   it('renders track name and artist', () => {
-    render(<NowPlaying track={TRACK} paused={false} />)
+    render(<NowPlaying track={TRACK} />)
     expect(screen.getByText('Test Song')).toBeInTheDocument()
     expect(screen.getByText('Test Artist')).toBeInTheDocument()
   })
 
   it('renders "No track" fallback when track is null', () => {
-    render(<NowPlaying track={null} paused={false} />)
+    render(<NowPlaying track={null} />)
     expect(screen.getByText('No track')).toBeInTheDocument()
   })
 
   it('renders album art image when albumArt is non-empty', () => {
     const track = { ...TRACK, albumArt: 'https://example.com/art.jpg' }
-    render(<NowPlaying track={track} paused={false} />)
+    render(<NowPlaying track={track} />)
     const img = screen.getByRole('img', { name: 'album art' })
     expect(img).toHaveAttribute('src', 'https://example.com/art.jpg')
   })
 
   it('does not render an img element when albumArt is empty string', () => {
-    render(<NowPlaying track={TRACK} paused={false} />)
+    render(<NowPlaying track={TRACK} />)
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 })
