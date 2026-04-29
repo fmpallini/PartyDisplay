@@ -33,8 +33,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: mozilla-actions/sccache-action@v0.0.5
-        with:
-          cache_on_failure: "true"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/src-tauri
