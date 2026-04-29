@@ -391,7 +391,6 @@ export default function ControlPanel() {
       ...s,
       visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, 1, s.visualizerPresetOrder, presetNames.length),
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetNames.length])
 
   const prevPreset = useCallback(() => {
@@ -399,7 +398,6 @@ export default function ControlPanel() {
       ...s,
       visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, -1, s.visualizerPresetOrder, presetNames.length),
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetNames.length])
 
   // Auto-advance preset on music change
