@@ -40,7 +40,6 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   }
 
   // On mount: fetch whatever the watcher already has (handles late-opening display window)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const lastFolder = localStorage.getItem(KEYS.lastPhotoFolder)
     invoke<string[]>('get_photos').then(paths => {
@@ -58,7 +57,6 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   }, [])
 
   // Re-apply order when `order` prop changes (re-sort or re-shuffle current list)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setState(s => {
       if (s.photos.length === 0) return s
@@ -68,7 +66,6 @@ export function usePhotoLibrary({ order, recursive }: Options) {
   }, [order])
 
   // Listen for file-system watcher updates
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const unlisten = listen<{ paths: string[] }>('photo-list', ({ payload }) => {
       const { photos, initialPhoto } = applyOrder(payload.paths, folderRef.current)
