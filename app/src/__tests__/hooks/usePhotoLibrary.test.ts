@@ -43,7 +43,7 @@ describe('usePhotoLibrary', () => {
     vi.mocked(invoke).mockResolvedValue(['c.jpg', 'a.jpg', 'b.jpg'])
     const { result, rerender } = renderHook(
       ({ order }) => usePhotoLibrary({ order, recursive: false }),
-      { initialProps: { order: 'shuffle' as const } },
+      { initialProps: { order: 'shuffle' as 'shuffle' | 'alpha' } },
     )
     await waitFor(() => expect(result.current.photos).toHaveLength(3))
     rerender({ order: 'alpha' })

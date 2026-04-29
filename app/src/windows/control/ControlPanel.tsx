@@ -778,7 +778,7 @@ export default function ControlPanel() {
             <NowPlaying track={player.track} />
             <PlayerControls
               track={player.track}
-             
+              paused={player.paused}
               positionMs={player.positionMs}
               shuffle={player.shuffle}
               togglePlay={player.togglePlay}
