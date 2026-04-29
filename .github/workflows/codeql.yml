@@ -52,7 +52,6 @@ jobs:
         with:
           languages: rust
           build-mode: none
-          queries: security-extended
           config: |
             paths:
               - app/src-tauri/src
