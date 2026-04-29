@@ -351,9 +351,9 @@ fn main() {
                 if let Ok(Some(monitor)) = control.current_monitor() {
                     let scale = monitor.scale_factor();
                     let logical_h = monitor.size().height as f64 / scale;
-                    let target_h = (logical_h - 80.0).min(950.0).max(720.0);
+                    let target_h = (logical_h - 80.0).min(1020.0).max(970.0);
                     let _ = control.set_size(tauri::Size::Logical(tauri::LogicalSize {
-                        width: 420.0,
+                        width: 400.0,
                         height: target_h,
                     }));
                 }

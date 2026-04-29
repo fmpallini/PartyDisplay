@@ -276,3 +276,71 @@ pub fn stop_remote_server(state: tauri::State<'_, RemoteState>) {
         h.abort();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_full_state_produces_valid_json() {
+        let state = RemoteAppState::default();
+        let s = build_full_state(&state);
+        let v: serde_json::Value = serde_json::from_str(&s).expect("must be valid JSON");
+        assert_eq!(v["type"], "full-state");
+    }
+
+    #[test]
+    fn build_full_state_default_field_values() {
+        let state = RemoteAppState::default();
+        let v: serde_json::Value = serde_json::from_str(&build_full_state(&state)).unwrap();
+        assert_eq!(v["playing"], false);
+        assert_eq!(v["slideshowPaused"], false);
+        assert_eq!(v["vizMode"], "photos");
+        assert!(v["toggles"].as_object().unwrap().is_empty());
+    }
+
+    #[test]
+    fn build_full_state_reflects_playing_true() {
+        let mut state = RemoteAppState::default();
+        state.playing = true;
+        let v: serde_json::Value = serde_json::from_str(&build_full_state(&state)).unwrap();
+        assert_eq!(v["playing"], true);
+    }
+
+    #[test]
+    fn build_full_state_reflects_slideshow_paused() {
+        let mut state = RemoteAppState::default();
+        state.slideshow_paused = true;
+        let v: serde_json::Value = serde_json::from_str(&build_full_state(&state)).unwrap();
+        assert_eq!(v["slideshowPaused"], true);
+    }
+
+    #[test]
+    fn build_full_state_includes_toggle_entries() {
+        let mut state = RemoteAppState::default();
+        state.toggles.insert("lyrics".to_string(), true);
+        state.toggles.insert("visualizer".to_string(), false);
+        let v: serde_json::Value = serde_json::from_str(&build_full_state(&state)).unwrap();
+        assert_eq!(v["toggles"]["lyrics"], true);
+        assert_eq!(v["toggles"]["visualizer"], false);
+    }
+
+    #[test]
+    fn build_full_state_all_viz_modes_round_trip() {
+        for mode in VIZ_MODES {
+            let mut state = RemoteAppState::default();
+            state.viz_mode = mode.to_string();
+            let v: serde_json::Value = serde_json::from_str(&build_full_state(&state)).unwrap();
+            assert_eq!(v["vizMode"], mode, "failed for mode={mode}");
+        }
+    }
+
+    #[test]
+    fn remote_app_state_default_is_idle() {
+        let state = RemoteAppState::default();
+        assert!(!state.playing);
+        assert!(!state.slideshow_paused);
+        assert!(state.toggles.is_empty());
+        assert_eq!(state.viz_mode, "photos");
+    }
+}

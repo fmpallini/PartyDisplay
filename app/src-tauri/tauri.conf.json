@@ -14,10 +14,10 @@
       {
         "label": "control",
         "title": "Party Display — Control",
-        "width": 420,
-        "height": 720,
-        "minWidth": 380,
-        "minHeight": 480,
+        "width": 400,
+        "height": 970,
+        "minWidth": 400,
+        "minHeight": 530,
         "resizable": true
       },
       {

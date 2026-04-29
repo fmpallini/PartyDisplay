@@ -24,7 +24,7 @@ jobs:
       - run: npm test
 
   rust:
-    name: Rust (cargo test)
+    name: Rust (cargo nextest)
     runs-on: windows-latest
     defaults:
       run:
@@ -35,4 +35,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/src-tauri
-      - run: cargo test
+      - uses: taiki-e/install-action@nextest
+      - name: Run tests
+        run: cargo nextest run --workspace
+        env:
+          CARGO_BUILD_JOBS: "2"
