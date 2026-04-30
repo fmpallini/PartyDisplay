@@ -18,7 +18,7 @@ export function useVisualizer(
   const [presets, setPresets] = useState<{ name: string; data: Record<string, unknown> }[]>([])
   const [presetsLoaded, setPresetsLoaded] = useState(false)
 
-  const clampIdx = (i: number) => Math.max(0, Math.min(i, presets.length - 1))
+  const clampIdx = useCallback((i: number) => Math.max(0, Math.min(i, presets.length - 1)), [presets.length])
 
   useEffect(() => {
     invoke<{ name: string; content: string }[]>('get_presets')
@@ -93,7 +93,7 @@ export function useVisualizer(
     if (idx === lastLoadedRef.current) return
     lastLoadedRef.current = idx
     viz.loadPreset(presets[idx].data, BLEND_SECONDS)
-  }, [presetIndex, presets])
+  }, [presetIndex, presets, clampIdx])
 
   useEffect(() => {
     const unlisten = listen<number[]>('pcm-data', ({ payload }) => {

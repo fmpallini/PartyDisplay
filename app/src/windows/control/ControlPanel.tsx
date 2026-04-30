@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { safeBool, safeEnum, safeNum } from '../../lib/utils'
 import { KEYS } from '../../lib/storage-keys'
 import { invoke } from '@tauri-apps/api/core'
@@ -351,6 +351,7 @@ export default function ControlPanel() {
   useEffect(() => {
     const lastFolder = localStorage.getItem(KEYS.lastPhotoFolder)
     if (lastFolder) library.setFolder(lastFolder)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -379,6 +380,7 @@ export default function ControlPanel() {
         paused:    player.paused,
       }).catch(console.error)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.track?.id])
 
   const prevVolumeRef = useRef(player.volume)
@@ -492,17 +494,17 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, lyricsVisible: !s.lyricsVisible }))
   }, [])
 
-  const musicNext   = useCallback(() => { player.nextTrack()  }, [player.nextTrack])
-  const musicPrev   = useCallback(() => { player.prevTrack()  }, [player.prevTrack])
-  const musicToggle = useCallback(() => { player.togglePlay() }, [player.togglePlay])
+  const musicNext   = useCallback(() => { player.nextTrack()  }, [player])
+  const musicPrev   = useCallback(() => { player.prevTrack()  }, [player])
+  const musicToggle = useCallback(() => { player.togglePlay() }, [player])
   const volumeUp    = useCallback(() => {
     if (source === 'external') { invoke('send_media_key', { key: 'vol_up' }).catch(e => console.error('[volume]', e)); return }
     player.setVolume(Math.min(1, player.volume + 0.05))
-  }, [source, player.setVolume, player.volume])
+  }, [source, player])
   const volumeDown  = useCallback(() => {
     if (source === 'external') { invoke('send_media_key', { key: 'vol_down' }).catch(e => console.error('[volume]', e)); return }
     player.setVolume(Math.max(0, player.volume - 0.05))
-  }, [source, player.setVolume, player.volume])
+  }, [source, player])
 
   const handleRemoteToggle = useCallback(async (enable: boolean) => {
     if (enable) {
