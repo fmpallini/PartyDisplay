@@ -42,6 +42,7 @@ export function useVisualizer(
 
     async function init() {
       const mod = await import('butterchurn')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const butterchurn = [mod, mod.default, (mod.default as any)?.default]
         .find((x): x is typeof mod.default => typeof x?.createVisualizer === 'function')!
       const ctx = new AudioContext()

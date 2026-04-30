@@ -159,6 +159,7 @@ export function useAuth() {
   // Depend on accessToken (not just authenticated): accessToken changes on every
   // successful refresh, so the effect re-runs and reschedules the next refresh.
   // When authenticated is false, accessToken is null and the early-return guard fires.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.accessToken])
 
   // ── login / logout / saveClientId ─────────────────────────────────────────
