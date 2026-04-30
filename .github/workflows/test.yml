@@ -9,8 +9,8 @@ on:
     branches: [master, dev]
 
 jobs:
-  frontend:
-    name: Frontend (Vitest)
+  frontend-checks:
+    name: Frontend (Lint, Typecheck, Test)
     runs-on: windows-latest
     defaults:
       run:
@@ -23,39 +23,12 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: npm ci
-      - run: npm test
-
-  typecheck:
-    name: Frontend (tsc)
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - run: npm ci
-      - run: npx tsc --noEmit
-
-  lint:
-    name: Frontend (ESLint)
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - run: npm ci
-      - run: npm run lint
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test
 
   rust:
     name: Rust (cargo nextest)

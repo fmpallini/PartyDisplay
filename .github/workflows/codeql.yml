@@ -4,9 +4,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 on:
   push:
-    branches: [master]
+    branches: [master, dev]
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 jobs:
   analyze-javascript:
