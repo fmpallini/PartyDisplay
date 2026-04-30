@@ -30,26 +30,8 @@ jobs:
       - name: Test
         run: npm test
 
-  rust:
-    name: Rust (cargo nextest)
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: app/src-tauri
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: app/src-tauri
-      - uses: taiki-e/install-action@nextest
-      - name: Run tests
-        run: cargo nextest run --workspace
-        env:
-          CARGO_BUILD_JOBS: "2"
-
-  rust-lint:
-    name: Rust (clippy + fmt)
+  rust-checks:
+    name: Rust (Fmt, Clippy, Test)
     runs-on: windows-latest
     defaults:
       run:
@@ -62,7 +44,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/src-tauri
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace -- -D warnings
+      - uses: taiki-e/install-action@nextest
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+        env:
+          CARGO_BUILD_JOBS: "2"
+      - name: Test
+        run: cargo nextest run --workspace
         env:
           CARGO_BUILD_JOBS: "2"
