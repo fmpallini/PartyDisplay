@@ -52,6 +52,28 @@ jobs:
         env:
           CARGO_BUILD_JOBS: "2"
       - name: Test
-        run: cargo nextest run --workspace
+        id: test
+        run: |
+          cargo nextest run --workspace 2>&1 | Tee-Object -FilePath nextest-output.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         env:
           CARGO_BUILD_JOBS: "2"
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          if (Test-Path nextest-output.txt) {
+            $content = Get-Content nextest-output.txt -Raw
+            $summaryMatch = [regex]::Match($content, '(?m)^.*tests run:.*$')
+            
+            "### 🦀 Rust Test Results" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            if ($summaryMatch.Success) {
+              $cleanSummary = $summaryMatch.Value -replace "`e\[[0-9;]*m", ""
+              "**$($cleanSummary.Trim())**" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            }
+            if ('${{ steps.test.outcome }}' -eq 'success') {
+              "✅ All tests passed successfully!" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            } else {
+              "❌ Some tests failed." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            }
+          }
