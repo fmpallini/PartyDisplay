@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -69,7 +70,8 @@ fn run_loopback(app: tauri::AppHandle) -> Result<bool, Box<dyn std::error::Error
                 }
                 while buf.len() >= CHUNK_SIZE {
                     let chunk: Vec<f32> = buf.drain(..CHUNK_SIZE).collect();
-                    let _ = app_clone.emit("pcm-data", &chunk);
+                    let bytes: Vec<u8> = chunk.iter().flat_map(|f| f.to_le_bytes()).collect();
+                    let _ = app_clone.emit("pcm-data", STANDARD.encode(&bytes));
                 }
             },
             |err| eprintln!("WASAPI stream error: {err}"),

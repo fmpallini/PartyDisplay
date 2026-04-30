@@ -1,23 +1,30 @@
 import { useEffect, useRef } from 'react'
 import { useVisualizer } from '../hooks/useVisualizer'
 
+const MAX_CANVAS_W = 1920
+const MAX_CANVAS_H = 1080
+
 interface Props {
   presetIndex: number
   style?:      React.CSSProperties
 }
 
 export default function VisualizerCanvas({ presetIndex, style }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const prevSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 })
   const { notifyResize, presetsEmpty } = useVisualizer(canvasRef, presetIndex)
 
-  // Keep Butterchurn's internal resolution in sync with the element's rendered size
+  // Keep Butterchurn's internal resolution in sync with the element's rendered size,
+  // capped at 1920×1080 to avoid full 4K rendering overhead.
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ro = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect
-      const w = Math.round(width)
-      const h = Math.round(height)
+      const w = Math.min(Math.round(width),  MAX_CANVAS_W)
+      const h = Math.min(Math.round(height), MAX_CANVAS_H)
+      if (w === prevSizeRef.current.w && h === prevSizeRef.current.h) return
+      prevSizeRef.current = { w, h }
       canvas.width  = w
       canvas.height = h
       notifyResize(w, h)

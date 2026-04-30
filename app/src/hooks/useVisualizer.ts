@@ -13,6 +13,7 @@ export function useVisualizer(
   const audioCtxRef      = useRef<AudioContext | null>(null)
   const workletRef       = useRef<AudioWorkletNode | null>(null)
   const rafRef           = useRef<number>(0)
+  const renderFnRef      = useRef<(() => void) | null>(null)
   // Distinguish first load (blend=0) from user-driven changes (blend=BLEND_SECONDS).
   const lastLoadedRef    = useRef<number>(-1)
   const [presets, setPresets] = useState<{ name: string; data: Record<string, unknown> }[]>([])
@@ -69,6 +70,7 @@ export function useVisualizer(
         viz.render()
         rafRef.current = requestAnimationFrame(render)
       }
+      renderFnRef.current = render
       rafRef.current = requestAnimationFrame(render)
     }
 
@@ -77,6 +79,7 @@ export function useVisualizer(
     return () => {
       cancelled = true
       cancelAnimationFrame(rafRef.current)
+      renderFnRef.current = null
       audioCtxRef.current?.close()
       audioCtxRef.current = null
       workletRef.current  = null
@@ -96,8 +99,26 @@ export function useVisualizer(
   }, [presetIndex, presets, clampIdx])
 
   useEffect(() => {
-    const unlisten = listen<number[]>('pcm-data', ({ payload }) => {
-      workletRef.current?.port.postMessage(new Float32Array(payload))
+    function onVisibilityChange() {
+      if (document.hidden) {
+        cancelAnimationFrame(rafRef.current)
+        audioCtxRef.current?.suspend()
+      } else {
+        audioCtxRef.current?.resume()
+        const fn = renderFnRef.current
+        if (fn) rafRef.current = requestAnimationFrame(fn)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
+  useEffect(() => {
+    const unlisten = listen<string>('pcm-data', ({ payload }) => {
+      const binary = atob(payload)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      workletRef.current?.port.postMessage(new Float32Array(bytes.buffer))
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])
