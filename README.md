@@ -18,6 +18,27 @@ The app is built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK
 
 ---
 
+## Verifying a release
+
+Every release zip is built by GitHub Actions directly from the signed tag and attested via [Sigstore](https://sigstore.dev). You can cryptographically verify that the file you downloaded was produced by this repo's CI pipeline — not assembled on someone's machine.
+
+**Requirements:** [GitHub CLI](https://cli.github.com) (`gh`)
+
+```bash
+gh attestation verify party-display-vX.Y.Z.zip --repo fmpallini/PartyDisplay
+```
+
+A passing result confirms the artifact's provenance. Replace `vX.Y.Z` with the version you downloaded.
+
+You can also verify the SHA-256 checksum against `checksums.txt` bundled in the same release:
+
+```powershell
+# PowerShell
+(Get-FileHash party-display-vX.Y.Z.zip -Algorithm SHA256).Hash.ToLower()
+```
+
+---
+
 ## Building from source
 
 ### Prerequisites
@@ -57,7 +78,7 @@ cd app
 npm run tauri build
 ```
 
-The output binary will be at `app/src-tauri/target/release/party-display.exe`.
+The output binary will be at `app/src-tauri/target/x86_64-pc-windows-msvc/release/party-display.exe`.
 
 > **Note:** The first Rust build takes several minutes — subsequent builds are incremental.
 
