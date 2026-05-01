@@ -1,3 +1,8 @@
+/// Returns true when the SMTC session belongs to Party Display itself and should be ignored.
+pub fn is_self_session(title: &str) -> bool {
+    title.is_empty() || title == "Party Display"
+}
+
 pub fn is_channel_artist(artist: &str) -> bool {
     let a = artist.to_lowercase();
     a.ends_with("vevo") || a.ends_with(" - topic") || a.ends_with("official")
@@ -93,6 +98,21 @@ pub fn detect_mime(bytes: &[u8]) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_self_session_empty_title() {
+        assert!(is_self_session(""));
+    }
+
+    #[test]
+    fn is_self_session_party_display_title() {
+        assert!(is_self_session("Party Display"));
+    }
+
+    #[test]
+    fn is_self_session_normal_title_not_skipped() {
+        assert!(!is_self_session("Bohemian Rhapsody"));
+    }
 
     #[test]
     fn normalize_youtube_music_topic_suffix_stripped() {

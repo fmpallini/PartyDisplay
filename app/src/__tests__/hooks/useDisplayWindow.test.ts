@@ -86,6 +86,26 @@ describe('useDisplayWindow', () => {
     )
   })
 
+  it('auto-opens window on fresh start when initialized=false', async () => {
+    // EMPTY_STATE has is_open: false, initialized: false — simulates first launch
+    mockInvoke({ monitors: [PRIMARY], state: EMPTY_STATE })
+    const { result } = renderHook(() => useDisplayWindow())
+    await waitFor(() => expect(result.current.isOpen).toBe(true))
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith(
+      'open_display_window',
+      expect.objectContaining({ fullscreen: false }),
+    )
+  })
+
+  it('does not auto-open when initialized=true and is_open=false', async () => {
+    const closedState: DisplayState = { ...EMPTY_STATE, initialized: true, is_open: false }
+    mockInvoke({ monitors: [PRIMARY], state: closedState })
+    const { result } = renderHook(() => useDisplayWindow())
+    await waitFor(() => expect(result.current.monitors).toHaveLength(1))
+    expect(result.current.isOpen).toBe(false)
+    expect(vi.mocked(invoke)).not.toHaveBeenCalledWith('open_display_window', expect.anything())
+  })
+
   it('selectMonitor updates selectedMonitor', async () => {
     mockInvoke({ monitors: [PRIMARY, SECONDARY] })
     const { result } = renderHook(() => useDisplayWindow())

@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose, Engine as _};
-use party_display_core::smtc::{detect_mime, normalize_browser_track};
+use party_display_core::smtc::{detect_mime, is_self_session, normalize_browser_track};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
@@ -139,7 +139,7 @@ async fn try_poll_smtc(
     let raw_title = props.Title()?.to_string();
     let raw_artist = props.Artist()?.to_string();
 
-    if raw_title.is_empty() || raw_title == "Party Display" {
+    if is_self_session(&raw_title) {
         if last_track.is_some() {
             *last_track = None;
             let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);
