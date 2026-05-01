@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useVisualizer } from '../hooks/useVisualizer'
 
 const MAX_CANVAS_W = 1920
@@ -12,7 +12,8 @@ interface Props {
 export default function VisualizerCanvas({ presetIndex, style }: Props) {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
   const prevSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 })
-  const { notifyResize, presetsEmpty } = useVisualizer(canvasRef, presetIndex)
+  const [initSize, setInitSize] = useState<{ w: number; h: number } | null>(null)
+  const { notifyResize, presetsEmpty } = useVisualizer(canvasRef, presetIndex, initSize)
 
   // Keep Butterchurn's internal resolution in sync with the element's rendered size,
   // capped at 1920×1080 to avoid full 4K rendering overhead.
@@ -27,6 +28,7 @@ export default function VisualizerCanvas({ presetIndex, style }: Props) {
       prevSizeRef.current = { w, h }
       canvas.width  = w
       canvas.height = h
+      if (w > 0 && h > 0) setInitSize(prev => prev ?? { w, h })
       notifyResize(w, h)
     })
     ro.observe(canvas)

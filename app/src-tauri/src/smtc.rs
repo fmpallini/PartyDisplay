@@ -139,7 +139,7 @@ async fn try_poll_smtc(
     let raw_title = props.Title()?.to_string();
     let raw_artist = props.Artist()?.to_string();
 
-    if raw_title.is_empty() {
+    if raw_title.is_empty() || raw_title == "Party Display" {
         if last_track.is_some() {
             *last_track = None;
             let _ = app.emit("smtc-track-changed", Option::<SmtcTrackInfo>::None);

@@ -560,13 +560,20 @@ export default function ControlPanel() {
   }, [doNext, doPrev, togglePause, cycleVisualizerMode, nextPreset, prevPreset, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // Pause the outgoing player on source switch; user controls resume from there.
+  // local/dlna auto-pause via active=false in useLocalPlayer — only spotify and external need explicit handling.
+  const prevSourceRef = useRef(source)
   useEffect(() => {
-    if ((source === 'local' || source === 'dlna' || source === 'external') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    const prev = prevSourceRef.current
+    prevSourceRef.current = source
+    if (prev === source) return
+    if (prev === 'spotify'  && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    if (prev === 'external' && !externalPlayer.paused) invoke('send_media_key', { key: 'play_pause' }).catch(e => console.error('[source switch]', e))
     localStorage.setItem(KEYS.audioSource, source)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
   // Auto-switch to Spotify when a remote device starts playback while another source is active.
+
   const prevSpotifyPausedRef = useRef(true)
   useEffect(() => {
     const wasPaused = prevSpotifyPausedRef.current

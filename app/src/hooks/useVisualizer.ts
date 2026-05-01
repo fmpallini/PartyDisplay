@@ -8,6 +8,7 @@ const BLEND_SECONDS = 2.7
 export function useVisualizer(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   presetIndex: number,
+  initSize: { w: number; h: number } | null,
 ) {
   const vizRef           = useRef<import('butterchurn').Visualizer | null>(null)
   const audioCtxRef      = useRef<AudioContext | null>(null)
@@ -35,7 +36,7 @@ export function useVisualizer(
 
   useEffect(() => {
     const canvasOrNull = canvasRef.current
-    if (!canvasOrNull || presets.length === 0) return
+    if (!canvasOrNull || presets.length === 0 || !initSize) return
     // Capture as non-null so TypeScript keeps the narrowing inside the async closure
     const canvas: HTMLCanvasElement = canvasOrNull
 
@@ -56,8 +57,8 @@ export function useVisualizer(
       workletRef.current = worklet
 
       const viz = butterchurn.createVisualizer(ctx, canvas, {
-        width:  canvas.width  || canvas.offsetWidth,
-        height: canvas.height || canvas.offsetHeight,
+        width:  initSize.w,
+        height: initSize.h,
       })
       viz.connectAudio(worklet)
       vizRef.current = viz
@@ -87,7 +88,7 @@ export function useVisualizer(
       lastLoadedRef.current = -1
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasRef, presets])
+  }, [canvasRef, presets, initSize])
 
   useEffect(() => {
     const viz = vizRef.current
