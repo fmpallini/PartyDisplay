@@ -12,7 +12,7 @@ const SECONDARY: MonitorInfo = {
   name: 'Monitor 2', x: 1920, y: 0, width: 1920, height: 1080, is_primary: false,
 }
 const EMPTY_STATE: DisplayState = {
-  monitor_name: null, x: 0, y: 0, width: 0, height: 0, fullscreen: false, is_open: false,
+  monitor_name: null, x: 0, y: 0, width: 0, height: 0, fullscreen: false, is_open: false, initialized: false,
 }
 
 /** Build a per-command invoke mock so the polling effect never corrupts ordering. */

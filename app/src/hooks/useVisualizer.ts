@@ -39,6 +39,8 @@ export function useVisualizer(
     if (!canvasOrNull || presets.length === 0 || !initSize) return
     // Capture as non-null so TypeScript keeps the narrowing inside the async closure
     const canvas: HTMLCanvasElement = canvasOrNull
+    const initW = initSize.w
+    const initH = initSize.h
 
     let cancelled = false
 
@@ -56,10 +58,12 @@ export function useVisualizer(
       const worklet = new AudioWorkletNode(ctx, 'pcm-injector-processor')
       workletRef.current = worklet
 
-      const viz = butterchurn.createVisualizer(ctx, canvas, {
-        width:  initSize.w,
-        height: initSize.h,
-      })
+      // Use canvas.width/height at init time — may differ from initSize if the window
+      // finished sizing during the async butterchurn import above.
+      const w = canvas.width  || initW
+      const h = canvas.height || initH
+      const viz = butterchurn.createVisualizer(ctx, canvas, { width: w, height: h })
+      viz.setRendererSize(w, h)
       viz.connectAudio(worklet)
       vizRef.current = viz
 

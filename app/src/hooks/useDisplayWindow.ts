@@ -19,6 +19,7 @@ export interface DisplayState {
   height: number
   fullscreen: boolean
   is_open: boolean
+  initialized: boolean
 }
 
 export function useDisplayWindow() {
@@ -41,7 +42,8 @@ export function useDisplayWindow() {
         setSelectedMonitor((secondary ?? mons[0]).name)
       }
       setFullscreen(saved.fullscreen)
-      if (saved.is_open) {
+      // Auto-open if it was open last session, or on a fresh start (never initialized)
+      if (saved.is_open || !saved.initialized) {
         invoke('open_display_window', {
           monitorName: saved.monitor_name ?? undefined,
           fullscreen: saved.fullscreen,

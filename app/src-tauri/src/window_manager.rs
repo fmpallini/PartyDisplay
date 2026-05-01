@@ -21,6 +21,10 @@ pub struct DisplayState {
     pub fullscreen: bool,
     #[serde(default)]
     pub is_open: bool,
+    /// false until the display window has been opened at least once.
+    /// Used to detect a truly fresh start and auto-open with a sensible default position.
+    #[serde(default)]
+    pub initialized: bool,
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -89,6 +93,7 @@ pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) -> DisplaySta
             fullscreen: false,
             monitor_name,
             is_open: existing.is_open,
+            initialized: existing.initialized,
         }
     };
     write_state_file(app, &state);
@@ -193,14 +198,11 @@ pub fn open_display_window(
             win.set_fullscreen(true).map_err(|e| e.to_string())?;
         } else {
             let w = if saved.width > 100 { saved.width } else { 1280 };
-            let h = if saved.height > 100 {
-                saved.height
-            } else {
-                720
-            };
+            let h = if saved.height > 100 { saved.height } else { 720 };
+
             // Accept saved position only if the entire window fits within any available monitor.
             // This handles: saved monitor removed, resolution shrunk, multi-monitor layout changed.
-            let fits_any = monitors.iter().any(|m| {
+            let fits_any = saved.initialized && monitors.iter().any(|m| {
                 let mp = m.position();
                 let ms = m.size();
                 saved.x >= mp.x
@@ -208,11 +210,22 @@ pub fn open_display_window(
                     && saved.x + w as i32 <= mp.x + ms.width as i32
                     && saved.y + h as i32 <= mp.y + ms.height as i32
             });
+
             let (x, y) = if fits_any {
                 (saved.x, saved.y)
             } else {
-                (mon_pos.x + 80, mon_pos.y + 80)
+                // Default: right of the control panel with a small gap.
+                // Falls back to monitor offset if the control window isn't available.
+                let default_pos = app
+                    .get_webview_window("control")
+                    .and_then(|ctrl| {
+                        let pos = ctrl.outer_position().ok()?;
+                        let size = ctrl.outer_size().ok()?;
+                        Some((pos.x + size.width as i32 + 16, pos.y))
+                    });
+                default_pos.unwrap_or((mon_pos.x + 80, mon_pos.y + 80))
             };
+
             win.set_size(PhysicalSize::new(w, h))
                 .map_err(|e| e.to_string())?;
             win.set_position(PhysicalPosition::new(x, y))
@@ -226,9 +239,10 @@ pub fn open_display_window(
         win.set_focus().map_err(|e| e.to_string())?;
     }
 
-    // Snapshot after opening and mark as open
+    // Snapshot after opening and mark as open + initialized
     let mut state = snapshot_window_state(&app, &win);
     state.is_open = true;
+    state.initialized = true;
     write_state_file(&app, &state);
 
     // Prevent screen saver / display sleep while the display window is active

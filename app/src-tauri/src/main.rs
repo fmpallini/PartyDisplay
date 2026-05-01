@@ -179,23 +179,62 @@ fn exit_app() {
     std::process::exit(0);
 }
 
-/// Delete the WebView2 user-data folder so that localStorage and other
-/// browser-side storage is wiped on the next launch.
-/// Used by both the --reset CLI flag and the UI reset button.
-#[tauri::command]
-fn clear_webview_data() {
+/// Wipe LOCALAPPDATA WebView2 folder. Called at startup (before WebView2 init)
+/// so file locks are absent and the delete fully succeeds.
+fn wipe_localappdata() {
     if let Ok(local) = std::env::var("LOCALAPPDATA") {
         let _ = std::fs::remove_dir_all(std::path::Path::new(&local).join("com.partydisplay.app"));
     }
 }
 
+/// Path of the marker file that signals a deferred WebView2 wipe is needed.
+fn pending_reset_marker() -> Option<std::path::PathBuf> {
+    std::env::var("APPDATA").ok().map(|appdata| {
+        std::path::Path::new(&appdata)
+            .join("com.partydisplay.app")
+            .join("pending_reset")
+    })
+}
+
+/// If a pending-reset marker exists from a previous UI-triggered reset,
+/// finish wiping LOCALAPPDATA now (WebView2 not yet running) and remove the marker.
+fn finish_pending_reset_if_needed() {
+    let Some(marker) = pending_reset_marker() else { return };
+    if !marker.exists() { return }
+    wipe_localappdata();
+    let _ = std::fs::remove_file(&marker);
+}
+
+/// Delete all persisted app state. When called while the app is running,
+/// WebView2 holds locks on EBWebView so the LOCALAPPDATA wipe is partial —
+/// a pending_reset marker is written so the next startup finishes the job.
+#[tauri::command]
+fn clear_webview_data() {
+    // Best-effort wipe while running (locked files survive — marker handles the rest)
+    wipe_localappdata();
+    // display_state.json lives in APPDATA, not LOCALAPPDATA — always deletable
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let base = std::path::Path::new(&appdata).join("com.partydisplay.app");
+        let _ = std::fs::remove_file(base.join("display_state.json"));
+        // Write marker so next launch finishes the LOCALAPPDATA wipe
+        let _ = std::fs::create_dir_all(&base);
+        let _ = std::fs::write(base.join("pending_reset"), "");
+    }
+}
+
 fn main() {
+    // Finish any deferred wipe from a previous UI-triggered reset (before WebView2 starts)
+    finish_pending_reset_if_needed();
+
     // Handle --reset: clear all saved state and exit. The user relaunches manually.
     let cli_args: Vec<String> = std::env::args().collect();
     if cli_args.contains(&"--reset".to_string()) {
         let _ = auth::clear_tokens();
         let _ = auth::clear_client_id();
-        clear_webview_data();
+        wipe_localappdata();
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let _ = std::fs::remove_dir_all(std::path::Path::new(&appdata).join("com.partydisplay.app"));
+        }
         std::process::exit(0);
     }
 

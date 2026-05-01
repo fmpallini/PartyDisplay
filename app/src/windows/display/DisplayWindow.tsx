@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { usePhotoLibrary } from '../../hooks/usePhotoLibrary'
@@ -50,6 +50,21 @@ export default function DisplayWindow() {
   const presetIdxMountedRef = useRef(false)
 
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [cursorHidden, setCursorHidden] = useState(false)
+  const cursorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetCursorTimer = useCallback(() => {
+    setCursorHidden(false)
+    if (cursorTimerRef.current) clearTimeout(cursorTimerRef.current)
+    cursorTimerRef.current = setTimeout(() => setCursorHidden(true), 3000)
+  }, [])
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      setCursorHidden(false)
+      if (cursorTimerRef.current) { clearTimeout(cursorTimerRef.current); cursorTimerRef.current = null }
+    }
+  }, [isFullscreen])
 
   function handleDoubleClick() {
     const next = !isFullscreen
@@ -229,7 +244,11 @@ export default function DisplayWindow() {
   )
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }} onDoubleClick={handleDoubleClick}>
+    <div
+      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000', cursor: isFullscreen && cursorHidden ? 'none' : 'default' }}
+      onDoubleClick={handleDoubleClick}
+      onMouseMove={isFullscreen ? resetCursorTimer : undefined}
+    >
       <SongToast   displayMs={displaySettings.toastDurationMs} zoom={displaySettings.songZoom}   />
       <VolumeToast displayMs={displaySettings.toastDurationMs} zoom={displaySettings.volumeZoom} />
       {presetToastText && <PresetToastBanner name={presetToastText} visible={presetToastVis} />}
