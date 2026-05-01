@@ -59,6 +59,12 @@ pub fn parse_duration(s: &str) -> Option<u64> {
     Some((h * 3_600 + m * 60 + s) * 1_000 + ms)
 }
 
+fn find_text<'a>(node: &roxmltree::Node<'a, '_>, tag: &str) -> Option<&'a str> {
+    node.descendants()
+        .find(|n| n.tag_name().name() == tag)
+        .and_then(|n| n.text())
+}
+
 pub fn parse_didl_lite(xml: &str) -> DlnaBrowseResult {
     let doc = match roxmltree::Document::parse(xml) {
         Ok(d) => d,
@@ -79,32 +85,18 @@ pub fn parse_didl_lite(xml: &str) -> DlnaBrowseResult {
         match node.tag_name().name() {
             "container" => {
                 let id = node.attribute("id").unwrap_or("").to_owned();
-                let title = node
-                    .descendants()
-                    .find(|n| n.tag_name().name() == "title")
-                    .and_then(|n| n.text())
-                    .unwrap_or("")
-                    .to_owned();
+                let title = find_text(&node, "title").unwrap_or("").to_owned();
                 containers.push(DlnaContainer { id, title });
             }
             "item" => {
                 let id = node.attribute("id").unwrap_or("").to_owned();
-                let title = node
-                    .descendants()
-                    .find(|n| n.tag_name().name() == "title")
-                    .and_then(|n| n.text())
-                    .unwrap_or("")
-                    .to_owned();
+                let title = find_text(&node, "title").unwrap_or("").to_owned();
                 let artist = node
                     .descendants()
                     .find(|n| matches!(n.tag_name().name(), "creator" | "artist"))
                     .and_then(|n| n.text())
                     .map(str::to_owned);
-                let album_art = node
-                    .descendants()
-                    .find(|n| n.tag_name().name() == "albumArtURI")
-                    .and_then(|n| n.text())
-                    .map(str::to_owned);
+                let album_art = find_text(&node, "albumArtURI").map(str::to_owned);
                 let res_node = node.descendants().find(|n| n.tag_name().name() == "res");
                 let url = res_node
                     .and_then(|n| n.text())

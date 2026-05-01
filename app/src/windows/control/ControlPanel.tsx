@@ -813,7 +813,7 @@ export default function ControlPanel() {
             {VISUALIZER_PRESET_CHANGE_VALUES.map(c => (
               <button key={c} style={sourcePill(displaySettings.visualizerPresetChange === c)}
                 onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetChange: c }))}>
-                {c === 'manual' ? 'Manual' : c === 'music' ? 'On music' : 'Timer'}
+                {{ manual: 'Manual', music: 'On music', timer: 'Timer' }[c]}
               </button>
             ))}
             {displaySettings.visualizerPresetChange === 'timer' && (

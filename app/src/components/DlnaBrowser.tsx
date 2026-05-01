@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { DlnaBrowserState } from '../hooks/useDlnaBrowser'
 
 const errStyle: React.CSSProperties = {
@@ -49,7 +50,10 @@ export function DlnaBrowser({ browser, mimePrefix, itemCountText, containerIcon 
     )
   }
 
-  const itemCount = browser.items.filter(i => i.mime.startsWith(mimePrefix)).length
+  const itemCount = useMemo(
+    () => browser.items.filter(i => i.mime.startsWith(mimePrefix)).length,
+    [browser.items, mimePrefix],
+  )
 
   return (
     <>
