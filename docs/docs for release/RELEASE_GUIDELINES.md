@@ -84,6 +84,16 @@ Move zip to `release/` at repo root.
 
 **7. Merge dev → master**
 
+Master is branch-protected. Open a PR via gh CLI:
+```
+gh pr create --base master --head dev --title "release: vX.Y.Z" --body "..."
+```
+Wait for all required CI checks to pass, then merge:
+```
+gh pr merge <PR#> --merge
+```
+Pull master locally to sync: `git checkout master && git pull origin master`
+
 **8. Tag — `vX.Y.Z`**
 
 **9. Confirm the proposed release notes than do a release through gh cli**
