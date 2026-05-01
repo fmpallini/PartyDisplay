@@ -48,7 +48,7 @@ jobs:
           $version = "${{ github.ref_name }}"
           $zipName = "party-display-$version.zip"
           $staging = New-Item -ItemType Directory -Force "staging"
-          Copy-Item "app/src-tauri/target/release/party-display.exe" "$staging/"
+          Copy-Item "app/src-tauri/target/x86_64-pc-windows-msvc/release/party-display.exe" "$staging/"
           Copy-Item "docs/docs for release/README.txt" "$staging/"
           Copy-Item "docs/docs for release/LICENSE.txt" "$staging/"
           Copy-Item "presets" "$staging/presets" -Recurse
