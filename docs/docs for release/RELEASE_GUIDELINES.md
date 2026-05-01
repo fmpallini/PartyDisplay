@@ -23,19 +23,15 @@
 - `git diff <last-tag>..HEAD` — full diff of changed code.
 Use this context to inform all steps that follow.
 
-**P1. Dependency updates** — update minor/patch versions only; skip major bumps unless the package is deprecated or has a security fix:
-- `cd app && npm update && npm outdated` — `npm update` handles minor/patch. For any remaining outdated package, only bump to a new major if it is deprecated or flagged by audit. Run `tsc --noEmit` after, fix any type errors, commit.
-- `cd app/src-tauri && cargo update` — updates within compatible (minor/patch) ranges. Then run `cargo audit`. Fix or document any HIGH vulnerabilities (if transitive/upstream-blocked, note them explicitly). Commit.
+**P1. Evaluate test coverage** — review changed and new code from P0. If any logic, edge case, or behaviour is not covered by existing tests, write the missing unit tests now. Commit.
 
-**P2. Evaluate test coverage** — review changed and new code from P0. If any logic, edge case, or behaviour is not covered by existing tests, write the missing unit tests now. Commit.
+**P2. Simplify** — invoke `/simplify` skill against the changed files. Fix any issues found. Commit.
 
-**P3. Simplify** — invoke `/simplify` skill against the changed files. Fix any issues found. Commit.
+**P3. Security review** — invoke `/security-review` skill. Fix any HIGH/MEDIUM findings. Commit.
 
-**P4. Security review** — invoke `/security-review` skill. Fix any HIGH/MEDIUM findings. Commit.
+**P4. Bug search** — spawn an Explore agent to hunt logic bugs, race conditions, null checks, and edge cases in all files changed since the last tag. Fix any real bugs found. Commit.
 
-**P5. Bug search** — spawn an Explore agent to hunt logic bugs, race conditions, null checks, and edge cases in all files changed since the last tag. Fix any real bugs found. Commit.
-
-**P6. Run tests** — final gate after all pre-work changes:
+**P5. Run tests** — final gate after all pre-work changes:
 - `cd app && npm test` — all frontend Vitest tests must pass.
 - `cd app/src-tauri && cargo test --workspace` — all Rust tests must pass.
 Do not proceed if any test fails. Fix the failure first.

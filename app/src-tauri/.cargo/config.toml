@@ -2,5 +2,3 @@
 jobs = 8
 target = "x86_64-pc-windows-msvc"
 
-[http]
-check-revoke = false

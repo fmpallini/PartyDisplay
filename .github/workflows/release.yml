@@ -44,6 +44,7 @@ jobs:
         id: package
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $version = "${{ github.ref_name }}"
           $zipName = "party-display-$version.zip"
           $staging = New-Item -ItemType Directory -Force "staging"
@@ -52,6 +53,7 @@ jobs:
           Copy-Item "docs/docs for release/LICENSE.txt" "$staging/"
           Copy-Item "presets" "$staging/presets" -Recurse
           Compress-Archive -Path "$staging/*" -DestinationPath $zipName
+          Remove-Item -Recurse -Force $staging
           $hash = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLower()
           "$hash  $zipName" | Out-File -FilePath "checksums.txt" -Encoding ascii
           echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
