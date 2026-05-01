@@ -199,8 +199,12 @@ fn pending_reset_marker() -> Option<std::path::PathBuf> {
 /// If a pending-reset marker exists from a previous UI-triggered reset,
 /// finish wiping LOCALAPPDATA now (WebView2 not yet running) and remove the marker.
 fn finish_pending_reset_if_needed() {
-    let Some(marker) = pending_reset_marker() else { return };
-    if !marker.exists() { return }
+    let Some(marker) = pending_reset_marker() else {
+        return;
+    };
+    if !marker.exists() {
+        return;
+    }
     wipe_localappdata();
     let _ = std::fs::remove_file(&marker);
 }
@@ -233,7 +237,9 @@ fn main() {
         let _ = auth::clear_client_id();
         wipe_localappdata();
         if let Ok(appdata) = std::env::var("APPDATA") {
-            let _ = std::fs::remove_dir_all(std::path::Path::new(&appdata).join("com.partydisplay.app"));
+            let _ = std::fs::remove_dir_all(
+                std::path::Path::new(&appdata).join("com.partydisplay.app"),
+            );
         }
         std::process::exit(0);
     }

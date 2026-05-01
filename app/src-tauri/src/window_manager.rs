@@ -198,31 +198,34 @@ pub fn open_display_window(
             win.set_fullscreen(true).map_err(|e| e.to_string())?;
         } else {
             let w = if saved.width > 100 { saved.width } else { 1280 };
-            let h = if saved.height > 100 { saved.height } else { 720 };
+            let h = if saved.height > 100 {
+                saved.height
+            } else {
+                720
+            };
 
             // Accept saved position only if the entire window fits within any available monitor.
             // This handles: saved monitor removed, resolution shrunk, multi-monitor layout changed.
-            let fits_any = saved.initialized && monitors.iter().any(|m| {
-                let mp = m.position();
-                let ms = m.size();
-                saved.x >= mp.x
-                    && saved.y >= mp.y
-                    && saved.x + w as i32 <= mp.x + ms.width as i32
-                    && saved.y + h as i32 <= mp.y + ms.height as i32
-            });
+            let fits_any = saved.initialized
+                && monitors.iter().any(|m| {
+                    let mp = m.position();
+                    let ms = m.size();
+                    saved.x >= mp.x
+                        && saved.y >= mp.y
+                        && saved.x + w as i32 <= mp.x + ms.width as i32
+                        && saved.y + h as i32 <= mp.y + ms.height as i32
+                });
 
             let (x, y) = if fits_any {
                 (saved.x, saved.y)
             } else {
                 // Default: right of the control panel with a small gap.
                 // Falls back to monitor offset if the control window isn't available.
-                let default_pos = app
-                    .get_webview_window("control")
-                    .and_then(|ctrl| {
-                        let pos = ctrl.outer_position().ok()?;
-                        let size = ctrl.outer_size().ok()?;
-                        Some((pos.x + size.width as i32 + 16, pos.y))
-                    });
+                let default_pos = app.get_webview_window("control").and_then(|ctrl| {
+                    let pos = ctrl.outer_position().ok()?;
+                    let size = ctrl.outer_size().ok()?;
+                    Some((pos.x + size.width as i32 + 16, pos.y))
+                });
                 default_pos.unwrap_or((mon_pos.x + 80, mon_pos.y + 80))
             };
 
