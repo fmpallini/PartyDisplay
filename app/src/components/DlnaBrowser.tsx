@@ -14,6 +14,11 @@ interface Props {
 }
 
 export function DlnaBrowser({ browser, mimePrefix, itemCountText, containerIcon = '' }: Props) {
+  const itemCount = useMemo(
+    () => browser.items.filter(i => i.mime.startsWith(mimePrefix)).length,
+    [browser.items, mimePrefix],
+  )
+
   if (!browser.server) {
     return (
       <>
@@ -49,11 +54,6 @@ export function DlnaBrowser({ browser, mimePrefix, itemCountText, containerIcon 
       </>
     )
   }
-
-  const itemCount = useMemo(
-    () => browser.items.filter(i => i.mime.startsWith(mimePrefix)).length,
-    [browser.items, mimePrefix],
-  )
 
   return (
     <>
