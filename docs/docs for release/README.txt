@@ -1,4 +1,4 @@
-Party Display v0.9.8 — Windows 64-bit Portable
+Party Display v0.9.10 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -138,7 +138,10 @@ HOW TO RUN
   - Designed for a second monitor, projector, or TV
   - Native "Cast to TV" button to wirelessly connect to Roku/Fire Stick/Smart TVs
   - Auto-detects new wireless displays and seamlessly fullscreens the window
+  - Auto-opens on first launch, positioned alongside the control panel;
+    subsequent sessions restore last saved position
   - Fullscreen toggle, window position and state persisted across restarts
+  - Mouse cursor hides after 3 seconds idle in fullscreen; restores on movement
   - Screensaver / sleep blocked while the display window is open
   - Song changed toast (album art + track name) and volume toast
 

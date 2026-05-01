@@ -1,6 +1,7 @@
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use tauri::Emitter;
 
 /// True while a loopback capture thread is running.
@@ -39,16 +40,16 @@ pub fn start_audio_capture(app: tauri::AppHandle) -> Result<(), String> {
 /// Returns Ok(true) if the default device changed and capture should restart,
 /// Ok(false) on clean exit, or Err on a fatal error.
 fn run_loopback(app: tauri::AppHandle) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    let host   = cpal::default_host();
+    let host = cpal::default_host();
     let device = host
         .default_output_device()
         .ok_or("No default output device")?;
     let device_name = device.name().unwrap_or_default();
 
-    let config        = device.default_output_config()?;
-    let channels      = config.channels() as usize;
+    let config = device.default_output_config()?;
+    let channels = config.channels() as usize;
     let stream_config = cpal::StreamConfig {
-        channels:    config.channels(),
+        channels: config.channels(),
         sample_rate: config.sample_rate(),
         buffer_size: cpal::BufferSize::Default,
     };
@@ -56,25 +57,27 @@ fn run_loopback(app: tauri::AppHandle) -> Result<bool, Box<dyn std::error::Error
     const CHUNK_SIZE: usize = 512;
 
     let sample_buf = Arc::new(Mutex::new(Vec::<f32>::new()));
-    let buf_ref    = sample_buf.clone();
-    let app_clone  = app.clone();
+    let buf_ref = sample_buf.clone();
+    let app_clone = app.clone();
 
-    let stream = device.build_input_stream::<f32, _, _>(
-        &stream_config,
-        move |data: &[f32], _| {
-            let mut buf = buf_ref.lock().unwrap_or_else(|e| e.into_inner());
-            for chunk in data.chunks(channels.max(1)) {
-                buf.push(chunk.iter().sum::<f32>() / chunk.len() as f32);
-            }
-            while buf.len() >= CHUNK_SIZE {
-                let chunk: Vec<f32> = buf.drain(..CHUNK_SIZE).collect();
-                let _ = app_clone.emit("pcm-data", &chunk);
-            }
-        },
-        |err| eprintln!("WASAPI stream error: {err}"),
-        None,
-    )
-    .map_err(|e| format!("Failed to open loopback stream: {e}"))?;
+    let stream = device
+        .build_input_stream::<f32, _, _>(
+            &stream_config,
+            move |data: &[f32], _| {
+                let mut buf = buf_ref.lock().unwrap_or_else(|e| e.into_inner());
+                for chunk in data.chunks(channels.max(1)) {
+                    buf.push(chunk.iter().sum::<f32>() / chunk.len() as f32);
+                }
+                while buf.len() >= CHUNK_SIZE {
+                    let chunk: Vec<f32> = buf.drain(..CHUNK_SIZE).collect();
+                    let bytes: Vec<u8> = chunk.iter().flat_map(|f| f.to_le_bytes()).collect();
+                    let _ = app_clone.emit("pcm-data", STANDARD.encode(&bytes));
+                }
+            },
+            |err| eprintln!("WASAPI stream error: {err}"),
+            None,
+        )
+        .map_err(|e| format!("Failed to open loopback stream: {e}"))?;
 
     stream.play()?;
     println!("✅ WASAPI loopback capture started on: {device_name}");

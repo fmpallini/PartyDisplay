@@ -1,14 +1,16 @@
 name: Tests
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 on:
   push:
-    branches: [master]
+    branches: [master, dev]
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 jobs:
-  frontend:
-    name: Frontend (Vitest)
+  frontend-checks:
+    name: Frontend (Lint, Typecheck, Test)
     runs-on: windows-latest
     defaults:
       run:
@@ -21,10 +23,15 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: npm ci
-      - run: npm test
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test
 
-  rust:
-    name: Rust (cargo test)
+  rust-checks:
+    name: Rust (Fmt, Clippy, Test)
     runs-on: windows-latest
     defaults:
       run:
@@ -32,7 +39,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/src-tauri
-      - run: cargo test
+      - uses: taiki-e/install-action@nextest
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+        env:
+          CARGO_BUILD_JOBS: "2"
+      - name: Test
+        id: test
+        run: |
+          cargo nextest run --workspace 2>&1 | Tee-Object -FilePath nextest-output.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        env:
+          CARGO_BUILD_JOBS: "2"
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          if (Test-Path nextest-output.txt) {
+            $content = Get-Content nextest-output.txt -Raw
+            $summaryMatch = [regex]::Match($content, '(?m)^.*tests run:.*$')
+            
+            "### 🦀 Rust Test Results" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            if ($summaryMatch.Success) {
+              $cleanSummary = $summaryMatch.Value -replace "`e\[[0-9;]*m", ""
+              "**$($cleanSummary.Trim())**" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            }
+            if ('${{ steps.test.outcome }}' -eq 'success') {
+              "✅ All tests passed successfully!" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            } else {
+              "❌ Some tests failed." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            }
+          }

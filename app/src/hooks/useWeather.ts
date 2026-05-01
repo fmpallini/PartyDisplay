@@ -20,7 +20,7 @@ async function resolveLocation(city: string, signal: AbortSignal): Promise<{ lat
       }
       console.warn('[useWeather] geocoding returned no results, falling back to IP')
     } catch (err) {
-      if ((err as any)?.name === 'AbortError') throw err
+      if ((err as Error)?.name === 'AbortError') throw err
       console.warn('[useWeather] geocoding failed, falling back to IP:', err)
     }
   }
@@ -66,7 +66,7 @@ export function useWeather(
         setData(result)
         setError(null)
       } catch (err) {
-        if ((err as any)?.name === 'AbortError') return
+        if ((err as Error)?.name === 'AbortError') return
         const msg = err instanceof Error ? err.message : String(err)
         console.error('[useWeather] fetch failed:', msg)
         setError(msg)

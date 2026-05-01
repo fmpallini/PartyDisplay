@@ -1,8 +1,8 @@
 import type { TrackInfo } from '../lib/player-types'
 
-interface Props { track: TrackInfo | null; paused: boolean }
+interface Props { track: TrackInfo | null }
 
-export default function NowPlaying({ track, paused: _paused }: Props) {
+export default function NowPlaying({ track }: Props) {
   if (!track) return <p style={{ margin: 0, color: '#555', fontSize: 12 }}>No track</p>
 
   return (

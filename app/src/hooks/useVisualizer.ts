@@ -8,17 +8,19 @@ const BLEND_SECONDS = 2.7
 export function useVisualizer(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   presetIndex: number,
+  initSize: { w: number; h: number } | null,
 ) {
   const vizRef           = useRef<import('butterchurn').Visualizer | null>(null)
   const audioCtxRef      = useRef<AudioContext | null>(null)
   const workletRef       = useRef<AudioWorkletNode | null>(null)
   const rafRef           = useRef<number>(0)
+  const renderFnRef      = useRef<(() => void) | null>(null)
   // Distinguish first load (blend=0) from user-driven changes (blend=BLEND_SECONDS).
   const lastLoadedRef    = useRef<number>(-1)
   const [presets, setPresets] = useState<{ name: string; data: Record<string, unknown> }[]>([])
   const [presetsLoaded, setPresetsLoaded] = useState(false)
 
-  const clampIdx = (i: number) => Math.max(0, Math.min(i, presets.length - 1))
+  const clampIdx = useCallback((i: number) => Math.max(0, Math.min(i, presets.length - 1)), [presets.length])
 
   useEffect(() => {
     invoke<{ name: string; content: string }[]>('get_presets')
@@ -34,14 +36,17 @@ export function useVisualizer(
 
   useEffect(() => {
     const canvasOrNull = canvasRef.current
-    if (!canvasOrNull || presets.length === 0) return
+    if (!canvasOrNull || presets.length === 0 || !initSize) return
     // Capture as non-null so TypeScript keeps the narrowing inside the async closure
     const canvas: HTMLCanvasElement = canvasOrNull
+    const initW = initSize.w
+    const initH = initSize.h
 
     let cancelled = false
 
     async function init() {
       const mod = await import('butterchurn')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const butterchurn = [mod, mod.default, (mod.default as any)?.default]
         .find((x): x is typeof mod.default => typeof x?.createVisualizer === 'function')!
       const ctx = new AudioContext()
@@ -53,10 +58,12 @@ export function useVisualizer(
       const worklet = new AudioWorkletNode(ctx, 'pcm-injector-processor')
       workletRef.current = worklet
 
-      const viz = butterchurn.createVisualizer(ctx, canvas, {
-        width:  canvas.width  || canvas.offsetWidth,
-        height: canvas.height || canvas.offsetHeight,
-      })
+      // Use canvas.width/height at init time — may differ from initSize if the window
+      // finished sizing during the async butterchurn import above.
+      const w = canvas.width  || initW
+      const h = canvas.height || initH
+      const viz = butterchurn.createVisualizer(ctx, canvas, { width: w, height: h })
+      viz.setRendererSize(w, h)
       viz.connectAudio(worklet)
       vizRef.current = viz
 
@@ -68,6 +75,7 @@ export function useVisualizer(
         viz.render()
         rafRef.current = requestAnimationFrame(render)
       }
+      renderFnRef.current = render
       rafRef.current = requestAnimationFrame(render)
     }
 
@@ -76,6 +84,7 @@ export function useVisualizer(
     return () => {
       cancelled = true
       cancelAnimationFrame(rafRef.current)
+      renderFnRef.current = null
       audioCtxRef.current?.close()
       audioCtxRef.current = null
       workletRef.current  = null
@@ -83,7 +92,7 @@ export function useVisualizer(
       lastLoadedRef.current = -1
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasRef, presets])
+  }, [canvasRef, presets, initSize])
 
   useEffect(() => {
     const viz = vizRef.current
@@ -92,11 +101,29 @@ export function useVisualizer(
     if (idx === lastLoadedRef.current) return
     lastLoadedRef.current = idx
     viz.loadPreset(presets[idx].data, BLEND_SECONDS)
-  }, [presetIndex, presets])
+  }, [presetIndex, presets, clampIdx])
 
   useEffect(() => {
-    const unlisten = listen<number[]>('pcm-data', ({ payload }) => {
-      workletRef.current?.port.postMessage(new Float32Array(payload))
+    function onVisibilityChange() {
+      if (document.hidden) {
+        cancelAnimationFrame(rafRef.current)
+        audioCtxRef.current?.suspend()
+      } else {
+        audioCtxRef.current?.resume()
+        const fn = renderFnRef.current
+        if (fn) rafRef.current = requestAnimationFrame(fn)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
+  useEffect(() => {
+    const unlisten = listen<string>('pcm-data', ({ payload }) => {
+      const binary = atob(payload)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      workletRef.current?.port.postMessage(new Float32Array(bytes.buffer))
     })
     return () => { unlisten.then(fn => fn()).catch(() => {}) }
   }, [])

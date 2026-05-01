@@ -21,17 +21,28 @@ pub struct DisplayState {
     pub fullscreen: bool,
     #[serde(default)]
     pub is_open: bool,
+    /// false until the display window has been opened at least once.
+    /// Used to detect a truly fresh start and auto-open with a sensible default position.
+    #[serde(default)]
+    pub initialized: bool,
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 fn state_path(app: &AppHandle) -> Option<std::path::PathBuf> {
-    app.path().app_data_dir().ok().map(|d| d.join("display_state.json"))
+    app.path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("display_state.json"))
 }
 
 fn load_state_file(app: &AppHandle) -> DisplayState {
-    let Some(path) = state_path(app) else { return DisplayState::default() };
-    let Ok(data)   = std::fs::read_to_string(path) else { return DisplayState::default() };
+    let Some(path) = state_path(app) else {
+        return DisplayState::default();
+    };
+    let Ok(data) = std::fs::read_to_string(path) else {
+        return DisplayState::default();
+    };
     serde_json::from_str(&data).unwrap_or_default()
 }
 
@@ -48,23 +59,42 @@ fn write_state_file(app: &AppHandle, state: &DisplayState) {
 /// Called from window event listener to snapshot current windowed state.
 /// When fullscreen, preserves the previous windowed size so restoring works.
 pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) -> DisplayState {
-    let Ok(is_fs) = win.is_fullscreen() else { return DisplayState::default() };
+    let Ok(is_fs) = win.is_fullscreen() else {
+        return DisplayState::default();
+    };
     let existing = load_state_file(app);
     let monitor_name = win
-        .current_monitor().ok().flatten()
+        .current_monitor()
+        .ok()
+        .flatten()
         .and_then(|m| m.name().map(|n| n.to_string()));
 
     let state = if is_fs {
         // Keep windowed bounds from last non-fullscreen snapshot
-        DisplayState { fullscreen: true, monitor_name, ..existing }
+        DisplayState {
+            fullscreen: true,
+            monitor_name,
+            ..existing
+        }
     } else {
-        let (x, y) = win.outer_position()
+        let (x, y) = win
+            .outer_position()
             .map(|p| (p.x, p.y))
             .unwrap_or((existing.x, existing.y));
-        let (w, h) = win.outer_size()
+        let (w, h) = win
+            .outer_size()
             .map(|s| (s.width, s.height))
             .unwrap_or((existing.width, existing.height));
-        DisplayState { x, y, width: w, height: h, fullscreen: false, monitor_name, is_open: existing.is_open }
+        DisplayState {
+            x,
+            y,
+            width: w,
+            height: h,
+            fullscreen: false,
+            monitor_name,
+            is_open: existing.is_open,
+            initialized: existing.initialized,
+        }
     };
     write_state_file(app, &state);
     state
@@ -74,18 +104,37 @@ pub fn snapshot_window_state(app: &AppHandle, win: &WebviewWindow) -> DisplaySta
 
 #[tauri::command]
 pub fn get_monitors(app: AppHandle) -> Vec<MonitorInfo> {
-    let Some(win) = app.get_webview_window("control") else { return vec![] };
-    let monitors  = win.available_monitors().unwrap_or_default();
-    let primary_name = win.primary_monitor().ok().flatten()
+    let Some(win) = app.get_webview_window("control") else {
+        return vec![];
+    };
+    let monitors = win.available_monitors().unwrap_or_default();
+    let primary_name = win
+        .primary_monitor()
+        .ok()
+        .flatten()
         .and_then(|m| m.name().map(|n| n.to_string()));
 
-    monitors.into_iter().map(|m| {
-        let pos  = m.position();
-        let size = m.size();
-        let name = m.name().map(|s| s.as_str()).unwrap_or("Unknown").to_string();
-        let is_primary = primary_name.as_deref() == Some(name.as_str());
-        MonitorInfo { name, x: pos.x, y: pos.y, width: size.width, height: size.height, is_primary }
-    }).collect()
+    monitors
+        .into_iter()
+        .map(|m| {
+            let pos = m.position();
+            let size = m.size();
+            let name = m
+                .name()
+                .map(|s| s.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let is_primary = primary_name.as_deref() == Some(name.as_str());
+            MonitorInfo {
+                name,
+                x: pos.x,
+                y: pos.y,
+                width: size.width,
+                height: size.height,
+                is_primary,
+            }
+        })
+        .collect()
 }
 
 #[tauri::command]
@@ -99,27 +148,36 @@ pub fn open_display_window(
     monitor_name: Option<String>,
     fullscreen: bool,
 ) -> Result<(), String> {
-    let win = app.get_webview_window("display")
+    let win = app
+        .get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
 
-    let saved   = load_state_file(&app);
+    let saved = load_state_file(&app);
     let monitors = win.available_monitors().map_err(|e| e.to_string())?;
 
     // Pick target monitor: explicit arg > last saved > primary > first
-    let target_name: Option<&str> = monitor_name.as_deref()
-        .or(saved.monitor_name.as_deref());
+    let target_name: Option<&str> = monitor_name.as_deref().or(saved.monitor_name.as_deref());
 
     let monitor = target_name
-        .and_then(|name| monitors.iter().find(|m| m.name().map(|s| s.as_str()) == Some(name)))
-        .or_else(|| monitors.iter().find(|m| {
-            let primary_name = win.primary_monitor().ok().flatten()
-                .and_then(|pm| pm.name().map(|n| n.to_string()));
-            primary_name.as_deref() == m.name().map(|s| s.as_str())
-        }))
+        .and_then(|name| {
+            monitors
+                .iter()
+                .find(|m| m.name().map(|s| s.as_str()) == Some(name))
+        })
+        .or_else(|| {
+            monitors.iter().find(|m| {
+                let primary_name = win
+                    .primary_monitor()
+                    .ok()
+                    .flatten()
+                    .and_then(|pm| pm.name().map(|n| n.to_string()));
+                primary_name.as_deref() == m.name().map(|s| s.as_str())
+            })
+        })
         .or_else(|| monitors.first());
 
     if let Some(mon) = monitor {
-        let mon_pos  = mon.position();
+        let mon_pos = mon.position();
         let mon_size = mon.size();
 
         // Always un-fullscreen first to ensure the OS allows moving the window reliably
@@ -130,34 +188,52 @@ pub fn open_display_window(
             win.set_position(PhysicalPosition::new(
                 mon_pos.x + (mon_size.width as i32 / 2),
                 mon_pos.y + (mon_size.height as i32 / 2),
-            )).map_err(|e| e.to_string())?;
-            
+            ))
+            .map_err(|e| e.to_string())?;
+
             // Show and focus BEFORE setting fullscreen, otherwise Windows might ignore it or put it on the wrong screen
             win.show().map_err(|e| e.to_string())?;
             win.set_focus().map_err(|e| e.to_string())?;
-            
+
             win.set_fullscreen(true).map_err(|e| e.to_string())?;
         } else {
-            let w = if saved.width  > 100 { saved.width  } else { 1280 };
-            let h = if saved.height > 100 { saved.height } else { 720  };
+            let w = if saved.width > 100 { saved.width } else { 1280 };
+            let h = if saved.height > 100 {
+                saved.height
+            } else {
+                720
+            };
+
             // Accept saved position only if the entire window fits within any available monitor.
             // This handles: saved monitor removed, resolution shrunk, multi-monitor layout changed.
-            let fits_any = monitors.iter().any(|m| {
-                let mp = m.position();
-                let ms = m.size();
-                saved.x >= mp.x
-                    && saved.y >= mp.y
-                    && saved.x + w as i32 <= mp.x + ms.width  as i32
-                    && saved.y + h as i32 <= mp.y + ms.height as i32
-            });
+            let fits_any = saved.initialized
+                && monitors.iter().any(|m| {
+                    let mp = m.position();
+                    let ms = m.size();
+                    saved.x >= mp.x
+                        && saved.y >= mp.y
+                        && saved.x + w as i32 <= mp.x + ms.width as i32
+                        && saved.y + h as i32 <= mp.y + ms.height as i32
+                });
+
             let (x, y) = if fits_any {
                 (saved.x, saved.y)
             } else {
-                (mon_pos.x + 80, mon_pos.y + 80)
+                // Default: right of the control panel with a small gap.
+                // Falls back to monitor offset if the control window isn't available.
+                let default_pos = app.get_webview_window("control").and_then(|ctrl| {
+                    let pos = ctrl.outer_position().ok()?;
+                    let size = ctrl.outer_size().ok()?;
+                    Some((pos.x + size.width as i32 + 16, pos.y))
+                });
+                default_pos.unwrap_or((mon_pos.x + 80, mon_pos.y + 80))
             };
-            win.set_size(PhysicalSize::new(w, h)).map_err(|e| e.to_string())?;
-            win.set_position(PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
-            
+
+            win.set_size(PhysicalSize::new(w, h))
+                .map_err(|e| e.to_string())?;
+            win.set_position(PhysicalPosition::new(x, y))
+                .map_err(|e| e.to_string())?;
+
             win.show().map_err(|e| e.to_string())?;
             win.set_focus().map_err(|e| e.to_string())?;
         }
@@ -166,9 +242,10 @@ pub fn open_display_window(
         win.set_focus().map_err(|e| e.to_string())?;
     }
 
-    // Snapshot after opening and mark as open
+    // Snapshot after opening and mark as open + initialized
     let mut state = snapshot_window_state(&app, &win);
     state.is_open = true;
+    state.initialized = true;
     write_state_file(&app, &state);
 
     // Prevent screen saver / display sleep while the display window is active
@@ -178,7 +255,8 @@ pub fn open_display_window(
 
 #[tauri::command]
 pub fn close_display_window(app: AppHandle) -> Result<(), String> {
-    let win = app.get_webview_window("display")
+    let win = app
+        .get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
     let mut state = snapshot_window_state(&app, &win);
     state.is_open = false;
@@ -203,7 +281,8 @@ pub fn handle_display_close_requested(app: &AppHandle, win: &WebviewWindow) {
 
 #[tauri::command]
 pub fn set_display_fullscreen(app: AppHandle, fullscreen: bool) -> Result<(), String> {
-    let win = app.get_webview_window("display")
+    let win = app
+        .get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
     win.set_fullscreen(fullscreen).map_err(|e| e.to_string())?;
     Ok(())
@@ -211,7 +290,8 @@ pub fn set_display_fullscreen(app: AppHandle, fullscreen: bool) -> Result<(), St
 
 #[tauri::command]
 pub fn toggle_display_fullscreen(app: AppHandle) -> Result<(), String> {
-    let win = app.get_webview_window("display")
+    let win = app
+        .get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
     let is_fs = win.is_fullscreen().map_err(|e| e.to_string())?;
     win.set_fullscreen(!is_fs).map_err(|e| e.to_string())?;
@@ -220,7 +300,8 @@ pub fn toggle_display_fullscreen(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn exit_display_fullscreen(app: AppHandle) -> Result<(), String> {
-    let win = app.get_webview_window("display")
+    let win = app
+        .get_webview_window("display")
         .ok_or_else(|| "Display window not found".to_string())?;
     win.set_fullscreen(false).map_err(|e| e.to_string())?;
     Ok(())

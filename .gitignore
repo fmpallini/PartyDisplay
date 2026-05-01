@@ -60,3 +60,11 @@ venv/
 .claude/settings.local.json
 .worktrees/
 .github/hooks/
+
+# ── Testing / Linting ─────────────────────────────────────────────────────────
+coverage/
+.eslintcache
+
+# ── Vite ──────────────────────────────────────────────────────────────────────
+.vite/
+nul

@@ -9,11 +9,12 @@ import { FolderPicker } from '../../components/FolderPicker'
 import { DisplayWindowControls } from '../../components/DisplayWindowControls'
 import { PlayerControls } from '../../components/PlayerControls'
 import { SlideshowConfigPanel, DEFAULT_SLIDESHOW_CONFIG } from '../../components/SlideshowConfigPanel'
-import { DisplaySettingsPanel, readDisplaySettings } from '../../components/DisplaySettingsPanel'
+import { DisplaySettingsPanel, readDisplaySettings, VISUALIZER_MODE_VALUES, VISUALIZER_PRESET_ORDER_VALUES, VISUALIZER_PRESET_CHANGE_VALUES } from '../../components/DisplaySettingsPanel'
 import { HelpPanel } from '../../components/HelpPanel'
+import { DlnaBrowser } from '../../components/DlnaBrowser'
 import type { SlideshowConfig } from '../../components/SlideshowConfigPanel'
 import type { DisplaySettings } from '../../components/DisplaySettingsPanel'
-import type { VisualizerMode, VisualizerPresetOrder, VisualizerPresetChange } from '../../components/DisplaySettingsPanel'
+import type { VisualizerPresetOrder } from '../../components/DisplaySettingsPanel'
 import { useAuth } from '../../hooks/useAuth'
 import { ClientIdSetup } from '../../components/ClientIdSetup'
 import { useSpotifyPlayer } from '../../hooks/useSpotifyPlayer'
@@ -85,6 +86,66 @@ const sourcePill = (active: boolean): React.CSSProperties => ({
   fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
 })
 
+const DLNA_PROXY = 'http://127.0.0.1:29341'
+const toDlnaProxy = (url: string) => `${DLNA_PROXY}/${url.replace(/^https?:\/\//, '')}`
+
+// ── Source sub-components ─────────────────────────────────────────────────────
+
+function SpotifySource({ authenticated, loading, hasTrack, onLogin, onLogout }: {
+  authenticated: boolean; loading: boolean; hasTrack: boolean
+  onLogin: () => void; onLogout: () => void
+}) {
+  if (!authenticated) return <LoginButton authenticated={authenticated} loading={loading} onLogin={onLogin} onLogout={onLogout} />
+  if (!hasTrack) return (
+    <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
+      In your Spotify app, select <strong style={{ color: '#aaa' }}>Party Display</strong> as the playing device.
+    </p>
+  )
+  return null
+}
+
+function LocalFilesSource({ folder, trackCount, recursive, onFolderPick, onRecursiveChange }: {
+  folder: string | null; trackCount: number; recursive: boolean
+  onFolderPick: (f: string) => void; onRecursiveChange: (r: boolean) => void
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+        <FolderPicker
+          folder={folder}
+          photoCount={trackCount}
+          onPick={onFolderPick}
+          itemLabel="track"
+          dialogTitle="Select audio folder"
+        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#aaa', paddingBottom: 2 }}>
+          <input
+            type="checkbox"
+            checked={recursive}
+            onChange={e => onRecursiveChange(e.target.checked)}
+            style={{ accentColor: '#1db954' }}
+          /> Subfolders
+        </label>
+      </div>
+      {!folder && <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Pick a folder to start playing.</p>}
+      {folder && trackCount === 0 && <p style={{ margin: 0, color: '#555', fontSize: 12 }}>No audio files found in this folder.</p>}
+    </>
+  )
+}
+
+function ExternalSource() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <p style={{ margin: 0, color: '#aaa', fontSize: 12 }}>
+        Captures audio from any app playing on this system.
+      </p>
+      <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
+        Party Display will try to get the track info from Windows System Media Transport Controls (mostly modern desktop players support it like modern browsers). Playback hotkeys send system-wide media keys.
+      </p>
+    </div>
+  )
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function readSlideshowConfig(): SlideshowConfig {
@@ -139,13 +200,6 @@ export default function ControlPanel() {
     setPhotoSourceState(s)
     localStorage.setItem(KEYS.photoSource, s)
   }
-  // DLNA HTTP URLs are routed through a local proxy server (127.0.0.1:29341)
-  // so the webview can load them without CSP / WebView2 mixed-content issues.
-  // The proxy strips its own host:port from the request path and re-fetches
-  // the original URL via reqwest, forwarding Range headers for seeking.
-  const DLNA_PROXY = 'http://127.0.0.1:29341'
-  const toDlnaProxy = (url: string) => `${DLNA_PROXY}/${url.replace(/^https?:\/\//, '')}`
-
   // Memoized so useLocalPlayer's playlist-change effect doesn't fire every render
   const dlnaPlaylist = useMemo<PlaylistItem[]>(() => {
     const filtered = dlnaBrowserMusic.items.filter(item => item.mime.startsWith('audio/'))
@@ -297,6 +351,7 @@ export default function ControlPanel() {
   useEffect(() => {
     const lastFolder = localStorage.getItem(KEYS.lastPhotoFolder)
     if (lastFolder) library.setFolder(lastFolder)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -325,6 +380,7 @@ export default function ControlPanel() {
         paused:    player.paused,
       }).catch(console.error)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.track?.id])
 
   const prevVolumeRef = useRef(player.volume)
@@ -358,9 +414,8 @@ export default function ControlPanel() {
 
   const cycleVisualizerMode = useCallback(() => {
     setDisplaySettings(s => {
-      const modes: VisualizerMode[] = ['photos', 'visualizer', 'split']
-      const idx = modes.indexOf(s.visualizerMode)
-      return { ...s, visualizerMode: modes[(idx + 1) % modes.length] }
+      const idx = VISUALIZER_MODE_VALUES.indexOf(s.visualizerMode)
+      return { ...s, visualizerMode: VISUALIZER_MODE_VALUES[(idx + 1) % VISUALIZER_MODE_VALUES.length] }
     })
   }, [])
 
@@ -391,7 +446,6 @@ export default function ControlPanel() {
       ...s,
       visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, 1, s.visualizerPresetOrder, presetNames.length),
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetNames.length])
 
   const prevPreset = useCallback(() => {
@@ -399,7 +453,6 @@ export default function ControlPanel() {
       ...s,
       visualizerPresetIndex: pickPresetIndex(s.visualizerPresetIndex, -1, s.visualizerPresetOrder, presetNames.length),
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetNames.length])
 
   // Auto-advance preset on music change
@@ -441,17 +494,17 @@ export default function ControlPanel() {
     setDisplaySettings(s => ({ ...s, lyricsVisible: !s.lyricsVisible }))
   }, [])
 
-  const musicNext   = useCallback(() => { player.nextTrack()  }, [player.nextTrack])
-  const musicPrev   = useCallback(() => { player.prevTrack()  }, [player.prevTrack])
-  const musicToggle = useCallback(() => { player.togglePlay() }, [player.togglePlay])
+  const musicNext   = useCallback(() => { player.nextTrack()  }, [player])
+  const musicPrev   = useCallback(() => { player.prevTrack()  }, [player])
+  const musicToggle = useCallback(() => { player.togglePlay() }, [player])
   const volumeUp    = useCallback(() => {
     if (source === 'external') { invoke('send_media_key', { key: 'vol_up' }).catch(e => console.error('[volume]', e)); return }
     player.setVolume(Math.min(1, player.volume + 0.05))
-  }, [source, player.setVolume, player.volume])
+  }, [source, player])
   const volumeDown  = useCallback(() => {
     if (source === 'external') { invoke('send_media_key', { key: 'vol_down' }).catch(e => console.error('[volume]', e)); return }
     player.setVolume(Math.max(0, player.volume - 0.05))
-  }, [source, player.setVolume, player.volume])
+  }, [source, player])
 
   const handleRemoteToggle = useCallback(async (enable: boolean) => {
     if (enable) {
@@ -507,13 +560,20 @@ export default function ControlPanel() {
   }, [doNext, doPrev, togglePause, cycleVisualizerMode, nextPreset, prevPreset, toggleTrackOverlay, toggleBattery, togglePhotoCounter, toggleClockWeather, toggleLyrics, musicNext, musicPrev, musicToggle, volumeUp, volumeDown])
 
   // Pause the outgoing player on source switch; user controls resume from there.
+  // local/dlna auto-pause via active=false in useLocalPlayer — only spotify and external need explicit handling.
+  const prevSourceRef = useRef(source)
   useEffect(() => {
-    if ((source === 'local' || source === 'dlna' || source === 'external') && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    const prev = prevSourceRef.current
+    prevSourceRef.current = source
+    if (prev === source) return
+    if (prev === 'spotify'  && !spotifyPlayer.paused) spotifyPlayer.togglePlay()
+    if (prev === 'external' && !externalPlayer.paused) invoke('send_media_key', { key: 'play_pause' }).catch(e => console.error('[source switch]', e))
     localStorage.setItem(KEYS.audioSource, source)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
   // Auto-switch to Spotify when a remote device starts playback while another source is active.
+
   const prevSpotifyPausedRef = useRef(true)
   useEffect(() => {
     const wasPaused = prevSpotifyPausedRef.current
@@ -626,158 +686,14 @@ export default function ControlPanel() {
             <button style={sourcePill(source === 'external')} onClick={() => setSource('external')}>External</button>
           </div>
 
-          {source === 'spotify' ? (
-            /* ── Spotify ── */
-            !authenticated ? (
-              <LoginButton authenticated={authenticated} loading={loading} onLogin={handleLogin} onLogout={logout} />
-            ) : !spotifyPlayer.track ? (
-              <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
-                In your Spotify app, select <strong style={{ color: '#aaa' }}>Party Display</strong> as the playing device.
-              </p>
-            ) : null
-          ) : source === 'local' ? (
-            /* ── Local Files ── */
-            <>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-                <FolderPicker
-                  folder={localFolder}
-                  photoCount={localPlaylist.length}
-                  onPick={setLocalFolder}
-                  itemLabel="track"
-                  dialogTitle="Select audio folder"
-                />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#aaa', paddingBottom: 2 }}>
-                  <input
-                    type="checkbox"
-                    checked={localRecursive}
-                    onChange={e => setLocalRecursive(e.target.checked)}
-                    style={{ accentColor: '#1db954' }}
-                  /> Subfolders
-                </label>
-              </div>
-              {!localFolder && (
-                <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                  Pick a folder to start playing.
-                </p>
-              )}
-              {localFolder && localPlaylist.length === 0 && (
-                <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                  No audio files found in this folder.
-                </p>
-              )}
-            </>
-          ) : source === 'dlna' ? (
-            /* ── DLNA ── */
-            <>
-              {!dlnaBrowserMusic.server ? (
-                /* Server picker */
-                <>
-                  <button
-                    onClick={dlnaBrowserMusic.discover}
-                    disabled={dlnaBrowserMusic.discovering}
-                    style={{
-                      background: '#1db95418', border: '1px solid #1db95444', color: '#1db954',
-                      borderRadius: 4, padding: '4px 12px', cursor: 'pointer',
-                      fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
-                    }}
-                  >
-                    {dlnaBrowserMusic.discovering ? 'Searching…' : 'Discover DLNA Servers'}
-                  </button>
-                  {!dlnaBrowserMusic.discovering && dlnaBrowserMusic.servers.length === 0 && (
-                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                      No DLNA servers found. Press Discover to search.
-                    </p>
-                  )}
-                  {dlnaBrowserMusic.servers.map(s => (
-                    <button
-                      key={s.location}
-                      onClick={() => dlnaBrowserMusic.selectServer(s)}
-                      style={{
-                        background: 'none', border: '1px solid #2a2a2a', color: '#ccc',
-                        borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
-                      }}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </>
-              ) : (
-                /* Browser */
-                <>
-                  {/* Breadcrumb / back navigation */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                    <button
-                      onClick={dlnaBrowserMusic.reset}
-                      style={{ background: 'none', border: 'none', color: '#1db954', cursor: 'pointer', fontSize: 12, padding: 0 }}
-                      title="Back to server list"
-                    >
-                      ⌂ {dlnaBrowserMusic.server.name}
-                    </button>
-                    {dlnaBrowserMusic.breadcrumb.map(c => (
-                      <span key={c.id} style={{ color: '#555', fontSize: 11 }}>/ {c.title}</span>
-                    ))}
-                    {dlnaBrowserMusic.breadcrumb.length > 0 && (
-                      <button
-                        onClick={dlnaBrowserMusic.back}
-                        style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, marginLeft: 4 }}
-                      >
-                        ← Back
-                      </button>
-                    )}
-                  </div>
-
-                  {dlnaBrowserMusic.loading && (
-                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Loading…</p>
-                  )}
-                  {dlnaBrowserMusic.error && <ErrBanner>{dlnaBrowserMusic.error}</ErrBanner>}
-
-                  {/* Subfolders */}
-                  {dlnaBrowserMusic.containers.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => dlnaBrowserMusic.browse(c)}
-                      style={{
-                        background: 'none', border: '1px solid #2a2a2a', color: '#aaa',
-                        borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
-                      }}
-                    >
-                      📁 {c.title}
-                    </button>
-                  ))}
-
-                  {/* Audio item count */}
-                  {dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length > 0 && (
-                    <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
-                      {dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length} audio track(s) ready
-                    </p>
-                  )}
-
-                  {/* Empty folder message */}
-                  {!dlnaBrowserMusic.loading &&
-                    dlnaBrowserMusic.containers.length === 0 &&
-                    dlnaBrowserMusic.items.filter(i => i.mime.startsWith('audio/')).length === 0 && (
-                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
-                  )}
-                </>
-              )}
-            </>
-          ) : (
-            /* ── External ── */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p style={{ margin: 0, color: '#aaa', fontSize: 12 }}>
-                Captures audio from any app playing on this system.
-              </p>
-              <p style={{ margin: 0, color: '#555', fontSize: 11 }}>
-                Party Display will try to get the track info from Windows System Media Transport Controls (mostly modern desktop players support it like modern browsers). Playback hotkeys send system-wide media keys.
-              </p>
-            </div>
-          )}
+          {source === 'spotify'  && <SpotifySource authenticated={authenticated} loading={loading} hasTrack={!!spotifyPlayer.track} onLogin={handleLogin} onLogout={logout} />}
+          {source === 'local'    && <LocalFilesSource folder={localFolder} trackCount={localPlaylist.length} recursive={localRecursive} onFolderPick={setLocalFolder} onRecursiveChange={setLocalRecursive} />}
+          {source === 'dlna'     && <DlnaBrowser browser={dlnaBrowserMusic} mimePrefix="audio/" itemCountText={n => `${n} audio track(s) ready`} containerIcon="📁 " />}
+          {source === 'external' && <ExternalSource />}
 
           {/* ── Zone 2: Playback — always visible ─────────────────────── */}
           <div style={{ borderTop: '1px solid #1e1e1e', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <NowPlaying track={player.track} paused={player.paused} />
+            <NowPlaying track={player.track} />
             <PlayerControls
               track={player.track}
               paused={player.paused}
@@ -818,28 +734,10 @@ export default function ControlPanel() {
           {/* Source toggle — always first */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Source</span>
-            <button
-              style={{
-                background: photoSource === 'local' ? '#1db95418' : 'none',
-                border: `1px solid ${photoSource === 'local' ? '#1db95444' : '#2a2a2a'}`,
-                color: photoSource === 'local' ? '#1db954' : '#555',
-                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-              }}
-              onClick={() => setPhotoSource('local')}
-            >
+            <button style={sourcePill(photoSource === 'local')} onClick={() => setPhotoSource('local')}>
               Local Folder
             </button>
-            <button
-              style={{
-                background: photoSource === 'dlna' ? '#1db95418' : 'none',
-                border: `1px solid ${photoSource === 'dlna' ? '#1db95444' : '#2a2a2a'}`,
-                color: photoSource === 'dlna' ? '#1db954' : '#555',
-                borderRadius: 4, padding: '2px 10px', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-              }}
-              onClick={() => setPhotoSource('dlna')}
-            >
+            <button style={sourcePill(photoSource === 'dlna')} onClick={() => setPhotoSource('dlna')}>
               DLNA Server
             </button>
           </div>
@@ -861,87 +759,7 @@ export default function ControlPanel() {
               </label>
             </div>
           ) : (
-            /* ── DLNA photo browser ── */
-            <>
-              {!dlnaBrowserPhotos.server ? (
-                <>
-                  <button
-                    onClick={dlnaBrowserPhotos.discover}
-                    disabled={dlnaBrowserPhotos.discovering}
-                    style={{
-                      background: '#1db95418', border: '1px solid #1db95444', color: '#1db954',
-                      borderRadius: 4, padding: '4px 12px', cursor: 'pointer',
-                      fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
-                    }}
-                  >
-                    {dlnaBrowserPhotos.discovering ? 'Searching\u2026' : 'Discover DLNA Servers'}
-                  </button>
-                  {!dlnaBrowserPhotos.discovering && dlnaBrowserPhotos.servers.length === 0 && (
-                    <p style={{ margin: 0, color: '#555', fontSize: 12 }}>
-                      No DLNA servers found. Press Discover to search.
-                    </p>
-                  )}
-                  {dlnaBrowserPhotos.servers.map(s => (
-                    <button
-                      key={s.location}
-                      onClick={() => dlnaBrowserPhotos.selectServer(s)}
-                      style={{
-                        background: 'none', border: '1px solid #2a2a2a', color: '#ccc',
-                        borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
-                      }}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                    <button
-                      onClick={dlnaBrowserPhotos.reset}
-                      style={{ background: 'none', border: 'none', color: '#1db954', cursor: 'pointer', fontSize: 12, padding: 0 }}
-                    >
-                      ⌂ {dlnaBrowserPhotos.server.name}
-                    </button>
-                    {dlnaBrowserPhotos.breadcrumb.map(c => (
-                      <span key={c.id} style={{ color: '#555', fontSize: 11 }}>/ {c.title}</span>
-                    ))}
-                    {dlnaBrowserPhotos.breadcrumb.length > 0 && (
-                      <button
-                        onClick={dlnaBrowserPhotos.back}
-                        style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, marginLeft: 4 }}
-                      >
-                        ← Back
-                      </button>
-                    )}
-                  </div>
-                  {dlnaBrowserPhotos.loading && <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Loading…</p>}
-                  {dlnaBrowserPhotos.error && <ErrBanner>{dlnaBrowserPhotos.error}</ErrBanner>}
-                  {dlnaBrowserPhotos.containers.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => dlnaBrowserPhotos.browse(c)}
-                      style={{
-                        background: 'none', border: '1px solid #2a2a2a', color: '#aaa',
-                        borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
-                      }}
-                    >
-                      {c.title}
-                    </button>
-                  ))}
-                  {(() => {
-                    const photoCount = dlnaBrowserPhotos.items.filter(i => i.mime.startsWith('image/')).length
-                    return photoCount > 0
-                      ? <p style={{ margin: 0, color: '#555', fontSize: 11 }}>{photoCount} photo(s) loaded</p>
-                      : (!dlnaBrowserPhotos.loading && dlnaBrowserPhotos.containers.length === 0
-                          ? <p style={{ margin: 0, color: '#555', fontSize: 12 }}>Folder is empty.</p>
-                          : null)
-                  })()}
-                </>
-              )}
-            </>
+            <DlnaBrowser browser={dlnaBrowserPhotos} mimePrefix="image/" itemCountText={n => `${n} photo(s) loaded`} />
           )}
 
           <SlideshowConfigPanel
@@ -957,7 +775,7 @@ export default function ControlPanel() {
           {/* Mode */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Mode</span>
-            {(['photos', 'visualizer', 'split'] as VisualizerMode[]).map(m => (
+            {VISUALIZER_MODE_VALUES.map(m => (
               <button key={m} style={sourcePill(displaySettings.visualizerMode === m)}
                 onClick={() => setDisplaySettings(s => ({ ...s, visualizerMode: m }))}>
                 {m.charAt(0).toUpperCase() + m.slice(1)}
@@ -981,7 +799,7 @@ export default function ControlPanel() {
           {/* Order */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: '#666', fontSize: 12 }}>Order</span>
-            {(['alpha', 'shuffle'] as VisualizerPresetOrder[]).map(o => (
+            {VISUALIZER_PRESET_ORDER_VALUES.map(o => (
               <button key={o} style={sourcePill(displaySettings.visualizerPresetOrder === o)}
                 onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetOrder: o }))}>
                 {o === 'alpha' ? 'Alphabetic' : 'Shuffle'}
@@ -992,10 +810,10 @@ export default function ControlPanel() {
           {/* Change trigger */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ color: '#666', fontSize: 12 }}>Change</span>
-            {(['manual', 'music', 'timer'] as VisualizerPresetChange[]).map(c => (
+            {VISUALIZER_PRESET_CHANGE_VALUES.map(c => (
               <button key={c} style={sourcePill(displaySettings.visualizerPresetChange === c)}
                 onClick={() => setDisplaySettings(s => ({ ...s, visualizerPresetChange: c }))}>
-                {c === 'manual' ? 'Manual' : c === 'music' ? 'On music' : 'Timer'}
+                {{ manual: 'Manual', music: 'On music', timer: 'Timer' }[c]}
               </button>
             ))}
             {displaySettings.visualizerPresetChange === 'timer' && (

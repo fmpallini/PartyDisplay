@@ -1,6 +1,10 @@
+[workspace]
+members = [".", "party-display-core"]
+resolver = "2"
+
 [package]
 name = "party-display"
-version = "0.9.8"
+version = "0.9.10"
 edition = "2021"
 
 [build-dependencies]
@@ -32,4 +36,16 @@ windows = { version = "0.61", features = [
   "Win32_System_Com",
 ] }
 base64 = "0.22"
+party-display-core = { path = "party-display-core" }
 
+[profile.test]
+opt-level = 0
+debug = 0
+incremental = true
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

@@ -74,7 +74,7 @@ export function useLyrics(track: TrackInfo | null, positionMs: number): LyricsRe
         if (!r.ok) throw new Error(`LRCLIB ${r.status}`)
         return r.json()
       })
-      .then((data: any) => {
+      .then((data: { syncedLyrics?: string; plainLyrics?: string } | null) => {
         let result: { lines: LyricLine[]; status: LyricsStatus }
         if (!data) {
           result = { lines: [], status: 'not_found' }
@@ -101,7 +101,7 @@ export function useLyrics(track: TrackInfo | null, positionMs: number): LyricsRe
       })
 
     return () => { controller.abort() }
-  }, [track?.id])
+  }, [track?.id, track?.artists, track?.name, track?.duration])
 
   // Derive current line index from positionMs (no extra state needed)
   let currentIndex = -1

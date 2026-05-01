@@ -8,7 +8,7 @@ function fetchDeviceVolume(token: string, onVol: (vol: number) => void) {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(r => r.status === 200 ? r.json() : null)
-    .then((data: any) => { const pct = data?.device?.volume_percent; if (pct != null) onVol(pct / 100) })
+    .then((data: { device?: { volume_percent?: number } } | null) => { const pct = data?.device?.volume_percent; if (pct != null) onVol(pct / 100) })
     .catch(() => {})
 }
 
@@ -52,7 +52,7 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
         setState(s => ({ ...s, ready: true, deviceId: device_id, error: null }))
         // SDK getVolume() returns its own initial value, not the real device volume.
         fetchDeviceVolume(accessToken!, vol => {
-          ;(player as any).setVolume(vol)
+          ;(player as unknown as { setVolume: (v: number) => void }).setVolume(vol)
           setState(s => ({ ...s, volume: vol }))
         })
       })
@@ -69,13 +69,13 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
           ...s,
           paused:     playbackState.paused,
           positionMs: playbackState.position,
-          shuffle:    (playbackState as any).shuffle ?? false,
+          shuffle:    (playbackState as unknown as { shuffle?: boolean }).shuffle ?? false,
           track: {
             id:       t.id,
             name:     t.name,
             artists:  t.artists.map(a => a.name).join(', '),
             albumArt: t.album?.images?.[0]?.url ?? '',
-            duration: (t as any).duration_ms ?? 0,
+            duration: (t as unknown as { duration_ms?: number }).duration_ms ?? 0,
           },
         }))
       })
@@ -93,7 +93,7 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
 
       player.connect()
       playerRef.current = player
-      ;(window as any).__spotifyPlayer = player
+      ;(window as unknown as { __spotifyPlayer: SpotifyPlayer }).__spotifyPlayer = player
     }
 
     if (window.Spotify) {
@@ -122,7 +122,7 @@ export function useSpotifyPlayer(accessToken: string | null, onAuthError?: () =>
     return () => clearInterval(id)
   }, [state.ready])
 
-  const p = () => playerRef.current as any
+  const p = () => playerRef.current as unknown as { togglePlay: () => void; nextTrack: () => void; previousTrack: () => void; seek: (ms: number) => void; setVolume: (v: number) => void } | null
   const togglePlay = useCallback(() => { p()?.togglePlay() }, [])
   const nextTrack  = useCallback(() => { p()?.nextTrack()  }, [])
   const prevTrack  = useCallback(() => { p()?.previousTrack() }, [])
