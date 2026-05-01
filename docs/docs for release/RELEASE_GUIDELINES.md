@@ -44,6 +44,8 @@ Do not skip or batch these. Each must complete and be committed before moving to
 
 ### Release procedure
 
+> The binary in every release is built by GitHub Actions directly from the signed tag — never from a local machine. Users can verify provenance with `gh attestation verify party-display-vX.Y.Z.zip --repo fmpal/vcup2`.
+
 **1. Validate version**
 - Read `app/package.json` for current version.
 - `git tag` — check if `vX.Y.Z` already exists.
@@ -57,32 +59,12 @@ Do not skip or batch these. Each must complete and be committed before moving to
 - `docs/docs for release/README.txt` matches (version, features, build instructions). Skip the screenshot version reference.
 - Update and commit if stale.
 
-**3. Build**
-```
-cd app && npm run release
-```
-
-Artifact: standalone `party-display.exe` at `src-tauri/target/release/` with `presets/` alongside it.
-
-**4. Test against release build**
-Work through every item in [`docs/testing/release-checklist.md`](../../docs/testing/release-checklist.md) using the built `party-display.exe`.
-Do not proceed until all items are checked off.
-
-**5. Package zip**
-Create `party-display-vX.Y.Z.zip` containing:
-- `party-display.exe`
-- `docs/docs for release/README.txt`
-- `docs/docs for release/LICENSE.txt`
-- entire `presets/` folder
-
-Move zip to `release/` at repo root.
-
-**6. Commit and push dev** — commit any files changed during the release process (docs, lock files, version bumps) and push:
+**3. Commit and push dev** — commit any files changed during the release process (docs, lock files, version bumps) and push:
 - `git add -p` — stage pending changes, review each hunk.
 - `git commit -m "chore: release prep vX.Y.Z"`
 - `git push origin dev`
 
-**7. Merge dev → master**
+**4. Merge dev → master**
 
 Master is branch-protected. Open a PR via gh CLI:
 ```
@@ -94,6 +76,33 @@ gh pr merge <PR#> --merge
 ```
 Pull master locally to sync: `git checkout master && git pull origin master`
 
-**8. Tag — `vX.Y.Z`**
+**5. Tag — `vX.Y.Z`**
 
-**9. Confirm the proposed release notes than do a release through gh cli**
+Push the tag to trigger the release build:
+```
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The `.github/workflows/release.yml` workflow runs automatically. It builds `party-display.exe` from the tagged commit, assembles the zip, attests provenance via Sigstore, and creates a **draft** GitHub release with the zip and `checksums.txt` attached.
+
+Watch the run: `gh run watch`
+
+Do not proceed until the workflow completes successfully.
+
+**6. Test the CI-built release**
+
+Download the zip from the draft release:
+```
+gh release download vX.Y.Z --dir /tmp/release-test
+```
+
+Work through every item in [`docs/testing/release-checklist.md`](../../docs/testing/release-checklist.md) using the downloaded `party-display.exe`.
+Do not proceed until all items are checked off.
+
+**7. Publish the draft release**
+
+Review and edit the auto-generated release notes, then publish:
+```
+gh release edit vX.Y.Z --draft=false
+```
