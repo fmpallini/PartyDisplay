@@ -63,6 +63,9 @@ export function ClientIdSetup({ onSave, onBack }: Props) {
       <p style={{ margin: 0, color: '#aaa', maxWidth: '400px', lineHeight: 1.6, fontSize: '13px', textAlign: 'center' }}>
         This app needs your own Spotify Client ID to connect. Each user registers a free app on Spotify's developer portal.
       </p>
+      <p style={{ margin: 0, color: '#777', maxWidth: '400px', lineHeight: 1.6, fontSize: '12px', textAlign: 'center' }}>
+        No Premium account or is the process too complex? You can skip this by using the external audio source integration — go back to the previous screen and select the <strong style={{ color: '#aaa' }}>External</strong> source instead. Open Spotify (app or browser), and Party Display will detect and interact with it automatically.
+      </p>
       <div style={{
         background: '#2a1a00', border: '1px solid #7a4a00', borderRadius: '6px',
         padding: '8px 14px', maxWidth: '400px', width: '100%',

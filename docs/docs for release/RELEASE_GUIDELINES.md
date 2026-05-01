@@ -37,7 +37,7 @@ Use this context to inform all steps that follow.
 
 **P6. Run tests** — final gate after all pre-work changes:
 - `cd app && npm test` — all frontend Vitest tests must pass.
-- `cd app/src-tauri && cargo test` — all Rust tests must pass.
+- `cd app/src-tauri && cargo test --workspace` — all Rust tests must pass.
 Do not proceed if any test fails. Fix the failure first.
 
 Do not skip or batch these. Each must complete and be committed before moving to the release procedure.
