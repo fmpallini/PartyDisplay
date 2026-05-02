@@ -230,6 +230,20 @@ export default function ControlPanel() {
       .catch(() => {})
   }, [])
 
+  // Auto-switch to photos mode when user picks a new folder that has photos.
+  // Pre-initialize with the saved folder so app-startup restore doesn't trigger.
+  const autoSwitchedForFolderRef = useRef<string | null>(localStorage.getItem(KEYS.lastPhotoFolder))
+  useEffect(() => {
+    if (
+      library.folder &&
+      library.photos.length > 0 &&
+      autoSwitchedForFolderRef.current !== library.folder
+    ) {
+      autoSwitchedForFolderRef.current = library.folder
+      setDisplaySettings(s => ({ ...s, visualizerMode: 'photos' }))
+    }
+  }, [library.folder, library.photos.length])
+
   // Notify display window whenever slideshow pause state changes (skip initial mount)
   const slideshowMountedRef = useRef(false)
   useEffect(() => {

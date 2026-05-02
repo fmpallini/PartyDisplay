@@ -78,7 +78,7 @@ export function readDisplaySettings(): DisplaySettings {
     transitionEffect:     safeEnum(localStorage.getItem(KEYS.transitionEffect),     TRANSITION_EFFECT_VALUES, 'random'),
     transitionDurationMs: safeNum(localStorage.getItem(KEYS.transitionDurationMs), 500),
     imageFit:             safeEnum(localStorage.getItem(KEYS.imageFit),             IMAGE_FIT_VALUES,         'contain'),
-    visualizerMode:           safeEnum(localStorage.getItem(KEYS.visualizerMode),           VISUALIZER_MODE_VALUES,          'photos'),
+    visualizerMode:           safeEnum(localStorage.getItem(KEYS.visualizerMode),           VISUALIZER_MODE_VALUES,          'visualizer'),
     visualizerSplitSide:      safeEnum(localStorage.getItem(KEYS.visualizerSplitSide),      VISUALIZER_SIDE_VALUES,          'right'),
     visualizerPresetIndex:    safeNum(localStorage.getItem(KEYS.visualizerPresetIndex),      0),
     visualizerPresetOrder:    safeEnum(localStorage.getItem(KEYS.visualizerPresetOrder),     VISUALIZER_PRESET_ORDER_VALUES,  'shuffle'),
