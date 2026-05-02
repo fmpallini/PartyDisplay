@@ -169,7 +169,7 @@ export default function ControlPanel() {
   const [presetNames, setPresetNames] = useState<string[]>([])
 
   const [source, setSource] = useState<'spotify' | 'local' | 'dlna' | 'external'>(
-    () => safeEnum(localStorage.getItem(KEYS.audioSource), ['spotify', 'local', 'dlna', 'external'] as const, 'spotify')
+    () => safeEnum(localStorage.getItem(KEYS.audioSource), ['spotify', 'local', 'dlna', 'external'] as const, 'external')
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
     () => localStorage.getItem(KEYS.localAudioFolder)
