@@ -1,6 +1,6 @@
 # Party Display
 
-> A vibe coding exercise — building a real Spotify-connected party display, driven entirely by AI agents.
+> A vibe coding exercise — building a full-featured party display, driven entirely by AI agents.
 
 [![Tests](https://github.com/fmpallini/PartyDisplay/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/fmpallini/PartyDisplay/actions/workflows/test.yml)
 [![Dependabot Updates](https://github.com/fmpallini/PartyDisplay/actions/workflows/dependabot/dependabot-updates/badge.svg?branch=master)](https://github.com/fmpallini/PartyDisplay/actions/workflows/dependabot/dependabot-updates)
@@ -12,9 +12,9 @@
 
 ![Screenshot of Party Display at version v0.9.9](docs/docs%20for%20release/sample_image.png)
 
-Party Display is a desktop application that registers as a **Spotify Connect device** and shows a fullscreen photo slideshow on a projector or TV, synchronized to the music playing. Think of it as a smart jukebox backdrop — your photos, your playlist, your party.
+Party Display is a desktop party utility — a jukebox that throws psychedelic MilkDrop visualizations and your personal photos onto a projector or TV, synced to whatever music is playing. Use any audio source: play from a local folder, stream from a DLNA/UPnP media server, let any external app or website drive the sound, or connect native Spotify integration if you want it. Think of it as a full party backdrop that actually reacts to sound.
 
-The app is built on **Tauri v2** (Windows), using the **Spotify Web Playback SDK** for device registration and playback, **WASAPI loopback** (via Rust) for real-time spectrum visualization, and **LRCLIB** for synchronized lyrics display.
+The app is built on **Tauri v2** (Windows), using **WASAPI loopback** (via Rust) for real-time spectrum visualization, the **Spotify Web Playback SDK** for optional Spotify Connect device registration, and **LRCLIB** for synchronized lyrics display.
 
 ---
 
@@ -50,20 +50,7 @@ You can also verify the SHA-256 checksum against `checksums.txt` bundled in the 
 | Windows 10/11 | — | WASAPI loopback is Windows-only |
 | [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) | — | Pre-installed on Windows 11; download for Windows 10 |
 
-### 1. Create a Spotify app
-
-1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new app
-2. Fill in any app name and description
-3. Set the redirect URI to:
-   ```
-   http://127.0.0.1:7357/callback
-   ```
-4. Under "Which API/SDKs are you planning to use?" check **Web Playback SDK**
-5. Save, then copy your **Client ID** from the app settings
-
-The Client ID is entered directly in the app on first launch — no environment file needed.
-
-### 2. Install dependencies and run
+### 1. Install dependencies and run
 
 ```bash
 cd app
@@ -71,7 +58,7 @@ npm install
 npm run tauri dev
 ```
 
-### 3. Build for release
+### 2. Build for release
 
 ```bash
 cd app
@@ -82,7 +69,7 @@ The output binary will be at `app/src-tauri/target/x86_64-pc-windows-msvc/releas
 
 > **Note:** The first Rust build takes several minutes — subsequent builds are incremental.
 
-### 4. Run tests
+### 3. Run tests
 
 **Frontend** (Vitest):
 ```bash
