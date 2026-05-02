@@ -74,29 +74,35 @@ The main limitation inherited from this exploration is that the spectrum analyze
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│              Tauri v2 App               │
-│                                         │
-│  ┌──────────────┐  ┌──────────────────┐ │
-│  │ Control Panel│  │  Display Window  │ │
-│  │  (WebView2)  │  │   (WebView2)     │ │
-│  │              │  │                  │ │
-│  │ Spotify SDK  │  │ Photo Slideshow  │ │
-│  │ OAuth / Auth │  │ Now Playing HUD  │ │
-│  │ Volume / Skip│  │ Visualizer (WebGL│ │
-│  └──────┬───────┘  └────────┬─────────┘ │
-│         │                   │           │
-│  ┌──────▼───────────────────▼─────────┐ │
-│  │           Rust Backend             │ │
-│  │                                    │ │
-│  │  WASAPI loopback → FFT → events    │ │
-│  │  OAuth PKCE + token refresh        │ │
-│  │  Slideshow engine (folder watch)   │ │
-│  │  DLNA/UPnP discovery + HTTP proxy  │ │
-│  │  Typed IPC channels (commands +    │ │
-│  │  events between windows)           │ │
-│  └────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        Tauri v2 App                          │
+│                                                              │
+│  ┌───────────────────────┐   ┌──────────────────────────┐   │
+│  │    Control Panel      │   │      Display Window      │   │
+│  │      (WebView2)       │   │        (WebView2)        │   │
+│  │                       │   │                          │   │
+│  │  Audio sources:       │   │  Photo slideshow         │   │
+│  │  · Spotify SDK        │   │  MilkDrop (WebGL)        │   │
+│  │  · Local files        │   │  Now playing HUD         │   │
+│  │  · DLNA stream        │   │  Lyrics overlay (LRCLIB) │   │
+│  │  · External app       │   │  Clock · weather         │   │
+│  │                       │   │  · battery               │   │
+│  │  Volume · skip        │   │                          │   │
+│  └──────────┬────────────┘   └──────────────┬───────────┘   │
+│             │           IPC                 │               │
+│  ┌──────────▼───────────────────────────────▼────────────┐  │
+│  │                     Rust Backend                       │  │
+│  │                                                        │  │
+│  │  WASAPI loopback → FFT → spectrum events               │  │
+│  │  OAuth PKCE + token refresh (Credential Store)         │  │
+│  │  Slideshow engine (folder watch · DLNA images)         │  │
+│  │  Local audio scanner (ID3 / FLAC / M4A metadata)       │  │
+│  │  DLNA/UPnP discovery + HTTP range proxy                │  │
+│  │  SMTC bridge (external app metadata · media keys)      │  │
+│  │  Remote server (Wi-Fi browser remote · QR code)        │  │
+│  │  Window manager (multi-monitor · Miracast cast)        │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 The two WebView2 windows are independent renderer processes that communicate through the Rust backend via Tauri IPC commands and broadcast events. The control panel owns the Spotify SDK instance and forwards playback state to the display window; the display window is purely a consumer — it renders but issues no Spotify API calls of its own.
@@ -115,8 +121,9 @@ vcup2/
 │   │   ├── hooks/              # Custom React hooks (player, lyrics, weather, FFT…)
 │   │   ├── lib/                # IPC helpers, Spotify auth, shared utilities
 │   │   └── windows/            # Entry points: control panel + display window
-│   ├── src-tauri/              # Rust backend
-│   │   └── src/                # main · auth · audio · slideshow · system · window_manager · dlna · dlna_proxy
+│   ├── src-tauri/              # Rust backend (two crates)
+│   │   ├── src/                # Tauri app crate: main · auth · audio · media_keys · remote_server · window_manager
+│   │   └── party-display-core/ # Pure Rust lib (no Tauri deps, unit-testable): dlna · dlna_proxy · local_audio · presets · slideshow · smtc · system
 │   └── package.json
 ├── presets/                    # MilkDrop preset JSONs (bundled next to exe at release)
 ├── docs/
