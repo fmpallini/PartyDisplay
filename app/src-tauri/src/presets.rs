@@ -6,7 +6,7 @@ fn embedded_presets() -> Vec<PresetFile> {
     EMBEDDED_PRESETS
         .iter()
         .map(|(name, content)| PresetFile {
-            name:    name.to_string(),
+            name: name.to_string(),
             content: content.to_string(),
         })
         .collect()

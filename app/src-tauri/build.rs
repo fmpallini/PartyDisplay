@@ -24,7 +24,7 @@ fn main() {
                 .filter_map(|e| {
                     let path = e.path().canonicalize().ok()?;
                     let name = path.file_stem()?.to_str()?.to_string();
-                    let abs  = path.to_str()?.replace('\\', "/");
+                    let abs = path.to_str()?.replace('\\', "/");
                     Some((name, abs))
                 })
                 .collect()
@@ -33,13 +33,9 @@ fn main() {
 
     entries.sort_by(|a, b| a.0.cmp(&b.0));
 
-    let mut code = String::from(
-        "pub static EMBEDDED_PRESETS: &[(&str, &str)] = &[\n",
-    );
+    let mut code = String::from("pub static EMBEDDED_PRESETS: &[(&str, &str)] = &[\n");
     for (name, abs_path) in &entries {
-        code.push_str(&format!(
-            "    ({name:?}, include_str!({abs_path:?})),\n"
-        ));
+        code.push_str(&format!("    ({name:?}, include_str!({abs_path:?})),\n"));
     }
     code.push_str("];\n");
 
