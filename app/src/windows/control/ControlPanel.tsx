@@ -169,7 +169,7 @@ export default function ControlPanel() {
   const [presetNames, setPresetNames] = useState<string[]>([])
 
   const [source, setSource] = useState<'spotify' | 'local' | 'dlna' | 'external'>(
-    () => safeEnum(localStorage.getItem(KEYS.audioSource), ['spotify', 'local', 'dlna', 'external'] as const, 'spotify')
+    () => safeEnum(localStorage.getItem(KEYS.audioSource), ['spotify', 'local', 'dlna', 'external'] as const, 'external')
   )
   const [localFolder,    setLocalFolderState] = useState<string | null>(
     () => localStorage.getItem(KEYS.localAudioFolder)
@@ -229,6 +229,19 @@ export default function ControlPanel() {
       .then(list => setPresetNames(list.map(p => p.name)))
       .catch(() => {})
   }, [])
+
+  // Pre-initialize with the saved folder so app-startup restore doesn't trigger auto-switch.
+  const autoSwitchedForFolderRef = useRef<string | null>(localStorage.getItem(KEYS.lastPhotoFolder))
+  useEffect(() => {
+    if (
+      library.folder &&
+      library.photos.length > 0 &&
+      autoSwitchedForFolderRef.current !== library.folder
+    ) {
+      autoSwitchedForFolderRef.current = library.folder
+      setDisplaySettings(s => ({ ...s, visualizerMode: 'photos' }))
+    }
+  }, [library.folder, library.photos.length])
 
   // Notify display window whenever slideshow pause state changes (skip initial mount)
   const slideshowMountedRef = useRef(false)

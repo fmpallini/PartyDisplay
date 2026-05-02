@@ -1,4 +1,4 @@
-Party Display v0.9.11 — Windows 64-bit Portable
+Party Display v0.9.12 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -13,7 +13,6 @@ REQUIREMENTS
       Already installed on all Windows 11 machines and most Windows 10 machines.
       If missing, download from:
         https://developer.microsoft.com/en-us/microsoft-edge/webview2/
-  - Spotify Premium account (required for Web Playback SDK streaming)
 
 
 HOW TO RUN
@@ -22,49 +21,54 @@ HOW TO RUN
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- FIRST LAUNCH — CONNECT SPOTIFY
+ FIRST LAUNCH
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
- 1. Double-click party-display.exe.
+ 1. Double-click party-display.exe — no installation needed.
 
- 2. In the control panel, click "Connect Spotify".
+ 2. The control panel opens with "External" audio source selected.
+    Any audio playing on your PC will drive the visualizer and show
+    song info automatically.
 
- 3. If this is your first launch, you will be prompted to enter your
+ 3. Click "Open Display" to show the visualizer on a second monitor,
+    projector, or TV.
+
+ 4. Optionally pick a photo folder — the app will automatically switch
+    to photo mode when photos are loaded.
+
+
+ OPTIONAL — SPOTIFY INTEGRATION
+
+ If you want to use Party Display as a native Spotify Connect device:
+
+ 1. In the control panel, select the Spotify audio source and click
+    "Connect Spotify".
+
+ 2. If this is your first launch, you will be prompted to enter your
     Spotify Client ID. Follow the on-screen steps to create a free app
     on developer.spotify.com and paste the Client ID. It is stored
     securely in the Windows Credential Store and never needs to be
     entered again.
 
- 4. Your browser will open the Spotify login page. Log in and grant
+ 3. Your browser will open the Spotify login page. Log in and grant
     the requested permissions.
 
- 5. The browser will redirect to 127.0.0.1:7357 (a local page served
+ 4. The browser will redirect to 127.0.0.1:7357 (a local page served
     briefly by the app), then close automatically.
 
- 6. The control panel will show your account as connected.
-    Pick a photo folder, open the display window, and enjoy.
-
- NOTE: A Spotify Premium account is required to stream audio to the
- Party Display player device.
+ NOTE: A Spotify Premium account is required to stream audio through
+ the Party Display Spotify Connect device.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  FEATURES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
- SPOTIFY
-  - Registers as a Spotify Connect device (Web Playback SDK)
-  - Client ID entered at runtime via guided setup — no config file needed
-  - OAuth PKCE login — tokens saved in Windows Credential Store
-  - Auto token refresh — sessions survive app restarts
-  - Volume synced from your Spotify session on connect
-  - Now playing card: album art, track name, artist, progress bar + seek
-  - Transport controls: play/pause, previous, next, volume
-
  EXTERNAL AUDIO
-  - Pass-through mode for any audio playing on your PC
+  - Pass-through mode for any audio playing on your PC — Spotify, browser,
+    media player, YouTube, whatever
   - Numpad +/- send system-wide volume keys; 4/5/6 send media keys
-  - WASAPI loopback still drives the visualizer
+  - WASAPI loopback drives the visualizer in real time
   - Song info (title, artist, album art) and lyrics fetched automatically when the
     active player registers with the Windows System Media Transport Controls (SMTC)
   - "Active player" = the media session Windows considers current (last interacted with)
@@ -94,6 +98,16 @@ HOW TO RUN
   - Stream audio tracks from a DLNA server (NAS, media server, etc.)
   - Use a DLNA container as the photo slideshow source
   - Seeking supported via HTTP range-request proxy
+
+ SPOTIFY (optional)
+  - Registers as a native Spotify Connect device (Web Playback SDK)
+  - Client ID entered at runtime via guided setup — no config file needed
+  - OAuth PKCE login — tokens saved in Windows Credential Store
+  - Auto token refresh — sessions survive app restarts
+  - Volume synced from your Spotify session on connect
+  - Now playing card: album art, track name, artist, progress bar + seek
+  - Transport controls: play/pause, previous, next, volume
+  - Requires a Spotify Premium account
 
  PHOTO SLIDESHOW
   - Watches a local folder or DLNA container for images
@@ -223,6 +237,28 @@ HOW TO RUN
     the Windows media timeline correctly when you open a new YouTube video, or
     they continue counting from the previous video's position. This causes the
     progress bar and lyrics in Party Display to be completely out of sync.
+
+  Spotify via External source vs. native Spotify integration — what's the difference?
+    Both work well for a party, but the native Spotify integration offers more control:
+
+    With External source (Spotify desktop app or browser):
+      - Song info, album art, and lyrics display automatically via Windows SMTC
+      - Volume control adjusts system volume, not Spotify's own volume slider
+      - Track seeking and shuffle control are NOT available
+        through Party Display's control window
+      - Playlist changes must be made at the computer — guests cannot switch
+        playlists from their phones (the Phone Remote only controls Party Display,
+        not Spotify itself)
+      - Requires additional software running (browser or Spotify app)
+
+    With native Spotify integration (Spotify Connect):
+      - Full transport controls: seek bar, shuffle, volume (inside Spotify)
+      - Playlist selection and queue management work from any phone or the
+        Spotify app — no need to touch the party computer
+      - Requires a Spotify Premium account and a one-time Client ID setup
+
+    If Premium is not an option, External mode covers the
+    essentials fine.
 
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
