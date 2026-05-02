@@ -18,70 +18,20 @@ The app is built on **Tauri v2** (Windows), using **WASAPI loopback** (via Rust)
 
 ---
 
-## Verifying a release
+## Key features
 
-Every release zip is built by GitHub Actions directly from the signed tag and attested via [Sigstore](https://sigstore.dev). You can cryptographically verify that the file you downloaded was produced by this repo's CI pipeline — not assembled on someone's machine.
-
-**Requirements:** [GitHub CLI](https://cli.github.com) (`gh`)
-
-```bash
-gh attestation verify party-display-vX.Y.Z.zip --repo fmpallini/PartyDisplay
-```
-
-A passing result confirms the artifact's provenance. Replace `vX.Y.Z` with the version you downloaded.
-
-You can also verify the SHA-256 checksum against `checksums.txt` bundled in the same release:
-
-```powershell
-# PowerShell
-(Get-FileHash party-display-vX.Y.Z.zip -Algorithm SHA256).Hash.ToLower()
-```
-
----
-
-## Building from source
-
-### Prerequisites
-
-| Requirement | Version | Notes |
-|---|---|---|
-| [Rust](https://rustup.rs) | stable | Install via rustup |
-| [Node.js](https://nodejs.org) | 18+ | npm included |
-| Windows 10/11 | — | WASAPI loopback is Windows-only |
-| [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) | — | Pre-installed on Windows 11; download for Windows 10 |
-
-### 1. Install dependencies and run
-
-```bash
-cd app
-npm install
-npm run tauri dev
-```
-
-### 2. Build for release
-
-```bash
-cd app
-npm run tauri build
-```
-
-The output binary will be at `app/src-tauri/target/x86_64-pc-windows-msvc/release/party-display.exe`.
-
-> **Note:** The first Rust build takes several minutes — subsequent builds are incremental.
-
-### 3. Run tests
-
-**Frontend** (Vitest):
-```bash
-cd app
-npm test
-```
-
-**Backend** (Rust):
-```bash
-cd app/src-tauri
-cargo test --workspace
-```
+- **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts; Client ID entered at runtime via a guided setup screen (no build-time configuration needed)
+- **External audio source** — pass-through mode that forwards system-wide media and volume keys (play/pause, next/prev, volume up/down) via Windows virtual-key codes; WASAPI loopback still drives the visualizer; song info (title, artist, album art) and lyrics fetched automatically via Windows System Media Transport Controls (SMTC) — requires Windows 10 build 1903+
+- **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
+- **DLNA / UPnP media** — discovers UPnP/DLNA servers on the local network; browse their containers directly in the control panel; stream audio tracks and photos from any DLNA server (NAS, media server, etc.) via a local HTTP proxy that handles range requests for seeking
+- **Photo slideshow** — watches a local folder or a DLNA container for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
+- **MilkDrop visualizer** — Butterchurn WebGL visualizer driven by real-time WASAPI loopback capture (no driver install); three modes: photos only, photo/visualizer split view, fullscreen; 100 bundled presets, add more by dropping `.json` MilkDrop preset files in the `presets/` folder next to the exe; cycle presets manually (PgUp / PgDn), on every track change, or on a configurable timer
+- **Synchronized lyrics** — fetched from LRCLIB (no API key); overlay mode (3-line karaoke) or split-view mode (full scrolling panel alongside the photo); falls back to static text when sync data is unavailable
+- **Corner widgets** — track overlay (artist + title + progress), clock & weather (Open-Meteo, auto-detected or manual city), battery indicator; all four corners supported with graceful stacking
+- **Song & volume toasts** — brief on-screen notifications on track change and volume adjustment, with configurable duration and scale
+- **Display window** — designed for a second monitor, projector, or TV; features native one-click Miracast/TV casting that automatically routes the window and fullscreens it; position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
+- **Live settings sync** — all display settings update instantly on the display window without restart; control panel card layout with collapsible sections
+- **Phone remote control** — browser-based remote served over Wi-Fi; control playback, volume, slideshow, presets, and display toggles from any phone on the local network; QR code for quick access
 
 ---
 
@@ -178,20 +128,70 @@ vcup2/
 
 ---
 
-## Key features
+## Building from source
 
-- **Spotify Connect** — registers as a real Spotify device via the Web Playback SDK inside WebView2; full OAuth PKCE with tokens stored in the Windows credential store and automatic refresh across restarts; Client ID entered at runtime via a guided setup screen (no build-time configuration needed)
-- **External audio source** — pass-through mode that forwards system-wide media and volume keys (play/pause, next/prev, volume up/down) via Windows virtual-key codes; WASAPI loopback still drives the visualizer; song info (title, artist, album art) and lyrics fetched automatically via Windows System Media Transport Controls (SMTC) — requires Windows 10 build 1903+
-- **Local audio files** — plays a local folder of audio files (MP3, FLAC, WAV, OGG, M4A, AAC, OPUS) through the built-in HTML5 player; reads embedded metadata (title, artist, album art); alphabetical or shuffle order; optional recursive scan
-- **DLNA / UPnP media** — discovers UPnP/DLNA servers on the local network; browse their containers directly in the control panel; stream audio tracks and photos from any DLNA server (NAS, media server, etc.) via a local HTTP proxy that handles range requests for seeking
-- **Photo slideshow** — watches a local folder or a DLNA container for images (JPEG, PNG, WebP, GIF, BMP, TIFF); shuffle or alphabetical order with resume; 8 transition effects; configurable timing and image fit
-- **MilkDrop visualizer** — Butterchurn WebGL visualizer driven by real-time WASAPI loopback capture (no driver install); three modes: photos only, photo/visualizer split view, fullscreen; 100 bundled presets, add more by dropping `.json` MilkDrop preset files in the `presets/` folder next to the exe; cycle presets manually (PgUp / PgDn), on every track change, or on a configurable timer
-- **Synchronized lyrics** — fetched from LRCLIB (no API key); overlay mode (3-line karaoke) or split-view mode (full scrolling panel alongside the photo); falls back to static text when sync data is unavailable
-- **Corner widgets** — track overlay (artist + title + progress), clock & weather (Open-Meteo, auto-detected or manual city), battery indicator; all four corners supported with graceful stacking
-- **Song & volume toasts** — brief on-screen notifications on track change and volume adjustment, with configurable duration and scale
-- **Display window** — designed for a second monitor, projector, or TV; features native one-click Miracast/TV casting that automatically routes the window and fullscreens it; position persisted across restarts and validated against connected monitors; screensaver/sleep blocked while open
-- **Live settings sync** — all display settings update instantly on the display window without restart; control panel card layout with collapsible sections
-- **Phone remote control** — browser-based remote served over Wi-Fi; control playback, volume, slideshow, presets, and display toggles from any phone on the local network; QR code for quick access
+### Prerequisites
+
+| Requirement | Version | Notes |
+|---|---|---|
+| [Rust](https://rustup.rs) | stable | Install via rustup |
+| [Node.js](https://nodejs.org) | 18+ | npm included |
+| Windows 10/11 | — | WASAPI loopback is Windows-only |
+| [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) | — | Pre-installed on Windows 11; download for Windows 10 |
+
+### 1. Install dependencies and run
+
+```bash
+cd app
+npm install
+npm run tauri dev
+```
+
+### 2. Build for release
+
+```bash
+cd app
+npm run tauri build
+```
+
+The output binary will be at `app/src-tauri/target/x86_64-pc-windows-msvc/release/party-display.exe`.
+
+> **Note:** The first Rust build takes several minutes — subsequent builds are incremental.
+
+### 3. Run tests
+
+**Frontend** (Vitest):
+```bash
+cd app
+npm test
+```
+
+**Backend** (Rust):
+```bash
+cd app/src-tauri
+cargo test --workspace
+```
+
+---
+
+## Verifying a release
+
+Every release zip is built by GitHub Actions directly from the signed tag and attested via [Sigstore](https://sigstore.dev). You can cryptographically verify that the file you downloaded was produced by this repo's CI pipeline — not assembled on someone's machine.
+
+**Requirements:** [GitHub CLI](https://cli.github.com) (`gh`)
+
+```bash
+gh attestation verify party-display-vX.Y.Z.zip --repo fmpallini/PartyDisplay
+```
+
+A passing result confirms the artifact's provenance. Replace `vX.Y.Z` with the version you downloaded.
+
+You can also verify the SHA-256 checksum against `checksums.txt` bundled in the same release:
+
+```powershell
+# PowerShell
+(Get-FileHash party-display-vX.Y.Z.zip -Algorithm SHA256).Hash.ToLower()
+```
 
 ---
 
