@@ -230,8 +230,7 @@ export default function ControlPanel() {
       .catch(() => {})
   }, [])
 
-  // Auto-switch to photos mode when user picks a new folder that has photos.
-  // Pre-initialize with the saved folder so app-startup restore doesn't trigger.
+  // Pre-initialize with the saved folder so app-startup restore doesn't trigger auto-switch.
   const autoSwitchedForFolderRef = useRef<string | null>(localStorage.getItem(KEYS.lastPhotoFolder))
   useEffect(() => {
     if (

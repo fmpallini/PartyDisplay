@@ -1,4 +1,4 @@
-Party Display v0.9.11 — Windows 64-bit Portable
+Party Display v0.9.12 — Windows 64-bit Portable
 ===============================================
 
   GitHub:  https://github.com/fmpallini/PartyDisplay
@@ -237,6 +237,28 @@ HOW TO RUN
     the Windows media timeline correctly when you open a new YouTube video, or
     they continue counting from the previous video's position. This causes the
     progress bar and lyrics in Party Display to be completely out of sync.
+
+  Spotify via External source vs. native Spotify integration — what's the difference?
+    Both work well for a party, but the native Spotify integration offers more control:
+
+    With External source (Spotify desktop app or browser):
+      - Song info, album art, and lyrics display automatically via Windows SMTC
+      - Volume control adjusts system volume, not Spotify's own volume slider
+      - Track seeking and shuffle control are NOT available
+        through Party Display's control window
+      - Playlist changes must be made at the computer — guests cannot switch
+        playlists from their phones (the Phone Remote only controls Party Display,
+        not Spotify itself)
+      - Requires additional software running (browser or Spotify app)
+
+    With native Spotify integration (Spotify Connect):
+      - Full transport controls: seek bar, shuffle, volume (inside Spotify)
+      - Playlist selection and queue management work from any phone or the
+        Spotify app — no need to touch the party computer
+      - Requires a Spotify Premium account and a one-time Client ID setup
+
+    If Premium is not an option, External mode covers the
+    essentials fine.
 
   Reset everything
     Open the Help panel (? button in the control panel) and click "Reset".
