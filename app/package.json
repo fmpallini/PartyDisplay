@@ -18,7 +18,7 @@
     "butterchurn": "^2.6.7",
     "music-metadata": "^11.12.3",
     "qrcode": "^1.5.4",
-    "react": "^19.2.5",
+    "react": "^19.2.6",
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
