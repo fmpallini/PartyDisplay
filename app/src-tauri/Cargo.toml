@@ -2,9 +2,12 @@
 members = [".", "party-display-core"]
 resolver = "2"
 
+[workspace.package]
+version = "0.9.12"
+
 [package]
 name = "party-display"
-version = "0.9.12"
+version.workspace = true
 edition = "2021"
 
 [build-dependencies]
