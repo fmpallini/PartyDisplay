@@ -16,7 +16,7 @@
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-shell": "^2",
     "butterchurn": "^2.6.7",
-    "music-metadata": "^11.13.0",
+    "music-metadata": "^11.14.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.7"
